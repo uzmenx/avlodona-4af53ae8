@@ -10,7 +10,7 @@ import { GenderSelectionModal } from './GenderSelectionModal';
 import { UnifiedMergeDialog } from './UnifiedMergeDialog';
 import { TreePostHeader } from './TreePostHeader';
 import { TreeHistoryDrawer } from './TreeHistoryDrawer';
-import { TreeOverlayLayer, OverlayToolbar } from './TreeOverlayLayer';
+import { TreeOverlayLayer } from './TreeOverlayLayer';
 import { TreePublishDialog } from './TreePublishDialog';
 import { TreeFullscreenView } from './TreeFullscreenView';
 import { useLocalFamilyTree } from '@/hooks/useLocalFamilyTree';
@@ -234,8 +234,17 @@ export const FamilyTreeV2 = () => {
     setOverlays(prev => [...prev, newOverlay]);
   };
 
-  const handleAddImage = () => {
-    // Image handling through file picker in OverlayToolbar
+  const handleAddImage = (url: string) => {
+    const newOverlay: TreeOverlay = {
+      id: crypto.randomUUID(),
+      type: 'image',
+      content: url,
+      x: 120 + Math.random() * 80,
+      y: 200 + Math.random() * 80,
+      scale: 1,
+      rotation: 0,
+    };
+    setOverlays(prev => [...prev, newOverlay]);
   };
 
   if (isLoading) {
@@ -279,6 +288,9 @@ export const FamilyTreeV2 = () => {
           onSave={handleSaveTree}
           onPublish={handlePublish}
           onFullscreen={() => setShowFullscreen(true)}
+          onAddSticker={handleAddSticker}
+          onAddText={handleAddText}
+          onAddImage={handleAddImage}
           isSaving={isSaving}
           hasCurrentPost={!!currentPostId}
         />
@@ -321,8 +333,6 @@ export const FamilyTreeV2 = () => {
           />
           {/* Overlay layer */}
           <TreeOverlayLayer overlays={overlays} onChange={setOverlays} editable={true} />
-          {/* Overlay toolbar */}
-          <OverlayToolbar onAddSticker={handleAddSticker} onAddText={handleAddText} onAddImage={handleAddImage} />
         </div>
       </div>
 

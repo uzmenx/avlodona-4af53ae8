@@ -242,7 +242,7 @@ export const FamilyTreeCanvas = ({
  }, [members, positions, onOpenProfile, setNodes, isMergeMode, mergeSelectedIds, mergedProfiles, onLongPress, onToggleMergeSelect]);
 
   return (
-    <div className="w-full h-full overflow-hidden bg-card/50">
+    <div className="w-full h-full overflow-hidden bg-card/50 touch-none">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -251,6 +251,7 @@ export const FamilyTreeCanvas = ({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView={false}
+        style={{ touchAction: 'none' }}
         onInit={(instance) => {
           if (didFitViewRef.current) return;
           instance.fitView({ padding: 0.4 });

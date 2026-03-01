@@ -110,66 +110,8 @@ interface OverlayToolbarProps {
 }
 
 export const OverlayToolbar = ({ onAddSticker, onAddText, onAddImage }: OverlayToolbarProps) => {
-  const [showStickers, setShowStickers] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  return (
-    <div className="absolute right-3 top-1/3 z-30 flex flex-col gap-2">
-      {/* Sticker button */}
-      <button
-        onClick={() => setShowStickers(!showStickers)}
-        className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm border border-border shadow-md flex items-center justify-center text-lg hover:bg-muted transition-colors"
-      >
-        😊
-      </button>
-
-      {/* Text button */}
-      <button
-        onClick={onAddText}
-        className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm border border-border shadow-md flex items-center justify-center text-sm font-bold text-foreground hover:bg-muted transition-colors"
-      >
-        T
-      </button>
-
-      {/* Image button */}
-      <button
-        onClick={() => fileInputRef.current?.click()}
-        className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm border border-border shadow-md flex items-center justify-center text-lg hover:bg-muted transition-colors"
-      >
-        🖼️
-      </button>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            const url = URL.createObjectURL(file);
-            onAddImage();
-            // We pass the URL through the onAddImage - but let's use a simpler approach
-            // The parent will handle it
-          }
-          e.target.value = '';
-        }}
-      />
-
-      {/* Sticker picker */}
-      {showStickers && (
-        <div className="absolute right-12 top-0 bg-background/95 backdrop-blur-sm border border-border rounded-xl p-2 shadow-lg grid grid-cols-4 gap-1 w-48">
-          {STICKERS.map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => { onAddSticker(emoji); setShowStickers(false); }}
-              className="w-10 h-10 flex items-center justify-center text-2xl hover:bg-muted rounded-lg transition-colors"
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  void onAddSticker;
+  void onAddText;
+  void onAddImage;
+  return null;
 };

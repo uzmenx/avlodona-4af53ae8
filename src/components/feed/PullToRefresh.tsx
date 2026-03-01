@@ -13,38 +13,72 @@ export const PullToRefresh = ({ onRefresh, children }: PullToRefreshProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
   const isPulling = useRef(false);
+  const canPull = useRef(false);
 
   const threshold = 80;
   const maxPull = 120;
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (containerRef.current?.scrollTop === 0) {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('video, iframe, [data-no-pull-to-refresh="true"]')) {
+      canPull.current = false;
+      isPulling.current = false;
+      return;
+    }
+
+    if (el.scrollTop <= 0) {
       startY.current = e.touches[0].clientY;
-      isPulling.current = true;
+      canPull.current = true;
+      isPulling.current = false;
+    } else {
+      canPull.current = false;
+      isPulling.current = false;
     }
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isPulling.current || isRefreshing) return;
+    if (isRefreshing) return;
+
+    const el = containerRef.current;
+    if (!el) return;
+
+    if (!canPull.current && !isPulling.current) return;
 
     const currentY = e.touches[0].clientY;
     const diff = currentY - startY.current;
 
-    if (diff > 0 && containerRef.current?.scrollTop === 0) {
-      // Apply rubber band effect
-      const resistance = 0.4;
-      const distance = Math.min(diff * resistance, maxPull);
-      setPullDistance(distance);
+    if (diff <= 0) {
+      canPull.current = false;
+      isPulling.current = false;
+      if (pullDistance !== 0) setPullDistance(0);
+      return;
     }
+
+    if (el.scrollTop > 0) return;
+
+    if (!isPulling.current) {
+      if (diff <= 10) return;
+      isPulling.current = true;
+    }
+
+    e.preventDefault();
+    const resistance = 0.4;
+    const distance = Math.min(diff * resistance, maxPull);
+    setPullDistance(distance);
   }, [isRefreshing]);
 
   const handleTouchEnd = useCallback(async () => {
-    if (!isPulling.current) return;
+    if (!canPull.current && !isPulling.current) return;
+    canPull.current = false;
     isPulling.current = false;
 
     if (pullDistance >= threshold && !isRefreshing) {
       setIsRefreshing(true);
       setPullDistance(50);
+
       await onRefresh();
       setIsRefreshing(false);
     }
@@ -55,7 +89,8 @@ export const PullToRefresh = ({ onRefresh, children }: PullToRefreshProps) => {
   return (
     <div
       ref={containerRef}
-      className="relative h-full overflow-y-auto overscroll-y-contain smooth-scroll-momentum py-0"
+      className="relative h-full overflow-y-auto smooth-scroll-momentum py-0"
+      style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}>

@@ -1,17 +1,33 @@
+import { useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { FamilyTreeV2 } from '@/components/family-v2';
-import { TreeRatings } from '@/components/family-v2/TreeRatings';
-import { FamilyCalendarSheet } from '@/components/family-v2/FamilyCalendarSheet';
 
 const Relatives = () => {
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+
+    const prevHtmlOverflow = html.style.overflow;
+    const prevHtmlHeight = html.style.height;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyHeight = body.style.height;
+
+    html.style.overflow = 'hidden';
+    html.style.height = '100%';
+    body.style.overflow = 'hidden';
+    body.style.height = '100%';
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      html.style.height = prevHtmlHeight;
+      body.style.overflow = prevBodyOverflow;
+      body.style.height = prevBodyHeight;
+    };
+  }, []);
+
   return (
     <AppLayout>
-      <div className="w-full relative min-h-screen">
-        {/* Top controls */}
-        <div className="absolute top-2 right-2 z-30 flex items-center gap-2">
-          <FamilyCalendarSheet />
-          <TreeRatings />
-        </div>
+      <div className="w-full relative h-screen overflow-hidden">
         <FamilyTreeV2 />
       </div>
     </AppLayout>
