@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { BottomNav } from './BottomNav';
+import { InstagramSidebar } from './InstagramSidebar';
 import { useTheme } from '@/contexts/ThemeContext';
 import { enableSmoothScrolling } from '@/utils/scrollBehavior';
 import { cn } from '@/lib/utils';
@@ -111,7 +112,8 @@ export const AppLayout = ({ children, showNav = true }: AppLayoutProps) => {
           bgClass || 'bg-background'
         )}
       />
-      <main className={cn(effectiveShowNav ? 'pb-20' : '', 'relative z-10')}>
+      {effectiveShowNav && <InstagramSidebar />}
+      <main className={cn(effectiveShowNav ? 'pb-20 md:pb-0' : '', 'relative z-10 md:pl-20')}>
         {children}
       </main>
       {effectiveShowNav && <BottomNav />}

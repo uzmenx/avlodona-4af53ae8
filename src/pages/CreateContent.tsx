@@ -79,6 +79,7 @@ const CreateContent = () => {
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         userId: user.id,
         files: editedFiles.map((m) => m.file),
+        audioFile: selectedAudio || null,
         caption,
         sharePost,
         shareStory,

@@ -130,6 +130,7 @@ const translations = {
   saving: { uz: "Saqlanmoqda...", ru: "Сохранение...", en: "Saving..." },
   save: { uz: "Saqlash", ru: "Сохранить", en: "Save" },
   changeCover: { uz: "Muqova rasmini o'zgartirish", ru: "Изменить обложку", en: "Change cover" },
+  changeAvatar: { uz: "Avatar rasmini o'zgartirish", ru: "Изменить аватар", en: "Change avatar" },
   cropAvatar: { uz: "Profil rasmini kesish", ru: "Обрезать фото", en: "Crop photo" },
   cropCover: { uz: "Muqova rasmini kesish", ru: "Обрезать обложку", en: "Crop cover" },
   uploadError: { uz: "Rasm yuklanmadi", ru: "Ошибка загрузки", en: "Upload failed" },

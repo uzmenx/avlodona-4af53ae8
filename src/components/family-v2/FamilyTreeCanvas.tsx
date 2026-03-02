@@ -63,6 +63,7 @@ export const FamilyTreeCanvas = ({
    isPairLocked,
 }: FamilyTreeCanvasProps) => {
   const didFitViewRef = useRef(false);
+  const flowInstanceRef = useRef<any>(null);
   const isDraggingRef = useRef(false);
   const draggedNodeIdRef = useRef<string | null>(null);
   const dragStartPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
@@ -241,6 +242,24 @@ export const FamilyTreeCanvas = ({
     });
  }, [members, positions, onOpenProfile, setNodes, isMergeMode, mergeSelectedIds, mergedProfiles, onLongPress, onToggleMergeSelect]);
 
+  useEffect(() => {
+    const onNavFamily = (e: Event) => {
+      const ce = e as CustomEvent<{ action?: 'scrollTop' | 'refresh' }>;
+      if (ce.detail?.action === 'refresh') {
+        window.dispatchEvent(new Event('family-tree-reload'));
+        return;
+      }
+
+      const inst = flowInstanceRef.current;
+      if (inst && typeof inst.fitView === 'function') {
+        inst.fitView({ padding: 0.4 });
+      }
+    };
+
+    window.addEventListener('avlodona:nav:family', onNavFamily as EventListener);
+    return () => window.removeEventListener('avlodona:nav:family', onNavFamily as EventListener);
+  }, []);
+
   return (
     <div className="w-full h-full overflow-hidden bg-card/50 touch-none">
       <ReactFlow
@@ -253,6 +272,7 @@ export const FamilyTreeCanvas = ({
         fitView={false}
         style={{ touchAction: 'none' }}
         onInit={(instance) => {
+          flowInstanceRef.current = instance;
           if (didFitViewRef.current) return;
           instance.fitView({ padding: 0.4 });
           didFitViewRef.current = true;

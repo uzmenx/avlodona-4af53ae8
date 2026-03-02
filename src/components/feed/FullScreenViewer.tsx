@@ -32,6 +32,7 @@ export const FullScreenViewer = ({ posts, initialIndex, onClose }: FullScreenVie
   const touchStartY = useRef(0);
   const touchStartX = useRef(0);
   const lastTapRef = useRef(0);
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentPost = posts[currentPostIndex];
   const mediaUrls = currentPost?.media_urls || (currentPost?.image_url ? [currentPost.image_url] : []);
@@ -211,6 +212,10 @@ export const FullScreenViewer = ({ posts, initialIndex, onClose }: FullScreenVie
 
     // Check for double tap
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
       // Double tap detected - show heart and like
       setShowDoubleTapHeart(true);
       if (!isLiked) {
@@ -228,19 +233,31 @@ export const FullScreenViewer = ({ posts, initialIndex, onClose }: FullScreenVie
     const width = rect.width;
 
     // Single tap logic - delayed to check for double tap
-    setTimeout(() => {
-      if (lastTapRef.current !== 0) {
-        // Click on left side - previous media, right side - next media, center - toggle play
-        if (x < width * 0.3 && mediaUrls.length > 1) {
-          goToPrevMedia();
-        } else if (x > width * 0.7 && mediaUrls.length > 1) {
-          goToNextMedia();
-        } else if (isVideo(currentMediaUrl)) {
-          togglePlay();
-        }
+    if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+    singleTapTimerRef.current = setTimeout(() => {
+      if (lastTapRef.current === 0) return;
+      lastTapRef.current = 0;
+      singleTapTimerRef.current = null;
+
+      // Click on left side - previous media, right side - next media, center - toggle play
+      if (x < width * 0.3 && mediaUrls.length > 1) {
+        goToPrevMedia();
+      } else if (x > width * 0.7 && mediaUrls.length > 1) {
+        goToNextMedia();
+      } else if (isVideo(currentMediaUrl)) {
+        togglePlay();
       }
     }, DOUBLE_TAP_DELAY + 50);
   };
+
+  useEffect(() => {
+    return () => {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
+    };
+  }, []);
 
   if (!currentPost) return null;
 

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -15,10 +15,36 @@ export const MediaMessage = ({ mediaUrl, mediaType, isMine, onFullscreen }: Medi
   const [duration, setDuration] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const instanceIdRef = useRef(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `vid_${Date.now()}_${Math.random()}`
+  );
+
+  useEffect(() => {
+    const onRequestPlay = (e: Event) => {
+      const ce = e as CustomEvent<{ id?: string }>;
+      if (ce.detail?.id === instanceIdRef.current) return;
+      const v = videoRef.current;
+      if (!v) return;
+      if (!v.paused) {
+        v.pause();
+        setIsPlaying(false);
+      }
+    };
+
+    window.addEventListener('avlodona:video:request-play', onRequestPlay);
+    return () => window.removeEventListener('avlodona:video:request-play', onRequestPlay);
+  }, []);
+
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (isPlaying) v.pause(); else v.play();
+    if (isPlaying) v.pause();
+    else {
+      window.dispatchEvent(
+        new CustomEvent('avlodona:video:request-play', { detail: { id: instanceIdRef.current } })
+      );
+      v.play();
+    }
     setIsPlaying(!isPlaying);
   };
 

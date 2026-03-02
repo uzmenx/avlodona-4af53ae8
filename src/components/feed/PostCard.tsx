@@ -26,6 +26,8 @@ import { FollowButton } from '@/components/user/FollowButton';
 
 import { SamsungUltraVideoPlayer } from '@/components/video/SamsungUltraVideoPlayer';
 
+import { Heart } from 'lucide-react';
+
 import { usePostViews, useIntersectionObserver } from '@/hooks/usePostViews';
 
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +36,7 @@ import { useActiveStories } from '@/hooks/useActiveStories';
 import { useAuth } from '@/contexts/AuthContext';
 import { StoryViewer } from '@/components/stories/StoryViewer';
 import type { StoryGroup, Story } from '@/hooks/useStories';
+import { usePostLikes } from '@/hooks/usePostLikes';
 
 interface PostCardProps {
   post: Post;
@@ -45,6 +48,8 @@ interface PostCardProps {
 export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProps) => {
   const { user } = useAuth();
   const { getStoryInfo } = useActiveStories();
+
+  const { isLiked, toggleLike } = usePostLikes(post.id);
 
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -58,6 +63,8 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
 
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
   const [storyViewerGroups, setStoryViewerGroups] = useState<StoryGroup[]>([]);
+
+  const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false);
 
   const [collabPartner, setCollabPartner] = useState<{ name: string | null; username: string | null; } | null>(null);
 
@@ -214,10 +221,32 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
         {/* Media - ONLY media area triggers fullscreen */}
         {mediaUrls.length > 0 && (
           <div
-            onClick={onMediaClick}
+            onClick={(e) => {
+              const t = e.target as HTMLElement | null;
+              if (t?.closest('button')) return;
+
+              onMediaClick?.();
+            }}
             className={onMediaClick ? "cursor-pointer" : ""}
           >
-            <MediaCarousel mediaUrls={mediaUrls} />
+            <div className="relative">
+              <MediaCarousel
+                mediaUrls={mediaUrls}
+                onVideoDoubleTap={() => {
+                  setShowDoubleTapHeart(true);
+                  if (!isLiked) toggleLike();
+                  setTimeout(() => setShowDoubleTapHeart(false), 900);
+                }}
+                onVideoSingleTap={() => {
+                  onMediaClick?.();
+                }}
+              />
+              {showDoubleTapHeart && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                  <Heart className="h-24 w-24 text-white fill-white drop-shadow-lg animate-heartBurst" />
+                </div>
+              )}
+            </div>
           </div>
         )}
 

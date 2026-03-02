@@ -4,19 +4,14 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-
-
 interface MediaCarouselProps {
-
   mediaUrls: string[];
-
   className?: string;
-
+  onVideoDoubleTap?: () => void;
+  onVideoSingleTap?: () => void;
 }
 
-
-
-export const MediaCarousel = ({ mediaUrls, className }: MediaCarouselProps) => {
+export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoSingleTap }: MediaCarouselProps) => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -26,136 +21,128 @@ export const MediaCarousel = ({ mediaUrls, className }: MediaCarouselProps) => {
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const instanceIdRef = useRef(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `vid_${Date.now()}_${Math.random()}`
+  );
+
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const touchMoved = useRef(false);
 
-
+  const lastTapTsRef = useRef(0);
+  const singleTapTimerRef = useRef<number | null>(null);
 
   const isVideo = (url: string) => {
-
     return url.includes('.mp4') || url.includes('.mov') || url.includes('.webm');
-
   };
 
+  const handleVideoTap = (e: React.MouseEvent<HTMLVideoElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (touchMoved.current) return;
 
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
 
-  // Intersection Observer for auto-play/pause
+    if (now - lastTapTsRef.current < DOUBLE_TAP_DELAY) {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
+      lastTapTsRef.current = 0;
+      onVideoDoubleTap?.();
+      return;
+    }
+
+    lastTapTsRef.current = now;
+    if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+    singleTapTimerRef.current = window.setTimeout(() => {
+      if (lastTapTsRef.current === 0) return;
+      lastTapTsRef.current = 0;
+      if (onVideoSingleTap) {
+        onVideoSingleTap();
+      } else {
+        handleVideoClick();
+      }
+    }, DOUBLE_TAP_DELAY + 40);
+  };
 
   useEffect(() => {
-
     const container = containerRef.current;
-
     if (!container) return;
 
-
-
     const observer = new IntersectionObserver(
-
       ([entry]) => {
-
         setIsVisible(entry.isIntersecting && entry.intersectionRatio >= 0.5);
-
       },
-
       { threshold: [0, 0.5, 1] }
-
     );
 
-
-
     observer.observe(container);
-
     return () => observer.disconnect();
-
   }, []);
 
-
-
-  // Auto-play/pause video based on visibility
+  useEffect(() => {
+    const onRequestPlay = (e: Event) => {
+      const ce = e as CustomEvent<{ id?: string }>;
+      if (ce.detail?.id === instanceIdRef.current) return;
+      const v = videoRef.current;
+      if (!v) return;
+      if (!v.paused) v.pause();
+    };
+    window.addEventListener('avlodona:video:request-play', onRequestPlay);
+    return () => window.removeEventListener('avlodona:video:request-play', onRequestPlay);
+  }, []);
 
   useEffect(() => {
-
     const video = videoRef.current;
-
     if (!video || !isVideo(mediaUrls[currentIndex])) return;
 
-
-
     if (isVisible) {
-
+      window.dispatchEvent(
+        new CustomEvent('avlodona:video:request-play', { detail: { id: instanceIdRef.current } })
+      );
       video.play().catch(() => {});
-
     } else {
-
       video.pause();
-
     }
-
   }, [isVisible, currentIndex, mediaUrls]);
 
-
-
-  // Reset video when switching slides
-
   useEffect(() => {
-
     const video = videoRef.current;
-
     if (video && isVideo(mediaUrls[currentIndex]) && isVisible) {
-
       video.currentTime = 0;
-
+      window.dispatchEvent(
+        new CustomEvent('avlodona:video:request-play', { detail: { id: instanceIdRef.current } })
+      );
       video.play().catch(() => {});
-
     }
-
   }, [currentIndex]);
-
-
 
   if (!mediaUrls || mediaUrls.length === 0) return null;
 
-
-
   const goTo = (index: number) => {
-
     setCurrentIndex(index);
-
   };
-
-
 
   const goPrev = () => {
-
     setCurrentIndex((prev) => prev === 0 ? mediaUrls.length - 1 : prev - 1);
-
   };
-
-
 
   const goNext = () => {
-
     setCurrentIndex((prev) => prev === mediaUrls.length - 1 ? 0 : prev + 1);
-
   };
 
-
-
   const handleVideoClick = () => {
-
     const video = videoRef.current;
-
     if (video) {
-
       if (video.paused) {
-
+        window.dispatchEvent(
+          new CustomEvent('avlodona:video:request-play', { detail: { id: instanceIdRef.current } })
+        );
         video.play().catch(() => {});
-
       } else {
-
         video.pause();
-
       }
 
     }
@@ -174,8 +161,6 @@ export const MediaCarousel = ({ mediaUrls, className }: MediaCarouselProps) => {
     if (dx > 8 || dy > 8) touchMoved.current = true;
   };
 
-
-
   return (
     <div
       ref={containerRef}
@@ -193,10 +178,7 @@ export const MediaCarousel = ({ mediaUrls, className }: MediaCarouselProps) => {
             style={{ maxHeight: '80vh', maxWidth: '100%' }}
             loop
             playsInline
-            onClick={() => {
-              if (touchMoved.current) return;
-              handleVideoClick();
-            }}
+            onClick={handleVideoTap}
           />
           :
           <img

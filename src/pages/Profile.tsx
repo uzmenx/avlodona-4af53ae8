@@ -114,7 +114,7 @@ const Profile = () => {
   const [viewerPosts, setViewerPosts] = useState<typeof posts>([]);
   const [showNewHighlight, setShowNewHighlight] = useState(false);
   const [showCollabRequests, setShowCollabRequests] = useState(false);
-  const [showPostsStats, setShowPostsStats] = useState(true);
+  const [showPostsStats, setShowPostsStats] = useState(false);
   const [bioExpanded, setBioExpanded] = useState(false);
   const [needsMoreButton, setNeedsMoreButton] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -262,6 +262,30 @@ const Profile = () => {
   }, [profile?.bio]);
 
   const scrollContainerRef = useSmoothScroll(true, true);
+
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([refetch(), fetchSavedPosts(), fetchHighlights()]);
+  }, [fetchHighlights, fetchSavedPosts, refetch]);
+
+  useEffect(() => {
+    const onNavProfile = (e: Event) => {
+      const ce = e as CustomEvent<{ action?: 'scrollTop' | 'refresh' }>;
+      if (ce.detail?.action === 'refresh') {
+        void handleRefresh();
+        return;
+      }
+
+      const el = scrollContainerRef.current;
+      if (el) {
+        el.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    window.addEventListener('avlodona:nav:profile', onNavProfile as EventListener);
+    return () => window.removeEventListener('avlodona:nav:profile', onNavProfile as EventListener);
+  }, [handleRefresh, scrollContainerRef]);
 
   // Load family tree member count
   useEffect(() => {

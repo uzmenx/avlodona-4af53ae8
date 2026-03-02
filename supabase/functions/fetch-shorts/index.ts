@@ -32,9 +32,11 @@ serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
     const rawQuery = url.searchParams.get("q") || "shorts trending viral funny";
+    const regionCode = (url.searchParams.get('regionCode') || 'UZ').toUpperCase();
+    const relevanceLanguage = (url.searchParams.get('relevanceLanguage') || 'uz').toLowerCase();
     const query = rawQuery.includes('-music')
       ? rawQuery
-      : `${rawQuery} -music -"official video" -lyrics -"music video" -"official audio" -karaoke -remix -"lyric video" -"full album" -playlist -"topic"`;
+      : `${rawQuery} -music -"official video" -lyrics -"music video" -"official audio" -karaoke -remix -"lyric video" -"full album" -playlist -"topic" -india -hindi -bollywood`;
 
     const pageToken = url.searchParams.get("pageToken") || "";
     const maxResults = url.searchParams.get("maxResults") || "20";
@@ -59,6 +61,18 @@ serve(async (req: Request) => {
       key: apiKey,
     });
 
+    if (regionCode) {
+
+      searchParams.set('regionCode', regionCode);
+
+    }
+
+    if (relevanceLanguage) {
+
+      searchParams.set('relevanceLanguage', relevanceLanguage);
+
+    }
+
     if (pageToken) {
       searchParams.set("pageToken", pageToken);
     }
@@ -82,6 +96,26 @@ serve(async (req: Request) => {
     }
 
     const data = await response.json();
+
+    const BLOCKED_KEYWORDS = [
+
+      'india', 'indian', 'hindi', 'bollywood',
+
+      'punjabi', 'tamil', 'telugu', 'malayalam',
+
+      'bengali', 'gujarati', 'marathi',
+
+    ];
+
+    const isBlocked = (title?: string, channelTitle?: string) => {
+
+      const t = (title || '').toLowerCase();
+
+      const c = (channelTitle || '').toLowerCase();
+
+      return BLOCKED_KEYWORDS.some((k) => t.includes(k) || c.includes(k));
+
+    };
 
     const shorts = (data.items || [])
       .map((item: Record<string, unknown>) => {
@@ -146,6 +180,7 @@ serve(async (req: Request) => {
           const sec = secondsById.get(s.id);
           if (typeof sec !== 'number' || sec > 60) return false;
           if (likelyMusic(s.title, s.channelTitle)) return false;
+          if (isBlocked(s.title, s.channelTitle)) return false;
           return true;
         });
       }

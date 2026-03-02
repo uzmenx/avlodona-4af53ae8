@@ -236,6 +236,12 @@ export const SamsungUltraVideoPlayer = ({
 
   const pinchDistance = useRef<number>(0);
 
+  const instanceIdRef = useRef(
+
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `vid_${Date.now()}_${Math.random()}`
+
+  );
+
 
 
   // ─────────────────────────────────────────────────────────────
@@ -259,6 +265,64 @@ export const SamsungUltraVideoPlayer = ({
   const [loading, setLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+
+    window.dispatchEvent(new CustomEvent('app:forceHideNav', { detail: { hide: true } }));
+
+    return () => {
+
+      window.dispatchEvent(new CustomEvent('app:forceHideNav', { detail: { hide: false } }));
+
+    };
+
+  }, []);
+
+  useEffect(() => {
+
+    const onRequestPlay = (e: Event) => {
+
+      const ce = e as CustomEvent<{ id?: string }>;
+
+      if (ce.detail?.id === instanceIdRef.current) return;
+
+      const v = videoRef.current;
+
+      if (!v) return;
+
+      if (!v.paused) {
+
+        v.pause();
+
+        setIsPlaying(false);
+
+      }
+
+    };
+
+    window.addEventListener('avlodona:video:request-play', onRequestPlay);
+
+    return () => window.removeEventListener('avlodona:video:request-play', onRequestPlay);
+
+  }, []);
+
+  useEffect(() => {
+
+    window.dispatchEvent(
+
+      new CustomEvent('avlodona:video:request-play', { detail: { id: instanceIdRef.current } })
+
+    );
+
+    return () => {
+
+      const v = videoRef.current;
+
+      if (v && !v.paused) v.pause();
+
+    };
+
+  }, [src]);
 
 
 
@@ -290,7 +354,7 @@ export const SamsungUltraVideoPlayer = ({
 
   // ADVANCED SETTINGS
 
-  // ─────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
 
   const [playbackRate, setPlaybackRate] = useState(1);
 
@@ -330,8 +394,6 @@ export const SamsungUltraVideoPlayer = ({
 
   });
 
-
-
   const [touchState, setTouchState] = useState<TouchState>({
 
     lastTap: 0,
@@ -345,8 +407,6 @@ export const SamsungUltraVideoPlayer = ({
     isLongPress: false
 
   });
-
-
 
   // ─────────────────────────────────────────────────────────────
 
@@ -364,8 +424,6 @@ export const SamsungUltraVideoPlayer = ({
 
   const [gestureIndicatorIcon, setGestureIndicatorIcon] = useState<'volume' | 'brightness' | 'seek' | null>(null);
 
-
-
   // ─────────────────────────────────────────────────────────────
 
   // ZOOM STATE
@@ -375,8 +433,6 @@ export const SamsungUltraVideoPlayer = ({
   const [zoom, setZoom] = useState(1);
 
   const [zoomPan, setZoomPan] = useState({ x: 0, y: 0 });
-
-
 
   // ─────────────────────────────────────────────────────────────
 
@@ -390,15 +446,11 @@ export const SamsungUltraVideoPlayer = ({
 
   const [isOnline, setIsOnline] = useState(true);
 
-
-
   // ═══════════════════════════════════════════════════════════════
 
   // COMPUTED VALUES
 
   // ═══════════════════════════════════════════════════════════════
-
-
 
   const progress = useMemo(
 
@@ -408,13 +460,7 @@ export const SamsungUltraVideoPlayer = ({
 
   );
 
-
-
-  /** Use for percentage positions (progress bar markers) to avoid division by zero / NaN */
-
   const safeDuration = duration > 0 && Number.isFinite(duration) ? duration : 1;
-
-
 
   const currentChapter = useMemo(
 
@@ -424,25 +470,21 @@ export const SamsungUltraVideoPlayer = ({
 
   );
 
-
-
   const availableQualities: VideoQuality[] = [
 
-  { label: '4K', resolution: '3840x2160', bitrate: '45 Mbps' },
+    { label: '4K', resolution: '3840x2160', bitrate: '45 Mbps' },
 
-  { label: '1440p', resolution: '2560x1440', bitrate: '20 Mbps' },
+    { label: '1440p', resolution: '2560x1440', bitrate: '20 Mbps' },
 
-  { label: '1080p', resolution: '1920x1080', bitrate: '8 Mbps' },
+    { label: '1080p', resolution: '1920x1080', bitrate: '8 Mbps' },
 
-  { label: '720p', resolution: '1280x720', bitrate: '5 Mbps' },
+    { label: '720p', resolution: '1280x720', bitrate: '5 Mbps' },
 
-  { label: '480p', resolution: '854x480', bitrate: '2.5 Mbps' },
+    { label: '480p', resolution: '854x480', bitrate: '2.5 Mbps' },
 
-  { label: '360p', resolution: '640x360', bitrate: '1 Mbps' }];
+    { label: '360p', resolution: '640x360', bitrate: '1 Mbps' }
 
-
-
-
+  ];
 
   const videoFilters = useMemo(
 
@@ -454,17 +496,11 @@ export const SamsungUltraVideoPlayer = ({
 
   );
 
-
-
   // ═══════════════════════════════════════════════════════════════
 
   // VIDEO EVENT HANDLERS
 
   // ═══════════════════════════════════════════════════════════════
-
-
-
-  // Block body scroll when player is open
 
   useEffect(() => {
 
@@ -477,10 +513,6 @@ export const SamsungUltraVideoPlayer = ({
     };
 
   }, []);
-
-
-
-  // Reset state when src changes (e.g. new video opened)
 
   useEffect(() => {
 
@@ -496,15 +528,11 @@ export const SamsungUltraVideoPlayer = ({
 
   }, [src]);
 
-
-
   useEffect(() => {
 
     const video = videoRef.current;
 
     if (!video) return;
-
-
 
     const handleTimeUpdate = () => setCurrentTime(video.currentTime);
 
@@ -538,8 +566,6 @@ export const SamsungUltraVideoPlayer = ({
 
     const handleError = () => setError('Failed to load video');
 
-
-
     const handleProgress = () => {
 
       if (video.buffered.length > 0) {
@@ -556,8 +582,6 @@ export const SamsungUltraVideoPlayer = ({
 
     };
 
-
-
     video.addEventListener('timeupdate', handleTimeUpdate);
 
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
@@ -571,8 +595,6 @@ export const SamsungUltraVideoPlayer = ({
     video.addEventListener('error', handleError);
 
     video.addEventListener('progress', handleProgress);
-
-
 
     return () => {
 
@@ -594,23 +616,17 @@ export const SamsungUltraVideoPlayer = ({
 
   }, [isLooping]);
 
-
-
   // ═══════════════════════════════════════════════════════════════
 
   // CONTROLS AUTO-HIDE
 
   // ═══════════════════════════════════════════════════════════════
 
-
-
   const resetControlsTimer = useCallback(() => {
 
     setShowControls(true);
 
     if (controlsTimer.current) clearTimeout(controlsTimer.current);
-
-
 
     controlsTimer.current = setTimeout(() => {
 
@@ -623,8 +639,6 @@ export const SamsungUltraVideoPlayer = ({
     }, 3000);
 
   }, [showSettings, showChapters]);
-
-
 
   useEffect(() => {
 
@@ -642,15 +656,11 @@ export const SamsungUltraVideoPlayer = ({
 
   }, [isPlaying, showSettings, showChapters, resetControlsTimer]);
 
-
-
   // ═══════════════════════════════════════════════════════════════
 
   // PLAYBACK CONTROLS
 
   // ═══════════════════════════════════════════════════════════════
-
-
 
   const togglePlay = useCallback(() => {
 
@@ -658,9 +668,13 @@ export const SamsungUltraVideoPlayer = ({
 
     if (!video) return;
 
-
-
     if (video.paused) {
+
+      window.dispatchEvent(
+
+        new CustomEvent('avlodona:video:request-play', { detail: { id: instanceIdRef.current } })
+
+      );
 
       video.play();
 
@@ -1058,6 +1072,16 @@ export const SamsungUltraVideoPlayer = ({
 
       if (isLeftSide) {
 
+        // Brightness/volume gestures should never trigger long-press speed boost
+
+        if (longPressTimerRef.current) {
+
+          clearTimeout(longPressTimerRef.current);
+
+          longPressTimerRef.current = null;
+
+        }
+
         // Brightness control on left side
 
         setGesture({
@@ -1077,6 +1101,16 @@ export const SamsungUltraVideoPlayer = ({
         });
 
       } else if (isRightSide) {
+
+        // Brightness/volume gestures should never trigger long-press speed boost
+
+        if (longPressTimerRef.current) {
+
+          clearTimeout(longPressTimerRef.current);
+
+          longPressTimerRef.current = null;
+
+        }
 
         // Volume control on right side
 
@@ -1151,6 +1185,18 @@ export const SamsungUltraVideoPlayer = ({
       const touch = e.touches[0];
 
       const deltaY = gesture.startY - touch.clientY;
+
+      const deltaX = touch.clientX - gesture.startX;
+
+      // Any intentional swipe should cancel long-press speed boost
+
+      if (longPressTimerRef.current && (Math.abs(deltaY) > 8 || Math.abs(deltaX) > 8)) {
+
+        clearTimeout(longPressTimerRef.current);
+
+        longPressTimerRef.current = null;
+
+      }
 
       const sensitivity = 0.5;
 
@@ -1652,13 +1698,13 @@ export const SamsungUltraVideoPlayer = ({
 
         poster={poster}
 
-        className="absolute inset-0 w-full h-full object-cover object-center transition-all duration-300"
+        className="absolute inset-0 w-full h-full object-contain object-center transition-all duration-300"
 
         style={{
 
           filter: videoFilters,
 
-          transform: `scale(${zoom}) translate(${zoomPan.x}%, ${zoomPan.y}%)`
+          transform: zoom > 1 ? `scale(${zoom}) translate(${zoomPan.x}%, ${zoomPan.y}%)` : undefined
 
         }}
 

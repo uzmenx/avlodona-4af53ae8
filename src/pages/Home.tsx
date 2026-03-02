@@ -104,6 +104,26 @@ const Home = () => {
     await Promise.all([fetchPosts(true), refetchStories(), refetchTrees()]);
   };
 
+  useEffect(() => {
+    const onNavHome = (e: Event) => {
+      const ce = e as CustomEvent<{ action?: 'scrollTop' | 'refresh' }>;
+      if (ce.detail?.action === 'refresh') {
+        void handleRefresh();
+        return;
+      }
+
+      const el = scrollContainerRef.current;
+      if (el) {
+        el.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    window.addEventListener('avlodona:nav:home', onNavHome as EventListener);
+    return () => window.removeEventListener('avlodona:nav:home', onNavHome as EventListener);
+  }, [handleRefresh, scrollContainerRef]);
+
   const toggleGridLayout = () => setGridLayout((prev) => prev === 1 ? 2 : 1);
 
   const hideNav = storyViewerOpen;

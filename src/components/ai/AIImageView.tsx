@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Wand2, Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const IMAGE_GEN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-image-gen`;
+
+const STORAGE_KEY = 'ai_image_history_v1';
 
 const normalizeImageSrc = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
@@ -20,6 +22,30 @@ const AIImageView = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.prompt === 'string') setPrompt(parsed.prompt);
+      if (typeof parsed?.resultImage === 'string' || parsed?.resultImage === null) setResultImage(parsed.resultImage ?? null);
+      if (typeof parsed?.errorDetail === 'string' || parsed?.errorDetail === null) setErrorDetail(parsed.errorDetail ?? null);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ prompt, resultImage, errorDetail })
+      );
+    } catch {
+      // ignore
+    }
+  }, [prompt, resultImage, errorDetail]);
 
   const handleGenerate = async () => {
     if (!prompt.trim() || isGenerating) return;

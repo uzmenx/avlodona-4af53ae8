@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useConversations } from "@/hooks/useConversations";
@@ -16,10 +16,12 @@ import { StarUsername } from '@/components/user/StarUsername';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Search, MessageCircle, Users, Megaphone, Bell, Sparkles, Edit2, Trash2, X, CheckSquare, Music, ChevronDown } from "lucide-react";
+import { Icon } from '@iconify/react';
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { uz } from "date-fns/locale";
+
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { NotificationsTab } from "@/components/notifications/NotificationsTab";
@@ -29,7 +31,6 @@ import { StoryViewer } from "@/components/stories/StoryViewer";
 import type { StoryGroup, Story } from "@/hooks/useStories";
 
 // Group components
-import { NewChatMenu } from "@/components/groups/NewChatMenu";
 import { CreateGroupDialog } from "@/components/groups/CreateGroupDialog";
 import { AddMembersDialog } from "@/components/groups/AddMembersDialog";
 import { ChannelVisibilityDialog } from "@/components/groups/ChannelVisibilityDialog";
@@ -57,7 +58,7 @@ const Messages = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { conversations, isLoading: convLoading, totalUnread } = useConversations();
+  const { conversations, isLoading: convLoading, totalUnread, refetch: refetchConversations } = useConversations();
   const { groups, channels, isLoading: groupsLoading, createGroupChat, refetch: refetchGroups } = useGroupChats();
   const { unreadCount: notifUnreadCount } = useNotifications();
   const { getStoryInfo } = useActiveStories();
@@ -72,6 +73,32 @@ const Messages = () => {
   const [followers, setFollowers] = useState<FollowUser[]>([]);
   const [following, setFollowing] = useState<FollowUser[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const topRef = useRef<HTMLDivElement | null>(null);
+
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([refetchConversations(), refetchGroups()]);
+  }, [refetchConversations, refetchGroups]);
+
+  useEffect(() => {
+    const onNavMessages = (e: Event) => {
+      const ce = e as CustomEvent<{ action?: 'scrollTop' | 'refresh' }>;
+      if (ce.detail?.action === 'refresh') {
+        void handleRefresh();
+        return;
+      }
+
+      const el = topRef.current;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    window.addEventListener('avlodona:nav:messages', onNavMessages as EventListener);
+    return () => window.removeEventListener('avlodona:nav:messages', onNavMessages as EventListener);
+  }, [handleRefresh]);
 
   // Edit mode
   const [isEditMode, setIsEditMode] = useState(false);
@@ -351,7 +378,9 @@ const Messages = () => {
 
   return (
     <AppLayout>
+      <div ref={(n) => { topRef.current = n; }} />
       <div className="min-h-screen pb-20">
+
         {/* Header */}
         <div className="sticky top-0 z-40 bg-gradient-to-b from-indigo-500/25 via-violet-500/20 to-background/10 backdrop-blur-xl">
           <div className="px-4 flex items-center gap-3 py-[5px]">
@@ -397,10 +426,31 @@ const Messages = () => {
                     {totalUnread}
                   </Badge>
               }
-                <Button variant="ghost" size="icon" onClick={() => setIsEditMode(true)}>
-                  <Edit2 className="h-5 w-5" />
-                </Button>
-                <NewChatMenu onNewGroup={handleNewGroup} onNewChannel={handleNewChannel} />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Icon icon="gravity-ui:chart-line-points" className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-56">
+                    <DropdownMenuItem onClick={() => setIsEditMode(true)}>
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      Taxrirlash
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowRingtoneSelector(true)}>
+                      <Music className="h-4 w-4 mr-2" />
+                      Video chat uchun musiqa
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleNewGroup}>
+                      <Users className="h-4 w-4 mr-2" />
+                      Yangi guruh
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleNewChannel}>
+                      <Megaphone className="h-4 w-4 mr-2" />
+                      Yangi kanal
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             }
           </div>

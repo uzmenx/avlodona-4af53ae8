@@ -15,6 +15,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
  import { ArrowLeft, Camera, Loader2, User, ImagePlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2, compressImage } from '@/lib/r2Upload';
+import { cn } from '@/lib/utils';
 
 const EditProfile = () => {
   const { profile, user, refreshProfile } = useAuth();
@@ -166,81 +167,116 @@ const EditProfile = () => {
 
   return (
     <AppLayout showNav={false}>
-       <div className="min-h-screen">
-         {/* Cover Image Section */}
-         <div 
-           className="relative h-36 bg-gradient-to-r from-primary to-accent cursor-pointer"
-           onClick={() => coverInputRef.current?.click()}
-         >
-           {formData.cover_url && (
-             <img 
-               src={formData.cover_url} 
-               alt="Cover" 
-               className="w-full h-full object-cover"
-             />
-           )}
-           <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-             <div className="flex items-center gap-2 text-white">
-               <ImagePlus className="h-6 w-6" />
-               <span className="text-sm font-medium">{t('changeCover')}</span>
-             </div>
-           </div>
-           <input
-             ref={coverInputRef}
-             type="file"
-             accept="image/*"
-             className="hidden"
-             onChange={(e) => handleFileSelect(e, 'cover')}
-           />
-         </div>
- 
-         <div className="px-4 pb-4">
-           {/* Avatar positioned over cover */}
-           <div className="relative -mt-12 mb-4 flex justify-center">
-             <div 
-               className={`relative rounded-full p-1 ring-4 ${getGenderRingColor()} bg-background cursor-pointer`}
-               onClick={() => avatarInputRef.current?.click()}
-             >
-               <Avatar className="h-24 w-24">
-                 <AvatarImage src={formData.avatar_url || undefined} />
-                 <AvatarFallback className={`text-2xl ${getGenderBgColor()} text-white`}>
-                   {getInitials(formData.name) || <User className="h-8 w-8" />}
-                 </AvatarFallback>
-               </Avatar>
-               <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center">
-                 <Camera className="h-6 w-6 text-white" />
-               </div>
-               <input
-                 ref={avatarInputRef}
-                 type="file"
-                 accept="image/*"
-                 className="hidden"
-                 onChange={(e) => handleFileSelect(e, 'avatar')}
-               />
-             </div>
-           </div>
- 
-           {/* Back button + title + save */}
-           <div className="flex items-center gap-4 mb-6">
-             <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-               <ArrowLeft className="h-5 w-5" />
-             </Button>
-             <h1 className="text-xl font-bold flex-1">{t('editProfile')}</h1>
-             <Button size="sm" onClick={handleSubmit} disabled={isLoading}>
-               {isLoading ? (
-                 <Loader2 className="h-4 w-4 animate-spin" />
-               ) : (
-                 t('save')
-               )}
-             </Button>
-           </div>
+      <div className="min-h-screen">
+        <form id="edit-profile-form" onSubmit={handleSubmit} className="pb-10">
+          <div className="sticky top-0 z-40 border-b border-white/10 bg-background/30 backdrop-blur-2xl">
+            <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(-1)}
+                className="h-10 w-10 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-extrabold tracking-tight truncate">{t('editProfile')}</div>
+                <div className="text-[11px] text-muted-foreground truncate">{t('profileInfo')}</div>
+              </div>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isLoading}
+                className="rounded-2xl h-10 px-4 bg-gradient-to-r from-emerald-500 to-cyan-500 text-black hover:opacity-95"
+              >
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('save')}
+              </Button>
+            </div>
+          </div>
 
-        <Card>
-           <CardHeader>
-             <CardTitle className="text-lg">{t('profileInfo')}</CardTitle>
-           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="max-w-md mx-auto">
+            {/* Cover Image Section */}
+            <div
+              className="relative h-40 cursor-pointer overflow-hidden"
+              onClick={() => coverInputRef.current?.click()}
+            >
+              {formData.cover_url ? (
+                <img
+                  src={formData.cover_url}
+                  alt="Cover"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-indigo-500/25 via-purple-500/15 to-cyan-500/25" />
+              )}
+              <div className="absolute inset-0 bg-black/35" />
+
+              <div className="absolute left-0 right-0 bottom-0 px-4 pb-3 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    coverInputRef.current?.click();
+                  }}
+                  className="text-white/90 text-xs font-semibold px-3 py-2 rounded-2xl bg-black/35 backdrop-blur-md border border-white/10 hover:bg-black/45 transition-colors"
+                >
+                  {t('changeCover')}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    avatarInputRef.current?.click();
+                  }}
+                  className="text-white/90 text-xs font-semibold px-3 py-2 rounded-2xl bg-black/35 backdrop-blur-md border border-white/10 hover:bg-black/45 transition-colors"
+                >
+                  {t('changeAvatar')}
+                </button>
+              </div>
+
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleFileSelect(e, 'cover')}
+              />
+            </div>
+
+            <div className="px-4">
+              {/* Avatar */}
+              <div className="relative -mt-12 mb-5 flex justify-center">
+                <div
+                  className={cn(
+                    `relative rounded-full p-1 ring-4 ${getGenderRingColor()} bg-background cursor-pointer`,
+                    'shadow-[0_16px_50px_-30px_rgba(0,0,0,0.85)]'
+                  )}
+                  onClick={() => avatarInputRef.current?.click()}
+                >
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={formData.avatar_url || undefined} />
+                    <AvatarFallback className={cn('text-2xl text-white', getGenderBgColor())}>
+                      {getInitials(formData.name) || <User className="h-8 w-8" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleFileSelect(e, 'avatar')}
+                  />
+                </div>
+              </div>
+
+              <Card className="border-white/10 bg-background/40 backdrop-blur-xl rounded-3xl shadow-[0_22px_70px_-44px_rgba(0,0,0,0.9)]">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-extrabold tracking-tight">{t('profileInfo')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
               {/* Gender Selection */}
               <div className="space-y-3">
                 <Label>{t('gender')}</Label>
@@ -300,41 +336,51 @@ const EditProfile = () => {
                     <p className="text-xs text-destructive">
                       Bio {BIO_MAX_LENGTH} {t('bioLimit')}
                     </p>
-                 )}
+                  )}
               </div>
 
-               {/* Social Links */}
-               <SocialLinksEditor
-                 links={formData.social_links}
-                 onChange={(links) => setFormData(prev => ({ ...prev, social_links: links }))}
-                 maxLinks={3}
-               />
- 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('saving')}</>
-                ) : (
-                  t('save')
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-           </div>
- 
-         {/* Image Cropper */}
-         <ImageCropper
-           isOpen={cropperState.isOpen}
-           onClose={() => setCropperState(prev => ({ ...prev, isOpen: false }))}
-           imageUrl={cropperState.imageUrl}
-           aspectRatio={cropperState.type === 'avatar' ? 1 : 3}
-           shape={cropperState.type === 'avatar' ? 'circle' : 'rect'}
-           onCropComplete={uploadCroppedImage}
-           title={cropperState.type === 'avatar' ? t('cropAvatar') : t('cropCover')}
-         />
-      </div>
-    </AppLayout>
-  );
+              {/* Social links */}
+              <SocialLinksEditor
+                links={formData.social_links}
+                onChange={(links) => setFormData(prev => ({ ...prev, social_links: links }))}
+                maxLinks={3}
+              />
+
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="pt-5 pb-2">
+                <Button
+                  type="submit"
+                  className="w-full h-11 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-black hover:opacity-95"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('saving')}</>
+                  ) : (
+                    t('save')
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </form>
+
+      {/* Image Cropper */}
+      <ImageCropper
+        isOpen={cropperState.isOpen}
+        onClose={() => setCropperState(prev => ({ ...prev, isOpen: false }))}
+        imageUrl={cropperState.imageUrl}
+        aspectRatio={cropperState.type === 'avatar' ? 1 : 3}
+        shape={cropperState.type === 'avatar' ? 'circle' : 'rect'}
+        onCropComplete={uploadCroppedImage}
+        title={cropperState.type === 'avatar' ? t('cropAvatar') : t('cropCover')}
+      />
+    </div>
+  </AppLayout>
+);
+
 };
 
 export default EditProfile;

@@ -13,12 +13,22 @@ export const useUnfollowHistory = () => {
   const { user } = useAuth();
   const [history, setHistory] = useState<UnfollowRecord[]>([]);
 
+  const RETENTION_DAYS = 30;
+
+  const getCutoffIso = useCallback(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - RETENTION_DAYS);
+    return d.toISOString();
+  }, []);
+
   const fetchHistory = useCallback(async () => {
     if (!user?.id) return;
+    const cutoffIso = getCutoffIso();
     const { data } = await supabase
       .from('unfollow_history')
       .select('*')
       .eq('user_id', user.id)
+      .gte('created_at', cutoffIso)
       .order('created_at', { ascending: false })
       .limit(50);
     
@@ -34,14 +44,22 @@ export const useUnfollowHistory = () => {
     } else {
       setHistory([]);
     }
-  }, [user?.id]);
+  }, [getCutoffIso, user?.id]);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
   const recordUnfollow = useCallback(async (unfollowedUserId: string) => {
     if (!user?.id) return;
+    const cutoffIso = getCutoffIso();
+
+    await supabase
+      .from('unfollow_history')
+      .delete()
+      .eq('user_id', user.id)
+      .lt('created_at', cutoffIso);
+
     await supabase.from('unfollow_history').insert({ user_id: user.id, unfollowed_user_id: unfollowedUserId });
-  }, [user?.id]);
+  }, [getCutoffIso, user?.id]);
 
   return { history, recordUnfollow, refetch: fetchHistory };
 };

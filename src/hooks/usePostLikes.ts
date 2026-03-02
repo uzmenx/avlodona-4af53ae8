@@ -13,6 +13,12 @@ interface LikeUser {
 const likeCache = new Map<string, { isLiked: boolean; count: number; timestamp: number }>();
 const CACHE_TTL = 2 * 60 * 1000; // 2 minutes
 
+type LikeSyncEvent = { postId: string; isLiked: boolean; count: number };
+const likeSyncEmitter = new EventTarget();
+const emitLikeSync = (e: LikeSyncEvent) => {
+  likeSyncEmitter.dispatchEvent(new CustomEvent<LikeSyncEvent>('post-like-sync', { detail: e }));
+};
+
 export const usePostLikes = (postId: string) => {
   const { user } = useAuth();
   const userId = user?.id;
@@ -27,6 +33,19 @@ export const usePostLikes = (postId: string) => {
   // Update cache helper
   const updateCache = useCallback((liked: boolean, count: number) => {
     likeCache.set(postId, { isLiked: liked, count, timestamp: Date.now() });
+    emitLikeSync({ postId, isLiked: liked, count });
+  }, [postId]);
+
+  useEffect(() => {
+    if (!postId) return;
+    const handler = (evt: Event) => {
+      const ce = evt as CustomEvent<LikeSyncEvent>;
+      if (!ce.detail || ce.detail.postId !== postId) return;
+      setIsLiked(ce.detail.isLiked);
+      setLikesCount(ce.detail.count);
+    };
+    likeSyncEmitter.addEventListener('post-like-sync', handler);
+    return () => likeSyncEmitter.removeEventListener('post-like-sync', handler);
   }, [postId]);
 
   // Check like status from DB
@@ -160,6 +179,7 @@ export const usePostLikes = (postId: string) => {
           setIsLiked(cached.isLiked);
           setLikesCount(cached.count);
           setIsInitialized(true);
+          emitLikeSync({ postId, isLiked: cached.isLiked, count: cached.count });
         }
         return;
       }
@@ -176,6 +196,7 @@ export const usePostLikes = (postId: string) => {
           setLikesCount(count);
           updateCache(liked, count);
           setIsInitialized(true);
+          emitLikeSync({ postId, isLiked: liked, count });
         }
       } catch (error) {
         console.error('Error initializing likes:', error);
@@ -198,6 +219,7 @@ export const usePostLikes = (postId: string) => {
       checkLikeStatus().then(liked => {
         setIsLiked(liked);
         updateCache(liked, likesCount);
+        emitLikeSync({ postId, isLiked: liked, count: likesCount });
       });
     }
     // Only react to userId changes, not the whole effect dependencies
@@ -220,6 +242,7 @@ export const usePostLikes = (postId: string) => {
       setIsLiked(liked);
       setLikesCount(count);
       updateCache(liked, count);
+      emitLikeSync({ postId, isLiked: liked, count });
     }
   };
 };

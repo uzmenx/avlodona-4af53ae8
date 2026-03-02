@@ -45,6 +45,7 @@ export default function TextOverlay({ item, containerRef, onUpdate, onDelete }: 
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, itemX: 0, itemY: 0 });
   const pinchRef = useRef<{ dist: number; angle: number; scale: number; rotation: number } | null>(null);
+  const activeTouchIdRef = useRef<number | null>(null);
   const elRef = useRef<HTMLDivElement>(null);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -74,41 +75,80 @@ export default function TextOverlay({ item, containerRef, onUpdate, onDelete }: 
     const el = elRef.current;
     if (!el) return;
 
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        e.stopPropagation();
-        e.preventDefault();
-        const t1 = e.touches[0], t2 = e.touches[1];
-        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-        const angle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * (180 / Math.PI);
+    const findTouch = (touches: TouchList, id: number) => {
+      for (let i = 0; i < touches.length; i++) {
+        if (touches[i]?.identifier === id) return touches[i];
+      }
+      return null;
+    };
+
+    const pickSecondTouch = (touches: TouchList, firstId: number) => {
+      for (let i = 0; i < touches.length; i++) {
+        const t = touches[i];
+        if (t && t.identifier !== firstId) return t;
+      }
+      return null;
+    };
+
+    const onGlobalTouchMove = (e: TouchEvent) => {
+      const firstId = activeTouchIdRef.current;
+      if (firstId === null) return;
+      if (e.touches.length < 2) return;
+
+      const t1 = findTouch(e.touches, firstId);
+      const t2 = pickSecondTouch(e.touches, firstId);
+      if (!t1 || !t2) return;
+
+      e.stopPropagation();
+      e.preventDefault();
+
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const angle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * (180 / Math.PI);
+
+      if (!pinchRef.current) {
         pinchRef.current = { dist, angle, scale: item.scale, rotation: item.rotation };
+        return;
       }
+
+      onUpdate({
+        ...item,
+        scale: Math.max(0.3, Math.min(5, pinchRef.current.scale * (dist / pinchRef.current.dist))),
+        rotation: pinchRef.current.rotation + (angle - pinchRef.current.angle),
+      });
     };
 
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2 && pinchRef.current) {
-        e.stopPropagation();
-        e.preventDefault();
-        const t1 = e.touches[0], t2 = e.touches[1];
-        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-        const angle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * (180 / Math.PI);
-        onUpdate({
-          ...item,
-          scale: Math.max(0.3, Math.min(5, pinchRef.current.scale * (dist / pinchRef.current.dist))),
-          rotation: pinchRef.current.rotation + (angle - pinchRef.current.angle),
-        });
+    const onGlobalTouchEnd = (e: TouchEvent) => {
+      const firstId = activeTouchIdRef.current;
+      if (firstId === null) return;
+
+      const stillPresent = findTouch(e.touches, firstId);
+      if (!stillPresent) {
+        activeTouchIdRef.current = null;
+        pinchRef.current = null;
       }
+
+      if (e.touches.length < 2) pinchRef.current = null;
     };
 
-    const handleTouchEnd = () => { pinchRef.current = null; };
+    const handleTouchStart = (e: TouchEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      if (activeTouchIdRef.current === null && e.changedTouches?.[0]) {
+        activeTouchIdRef.current = e.changedTouches[0].identifier;
+      }
+    };
 
     el.addEventListener('touchstart', handleTouchStart, { passive: false });
-    el.addEventListener('touchmove', handleTouchMove, { passive: false });
-    el.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchmove', onGlobalTouchMove, { passive: false });
+    window.addEventListener('touchend', onGlobalTouchEnd);
+    window.addEventListener('touchcancel', onGlobalTouchEnd);
+
     return () => {
       el.removeEventListener('touchstart', handleTouchStart);
-      el.removeEventListener('touchmove', handleTouchMove);
-      el.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchmove', onGlobalTouchMove);
+      window.removeEventListener('touchend', onGlobalTouchEnd);
+      window.removeEventListener('touchcancel', onGlobalTouchEnd);
     };
   }, [item, onUpdate]);
 
@@ -129,6 +169,10 @@ export default function TextOverlay({ item, containerRef, onUpdate, onDelete }: 
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      onTouchStart={(e) => { e.stopPropagation(); }}
+      onTouchMove={(e) => { e.stopPropagation(); }}
+      onTouchEnd={(e) => { e.stopPropagation(); }}
+      onTouchCancel={(e) => { e.stopPropagation(); }}
     >
       <div className="relative">
         {item.isEmoji ? (

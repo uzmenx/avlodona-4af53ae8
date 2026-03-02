@@ -14,7 +14,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [mode, setMode] = useLocalStorage<ThemeMode>('theme-mode', 'system');
+  const [mode, setMode] = useLocalStorage<ThemeMode>('theme-mode', 'dark');
   const [bgTheme, setBgTheme] = useLocalStorage<BackgroundTheme>('bg-theme', 'none');
 
   useEffect(() => {

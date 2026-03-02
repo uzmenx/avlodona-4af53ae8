@@ -52,6 +52,7 @@ function ImageOverlay({
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, itemX: 0, itemY: 0 });
   const pinchRef = useRef<{ dist: number; angle: number; scale: number; rotation: number } | null>(null);
+  const activeTouchIdRef = useRef<number | null>(null);
   const elRef = useRef<HTMLDivElement>(null);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -81,41 +82,80 @@ function ImageOverlay({
     const el = elRef.current;
     if (!el) return;
 
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        e.stopPropagation();
-        e.preventDefault();
-        const t1 = e.touches[0], t2 = e.touches[1];
-        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-        const angle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * (180 / Math.PI);
+    const findTouch = (touches: TouchList, id: number) => {
+      for (let i = 0; i < touches.length; i++) {
+        if (touches[i]?.identifier === id) return touches[i];
+      }
+      return null;
+    };
+
+    const pickSecondTouch = (touches: TouchList, firstId: number) => {
+      for (let i = 0; i < touches.length; i++) {
+        const t = touches[i];
+        if (t && t.identifier !== firstId) return t;
+      }
+      return null;
+    };
+
+    const onGlobalTouchMove = (e: TouchEvent) => {
+      const firstId = activeTouchIdRef.current;
+      if (firstId === null) return;
+      if (e.touches.length < 2) return;
+
+      const t1 = findTouch(e.touches, firstId);
+      const t2 = pickSecondTouch(e.touches, firstId);
+      if (!t1 || !t2) return;
+
+      e.stopPropagation();
+      e.preventDefault();
+
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const angle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * (180 / Math.PI);
+
+      if (!pinchRef.current) {
         pinchRef.current = { dist, angle, scale: item.scale, rotation: item.rotation };
+        return;
       }
+
+      onUpdate({
+        ...item,
+        scale: Math.max(0.2, Math.min(6, pinchRef.current.scale * (dist / pinchRef.current.dist))),
+        rotation: pinchRef.current.rotation + (angle - pinchRef.current.angle),
+      });
     };
 
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2 && pinchRef.current) {
-        e.stopPropagation();
-        e.preventDefault();
-        const t1 = e.touches[0], t2 = e.touches[1];
-        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-        const angle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * (180 / Math.PI);
-        onUpdate({
-          ...item,
-          scale: Math.max(0.2, Math.min(6, pinchRef.current.scale * (dist / pinchRef.current.dist))),
-          rotation: pinchRef.current.rotation + (angle - pinchRef.current.angle),
-        });
+    const onGlobalTouchEnd = (e: TouchEvent) => {
+      const firstId = activeTouchIdRef.current;
+      if (firstId === null) return;
+
+      const stillPresent = findTouch(e.touches, firstId);
+      if (!stillPresent) {
+        activeTouchIdRef.current = null;
+        pinchRef.current = null;
       }
+
+      if (e.touches.length < 2) pinchRef.current = null;
     };
 
-    const handleTouchEnd = () => { pinchRef.current = null; };
+    const handleTouchStart = (e: TouchEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      if (activeTouchIdRef.current === null && e.changedTouches?.[0]) {
+        activeTouchIdRef.current = e.changedTouches[0].identifier;
+      }
+    };
 
     el.addEventListener('touchstart', handleTouchStart, { passive: false });
-    el.addEventListener('touchmove', handleTouchMove, { passive: false });
-    el.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchmove', onGlobalTouchMove, { passive: false });
+    window.addEventListener('touchend', onGlobalTouchEnd);
+    window.addEventListener('touchcancel', onGlobalTouchEnd);
+
     return () => {
       el.removeEventListener('touchstart', handleTouchStart);
-      el.removeEventListener('touchmove', handleTouchMove);
-      el.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchmove', onGlobalTouchMove);
+      window.removeEventListener('touchend', onGlobalTouchEnd);
+      window.removeEventListener('touchcancel', onGlobalTouchEnd);
     };
   }, [item, onUpdate]);
 
@@ -133,6 +173,10 @@ function ImageOverlay({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      onTouchStart={(e) => { e.stopPropagation(); }}
+      onTouchMove={(e) => { e.stopPropagation(); }}
+      onTouchEnd={(e) => { e.stopPropagation(); }}
+      onTouchCancel={(e) => { e.stopPropagation(); }}
     >
       <div className="relative">
         <img src={item.url} alt="" className="w-28 max-w-[42vw] h-auto rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.45)]" draggable={false} />
@@ -228,6 +272,8 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5 }:
   const [filterNameVisible, setFilterNameVisible] = useState(false);
   const [filterNameText, setFilterNameText] = useState('');
   const filterTimerRef = useRef<number>();
+
+  const [isExporting, setIsExporting] = useState(false);
 
   const active = items[activeIndex];
   const currentFilter = useMemo(() => {
@@ -837,10 +883,274 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5 }:
     handleSwipeEnd(e);
   }, [handleSwipeEnd]);
 
-  const handleNext = useCallback(() => {
-    if (items.length === 0) return;
-    onNext(items.map(it => ({ file: it.media.file, filter: it.filter })));
-  }, [items, onNext]);
+  const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
+  const drawCover = (
+    ctx: CanvasRenderingContext2D,
+    srcW: number,
+    srcH: number,
+    dstW: number,
+    dstH: number
+  ) => {
+    const srcRatio = srcW / srcH;
+    const dstRatio = dstW / dstH;
+    let sx = 0, sy = 0, sw = srcW, sh = srcH;
+    if (srcRatio > dstRatio) {
+      // source wider
+      sh = srcH;
+      sw = sh * dstRatio;
+      sx = (srcW - sw) / 2;
+    } else {
+      // source taller
+      sw = srcW;
+      sh = sw / dstRatio;
+      sy = (srcH - sh) / 2;
+    }
+    ctx.drawImage((ctx as any).__srcEl, sx, sy, sw, sh, 0, 0, dstW, dstH);
+  };
+
+  const renderFrame = async (
+    ctx: CanvasRenderingContext2D,
+    baseEl: HTMLImageElement | HTMLVideoElement,
+    editable: EditableItem,
+    stickerBitmaps: Map<string, ImageBitmap>
+  ) => {
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+
+    // @ts-expect-error internal helper
+    ctx.__srcEl = baseEl;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Media with transform + filter
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.translate((editable.mediaTransform.x / 100) * w, (editable.mediaTransform.y / 100) * h);
+    ctx.rotate((editable.mediaTransform.rotation * Math.PI) / 180);
+    ctx.scale(editable.mediaTransform.scale, editable.mediaTransform.scale);
+
+    const filterCss = (MEDIA_FILTERS.find((f) => f.name === editable.filter) || MEDIA_FILTERS[0])?.css || 'none';
+    ctx.filter = filterCss;
+    // cover draw into centered coordinate space
+    const srcW = (baseEl as any).videoWidth || (baseEl as any).naturalWidth || w;
+    const srcH = (baseEl as any).videoHeight || (baseEl as any).naturalHeight || h;
+    const dstW = w;
+    const dstH = h;
+    ctx.translate(-dstW / 2, -dstH / 2);
+    drawCover(ctx, srcW, srcH, dstW, dstH);
+    ctx.restore();
+
+    // Overlays
+    const shadow = (color: string) => {
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 2;
+    };
+
+    for (const t of editable.texts) {
+      ctx.save();
+      const x = (t.x / 100) * w;
+      const y = (t.y / 100) * h;
+      ctx.translate(x, y);
+      ctx.rotate((t.rotation * Math.PI) / 180);
+      ctx.scale(t.scale, t.scale);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#FFFFFF';
+      shadow('rgba(0,0,0,0.8)');
+      const fontSize = clamp(t.fontSize, 10, 120);
+      ctx.font = `800 ${fontSize}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+      ctx.fillText(t.content, 0, 0);
+      ctx.restore();
+    }
+
+    for (const img of editable.images) {
+      const bmp = stickerBitmaps.get(img.id);
+      if (!bmp) continue;
+      ctx.save();
+      const x = (img.x / 100) * w;
+      const y = (img.y / 100) * h;
+      ctx.translate(x, y);
+      ctx.rotate((img.rotation * Math.PI) / 180);
+      ctx.scale(img.scale, img.scale);
+      shadow('rgba(0,0,0,0.55)');
+      const baseW = Math.min(w * 0.28, 320);
+      const ratio = bmp.height ? bmp.width / bmp.height : 1;
+      const drawW = baseW;
+      const drawH = baseW / ratio;
+      ctx.drawImage(bmp, -drawW / 2, -drawH / 2, drawW, drawH);
+      ctx.restore();
+    }
+  };
+
+  const exportPhoto = useCallback(async (editable: EditableItem): Promise<File> => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = editable.media.url;
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('image load error'));
+    });
+
+    const c = document.createElement('canvas');
+    const srcW = img.naturalWidth || 1080;
+    const srcH = img.naturalHeight || 1920;
+    c.width = srcW;
+    c.height = srcH;
+    const ctx = c.getContext('2d');
+    if (!ctx) return editable.media.file;
+
+    const stickerBitmaps = new Map<string, ImageBitmap>();
+    for (const s of editable.images) {
+      try {
+        const bmp = await createImageBitmap(await (await fetch(s.url)).blob());
+        stickerBitmaps.set(s.id, bmp);
+      } catch {
+        // ignore
+      }
+    }
+
+    await renderFrame(ctx, img, editable, stickerBitmaps);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      c.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('toBlob failed'))),
+        'image/jpeg',
+        0.92
+      );
+    });
+
+    return new File([blob], `edited-${Date.now()}.jpg`, { type: 'image/jpeg' });
+  }, []);
+
+  const exportVideo = useCallback(async (editable: EditableItem): Promise<File> => {
+    const offscreenVideo = document.createElement('video');
+    offscreenVideo.src = editable.media.url;
+    offscreenVideo.crossOrigin = 'anonymous';
+    (offscreenVideo as any).playsInline = true;
+    offscreenVideo.preload = 'auto';
+    offscreenVideo.muted = false;
+    offscreenVideo.volume = 0;
+
+    await new Promise<void>((resolve, reject) => {
+      const onLoaded = () => resolve();
+      const onErr = () => reject(new Error('video load error'));
+      offscreenVideo.addEventListener('loadedmetadata', onLoaded, { once: true });
+      offscreenVideo.addEventListener('error', onErr, { once: true });
+      try { offscreenVideo.load(); } catch {}
+    });
+
+    const w = offscreenVideo.videoWidth || 720;
+    const h = offscreenVideo.videoHeight || 1280;
+
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d');
+    if (!ctx) return editable.media.file;
+
+    const stickerBitmaps = new Map<string, ImageBitmap>();
+    for (const s of editable.images) {
+      try {
+        const bmp = await createImageBitmap(await (await fetch(s.url)).blob());
+        stickerBitmaps.set(s.id, bmp);
+      } catch {
+        // ignore
+      }
+    }
+
+    const canvasStream = (c as any).captureStream?.(30) as MediaStream;
+    const videoTrack = canvasStream?.getVideoTracks?.()[0];
+
+    let mixedStream: MediaStream;
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const dest = audioCtx.createMediaStreamDestination();
+      const srcNode = audioCtx.createMediaElementSource(offscreenVideo);
+      const gain = audioCtx.createGain();
+      gain.gain.value = 1;
+      srcNode.connect(gain);
+      gain.connect(dest);
+      mixedStream = new MediaStream([
+        ...(videoTrack ? [videoTrack] : []),
+        ...dest.stream.getAudioTracks(),
+      ]);
+    } catch {
+      mixedStream = new MediaStream([...(videoTrack ? [videoTrack] : [])]);
+    }
+
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+      ? 'video/webm;codecs=vp9,opus'
+      : (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus' : 'video/webm');
+
+    const recorder = new MediaRecorder(mixedStream, { mimeType });
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+    const done = new Promise<Blob>((resolve) => {
+      recorder.onstop = () => resolve(new Blob(chunks, { type: 'video/webm' }));
+    });
+
+    recorder.start(250);
+    try {
+      await offscreenVideo.play();
+    } catch {
+      // If autoplay blocked, still try to export first frame
+    }
+
+    let raf = 0;
+    const draw = async () => {
+      await renderFrame(ctx, offscreenVideo, editable, stickerBitmaps);
+      if (offscreenVideo.ended) return;
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+
+    await new Promise<void>((resolve) => {
+      const finish = () => resolve();
+      offscreenVideo.addEventListener('ended', finish, { once: true });
+      offscreenVideo.addEventListener('pause', () => {
+        if (offscreenVideo.ended) finish();
+      }, { once: true });
+    });
+
+    cancelAnimationFrame(raf);
+    recorder.stop();
+    const blob = await done;
+
+    return new File([blob], `edited-${Date.now()}.webm`, { type: 'video/webm' });
+  }, []);
+
+  const handleNext = useCallback(async () => {
+    if (items.length === 0 || isExporting) return;
+    setIsExporting(true);
+    try {
+      const edited = [] as { file: File; filter: string }[];
+      for (const it of items) {
+        if (it.media.type === 'photo') {
+          const f = await exportPhoto(it);
+          edited.push({ file: f, filter: 'original' });
+          continue;
+        }
+
+        const hasEdits = it.filter !== 'original' || it.texts.length > 0 || it.images.length > 0 ||
+          it.mediaTransform.x !== 0 || it.mediaTransform.y !== 0 || it.mediaTransform.scale !== 1 || it.mediaTransform.rotation !== 0;
+
+        if (!hasEdits) {
+          edited.push({ file: it.media.file, filter: it.filter });
+          continue;
+        }
+
+        const f = await exportVideo(it);
+        edited.push({ file: f, filter: 'original' });
+      }
+      onNext(edited);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [exportPhoto, exportVideo, isExporting, items, onNext]);
 
   const handleMusicSelect = useCallback((file: File) => {
     const url = URL.createObjectURL(file);
@@ -1007,9 +1317,13 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5 }:
         {items.length > 0 && (
           <button
             onClick={handleNext}
-            className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold flex items-center gap-1 active:scale-95 transition-transform"
+            disabled={isExporting}
+            className={cn(
+              "px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold flex items-center gap-1 active:scale-95 transition-transform",
+              isExporting && 'opacity-60 pointer-events-none'
+            )}
           >
-            Keyingi
+            {isExporting ? 'Tayyorlanmoqda…' : 'Keyingi'}
             <ChevronRight className="w-4 h-4" />
           </button>
         )}

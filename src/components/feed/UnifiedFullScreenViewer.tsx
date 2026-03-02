@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Play, Pause, ChevronLeft, ChevronRight, Heart, X, Send } from 'lucide-react';
+import { Play, Pause, ChevronLeft, ChevronRight, Heart, X, Send, Loader2 } from 'lucide-react';
 import { Post } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -56,6 +56,7 @@ export const UnifiedFullScreenViewer = ({
 
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
   const [storyViewerGroups, setStoryViewerGroups] = useState<StoryGroup[]>([]);
+  const [isShortIframeReady, setIsShortIframeReady] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -66,6 +67,9 @@ export const UnifiedFullScreenViewer = ({
   const touchStartX = useRef(0);
   const touchStartTime = useRef(0);
   const touchMoved = useRef(false);
+
+  const lastTapRef = useRef(0);
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const lastShortsTouchTapTs = useRef(0);
   const mouseDownRef = useRef(false);
@@ -369,11 +373,38 @@ export const UnifiedFullScreenViewer = ({
     }
   };
 
-  const handleMediaClick = () => {
+  const handleMediaClick = (e: React.MouseEvent) => {
     if (activeTab === 'shorts') return;
-    if (!isVideo(currentMediaUrl)) return;
     if (touchMoved.current) return;
-    setIsPlaying((p) => !p);
+
+    const t = e.target as HTMLElement | null;
+    if (t?.closest('button')) return;
+
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+
+    // Double tap => like + heart burst
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
+      lastTapRef.current = 0;
+
+      setShowDoubleTapHeart(true);
+      if (!isLiked) toggleLike();
+      setTimeout(() => setShowDoubleTapHeart(false), 900);
+      return;
+    }
+
+    // Single tap (delayed) => toggle play for video
+    lastTapRef.current = now;
+    if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+    singleTapTimerRef.current = setTimeout(() => {
+      if (lastTapRef.current === 0) return;
+      lastTapRef.current = 0;
+      if (isVideo(currentMediaUrl)) setIsPlaying((p) => !p);
+    }, DOUBLE_TAP_DELAY + 40);
   };
 
   const handleTabSwitch = (tab: TabType) => {
@@ -417,7 +448,6 @@ export const UnifiedFullScreenViewer = ({
         <div className="flex-1 flex items-center justify-center text-white/50 text-sm">
           Shorts topilmadi
         </div>);
-
     }
     return (
       <div className={cn(
@@ -434,6 +464,23 @@ export const UnifiedFullScreenViewer = ({
         handleShortsTap();
       }}>
         <div className="relative w-full h-full">
+          {!isShortIframeReady && (
+            <>
+              <img
+                key={`thumb-${currentShort.id}`}
+                src={currentShort.thumbnail}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover z-[1]"
+              />
+              <div className="absolute inset-0 z-[2] bg-black/35" />
+              <div className="absolute inset-0 z-[2] flex items-center justify-center">
+                <div className="p-4 rounded-full bg-black/35 backdrop-blur-sm border border-white/10">
+                  <Loader2 className="h-7 w-7 text-white animate-spin" />
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Render current + adjacent iframes for instant switching */}
           {preloadRange.map((idx) => {
             const s = shorts[idx];
@@ -448,11 +495,10 @@ export const UnifiedFullScreenViewer = ({
                   "absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-150",
                   isCurrent ? "opacity-100 z-[2]" : "opacity-0 z-[1]"
                 )}
+                onLoad={isCurrent ? () => setIsShortIframeReady(true) : undefined}
                 allow="autoplay; encrypted-media"
                 allowFullScreen
                 title={s.title} />);
-
-
           })}
 
           {/* Mask YouTube UI overlays */}
@@ -535,18 +581,18 @@ export const UnifiedFullScreenViewer = ({
           {isVideo(currentMediaUrl) ?
           <>
               <video ref={videoRef} src={currentMediaUrl} className="max-w-full max-h-full object-contain" loop playsInline autoPlay />
-              <button onClick={(e) => {e.stopPropagation();setIsPlaying((p) => !p);}} className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className={cn("p-4 rounded-full bg-black/30 backdrop-blur-sm transition-opacity", isPlaying ? "opacity-0" : "opacity-100")}>
                   {isPlaying ? <Pause className="h-8 w-8 text-white" /> : <Play className="h-8 w-8 text-white" />}
                 </div>
-              </button>
+              </div>
             </> :
           <img src={currentMediaUrl} alt="Post media" className="max-w-full max-h-full object-contain" />
           }
 
           {showDoubleTapHeart &&
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-              <Heart className="h-24 w-24 text-white fill-white drop-shadow-lg animate-heartBurst" />
+              <Heart className="h-28 w-28 text-[#ff2d55] fill-[#ff2d55] drop-shadow-2xl animate-heartBurst" />
             </div>
           }
 

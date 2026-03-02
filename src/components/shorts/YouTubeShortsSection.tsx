@@ -42,10 +42,13 @@ function markSeen(ids: string[]) {
 const SEARCH_QUERIES = [
   'uzbekistan shorts trending',
   'uzbek viral shorts',
-  'trending shorts worldwide',
-  'shorts viral funny trending',
+  'toshkent shorts trending',
+  'samarkand shorts',
+  'bukhara shorts',
+  'uzbek prikol shorts',
+  'uzbekistan news shorts',
   'toshkent shorts',
-  'world trending shorts 2025',
+  'uzbekistan trending 2025 shorts',
   'uzbekistan funny shorts',
   'shorts comedy viral',
   'shorts music dance trending',
@@ -63,11 +66,16 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
   const [nextToken, setNextToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [searchText, setSearchText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
   const fetchingRef = useRef(false);
   const currentQueryRef = useRef(getRandomQuery());
+  const queryIndexRef = useRef(0);
+  const exhaustedQueriesRef = useRef(false);
+  const startQueryIndexRef = useRef<number | null>(null);
+  const rotatedAtLeastOnceRef = useRef(false);
   const retriesRef = useRef(0);
 
   const MUSIC_KEYWORDS = ['official video', 'music video', 'lyrics', 'lyric video', 'audio',
@@ -83,14 +91,35 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
     return false;
   }, []);
 
+  const BLOCKED_KEYWORDS = ['india', 'indian', 'hindi', 'bollywood', 'punjabi', 'tamil', 'telugu', 'malayalam', 'bengali', 'gujarati', 'marathi'];
+
+  const isBlocked = useCallback((s: Short) => {
+
+    const t = (s.title || '').toLowerCase();
+
+    const c = (s.channelTitle || '').toLowerCase();
+
+    return BLOCKED_KEYWORDS.some((k) => t.includes(k) || c.includes(k));
+
+  }, []);
+
   const fetchShorts = useCallback(async (pageToken?: string) => {
     if (fetchingRef.current) return;
+    if (!hasMore && !pageToken) return;
     fetchingRef.current = true;
 
     const isFirstLoad = !pageToken;
     if (isFirstLoad) {
       setIsLoading(true);
-      currentQueryRef.current = getRandomQuery();
+      // If we have nothing yet, start at a random query. Otherwise keep current query when loading more.
+      if (shorts.length === 0) {
+        queryIndexRef.current = Math.floor(Math.random() * SEARCH_QUERIES.length);
+        currentQueryRef.current = SEARCH_QUERIES[queryIndexRef.current] || getRandomQuery();
+        startQueryIndexRef.current = queryIndexRef.current;
+        rotatedAtLeastOnceRef.current = false;
+      }
+      exhaustedQueriesRef.current = false;
+      setHasMore(true);
       retriesRef.current = 0;
     } else {
       setIsLoadingMore(true);
@@ -101,7 +130,9 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const params = new URLSearchParams({
         q: currentQueryRef.current,
-        maxResults: '30'
+        maxResults: '30',
+        regionCode: 'UZ',
+        relevanceLanguage: 'uz'
       });
       if (pageToken) params.set('pageToken', pageToken);
 
@@ -111,7 +142,9 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
       );
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
-      const newShorts: Short[] = (data?.shorts || []).filter((s: Short) => !isLikelyMusic(s));
+      const newShorts: Short[] = (data?.shorts || [])
+        .filter((s: Short) => !isLikelyMusic(s))
+        .filter((s: Short) => !isBlocked(s));
       const newToken: string | null = data?.nextPageToken || null;
 
       // Filter out already-seen shorts
@@ -130,12 +163,49 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
       });
       setNextToken(newToken);
 
+      const rotateQueryAndContinue = () => {
+        // Cycle through SEARCH_QUERIES and keep loading until all exhausted.
+        const prevIndex = queryIndexRef.current;
+        queryIndexRef.current = (queryIndexRef.current + 1) % SEARCH_QUERIES.length;
+        const nextQuery = SEARCH_QUERIES[queryIndexRef.current] || getRandomQuery();
+        currentQueryRef.current = nextQuery;
+
+        rotatedAtLeastOnceRef.current = true;
+
+        const start = startQueryIndexRef.current;
+        if (start !== null && rotatedAtLeastOnceRef.current && queryIndexRef.current === start) {
+          exhaustedQueriesRef.current = true;
+        }
+
+        if (exhaustedQueriesRef.current) {
+          setHasMore(false);
+          setNextToken(null);
+          return;
+        }
+
+        retriesRef.current = 0;
+        fetchingRef.current = false;
+        fetchShorts();
+      };
+
       // If we got too few fresh results and have a token, auto-fetch more
       if (freshShorts.length < 5 && newToken && retriesRef.current < 3) {
         retriesRef.current++;
         fetchingRef.current = false;
         fetchShorts(newToken);
         return;
+      }
+
+      // If token ended (or filtering removed most items), switch query and continue instead of stopping.
+      if (freshShorts.length < 5 && !newToken) {
+        rotateQueryAndContinue();
+        return;
+      }
+
+      if (!newToken) {
+        // no more pages for this query; move to next query on next loadMore
+        // (but don't immediately rotate if we already got enough results)
+        setHasMore(true);
       }
     } catch (err) {
       console.error('Failed to fetch shorts:', err);
@@ -144,7 +214,7 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
       setIsLoadingMore(false);
       fetchingRef.current = false;
     }
-  }, []);
+  }, [hasMore, isBlocked, isLikelyMusic, shorts.length]);
 
   useEffect(() => {
     onSearchClick;
@@ -176,6 +246,10 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
     const handler = () => {
       setShorts([]);
       setNextToken(null);
+      setHasMore(true);
+      exhaustedQueriesRef.current = false;
+      startQueryIndexRef.current = null;
+      rotatedAtLeastOnceRef.current = false;
       fetchShorts();
     };
     window.addEventListener('refresh-shorts', handler);
@@ -188,15 +262,24 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
     if (!el) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && nextToken && !isLoadingMore && !fetchingRef.current) {
+        if (!entries[0]?.isIntersecting) return;
+        if (isLoadingMore || fetchingRef.current) return;
+
+        if (nextToken) {
           fetchShorts(nextToken);
+          return;
+        }
+
+        if (hasMore) {
+          // token ended for the current query -> fetch will rotate query internally if needed
+          fetchShorts();
         }
       },
       { threshold: 0.1 }
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [nextToken, isLoadingMore, fetchShorts]);
+  }, [nextToken, isLoadingMore, fetchShorts, hasMore]);
 
   const scroll = useCallback((direction: 'left' | 'right') => {
     if (!scrollRef.current) return;
@@ -315,7 +398,7 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
         <div ref={loaderRef} className="flex items-center justify-center shrink-0 w-[60px]">
           {isLoadingMore ?
             <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" /> :
-            nextToken ?
+            (nextToken || hasMore) ?
               <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30" /> :
               <p className="text-[9px] text-muted-foreground whitespace-nowrap">Hammasi ✓</p>
           }

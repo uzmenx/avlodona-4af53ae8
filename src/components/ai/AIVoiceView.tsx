@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Mic, MicOff, Send, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Send, Loader2, Square } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -14,12 +14,23 @@ const SILENCE_THRESHOLD = 8;
 const SILENCE_DURATION = 1500; // 1.5s silence = auto stop
 const MIN_RECORDING_TIME = 800; // minimum recording before auto-stop
 
+const STORAGE_KEY = 'ai_voice_history_v1';
+
+const VOICE_SYSTEM_PROMPT = `Siz foydalanuvchi bilan ovozli suhbat qilayotgan AI yordamchisiz.
+Javoblaringiz:
+- juda qisqa va ravon bo'lsin (1-4 gap)
+- keraksiz emoji ishlatmang
+- agar foydalanuvchi biror narsa tushunarsiz aytsa, aniqlashtiruvchi bitta savol bering
+- foydalanuvchi o'zbekcha gapirsa o'zbekcha javob bering, ruscha bo'lsa ruscha.
+`; 
+
 const AIVoiceView = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [history, setHistory] = useState<VoiceMessage[]>([]);
   const [volume, setVolume] = useState(0);
   const [textInput, setTextInput] = useState('');
+  const historyRef = useRef<VoiceMessage[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const animFrameRef = useRef<number | null>(null);
@@ -29,10 +40,41 @@ const AIVoiceView = () => {
   const isSpeakingRef = useRef(false);
   const recordStartRef = useRef<number>(0);
   const transcriptRef = useRef('');
+  const finalTranscriptRef = useRef('');
+  const stopRequestedRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Speech recognition
   const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed?.history)) {
+        const sanitized: VoiceMessage[] = parsed.history
+          .filter((h: any) => typeof h?.text === 'string')
+          .map((h: any) => ({ text: String(h.text), isUser: !!h.isUser }));
+        setHistory(sanitized);
+      }
+      if (typeof parsed?.textInput === 'string') setTextInput(parsed.textInput);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ history, textInput }));
+    } catch {
+      // ignore
+    }
+  }, [history, textInput]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -42,15 +84,18 @@ const AIVoiceView = () => {
 
   const sendTextQuery = useCallback(async (text: string) => {
     if (!text.trim() || isProcessing) return;
-    setHistory(prev => [...prev, { text, isUser: true }]);
+    const nextHistory = [...historyRef.current, { text, isUser: true }];
+    setHistory(nextHistory);
     setIsProcessing(true);
 
     try {
-      const messages = history.map(h => ({
-        role: h.isUser ? 'user' : 'assistant',
-        content: h.text
-      }));
-      messages.push({ role: 'user', content: text });
+      const messages = [
+        { role: 'system', content: VOICE_SYSTEM_PROMPT },
+        ...nextHistory.map(h => ({
+          role: h.isUser ? 'user' : 'assistant',
+          content: h.text
+        }))
+      ];
 
       const resp = await fetch(GEMINI_URL, {
         method: 'POST',
@@ -90,7 +135,11 @@ const AIVoiceView = () => {
       }
 
       if (result) {
-        setHistory(prev => [...prev, { text: result, isUser: false }]);
+        setHistory(prev => {
+          const appended = [...prev, { text: result, isUser: false }];
+          historyRef.current = appended;
+          return appended;
+        });
         if ('speechSynthesis' in window) {
           speechSynthesis.cancel();
           const utterance = new SpeechSynthesisUtterance(result);
@@ -105,9 +154,10 @@ const AIVoiceView = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [history, isProcessing]);
+  }, [isProcessing]);
 
-  const stopRecordingAndProcess = useCallback(() => {
+  const stopEverything = useCallback(() => {
+    stopRequestedRef.current = true;
     if (mediaRecorderRef.current?.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
@@ -118,6 +168,9 @@ const AIVoiceView = () => {
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}
     }
+    try {
+      if ('speechSynthesis' in window) speechSynthesis.cancel();
+    } catch {}
     isSpeakingRef.current = false;
   }, []);
 
@@ -140,12 +193,12 @@ const AIVoiceView = () => {
       }
     } else if (isSpeakingRef.current && !silenceTimerRef.current && elapsed > MIN_RECORDING_TIME) {
       silenceTimerRef.current = setTimeout(() => {
-        stopRecordingAndProcess();
+        stopEverything();
       }, SILENCE_DURATION);
     }
 
     animFrameRef.current = requestAnimationFrame(updateVolume);
-  }, [stopRecordingAndProcess]);
+  }, [stopEverything]);
 
   const startRecording = async () => {
     try {
@@ -161,6 +214,8 @@ const AIVoiceView = () => {
 
       // Start speech recognition if available
       transcriptRef.current = '';
+      finalTranscriptRef.current = '';
+      stopRequestedRef.current = false;
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
@@ -168,11 +223,17 @@ const AIVoiceView = () => {
         recognition.interimResults = true;
         recognition.continuous = true;
         recognition.onresult = (event: any) => {
-          let transcript = '';
-          for (let i = 0; i < event.results.length; i++) {
-            transcript += event.results[i][0].transcript;
+          let interim = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const res = event.results[i];
+            const chunk = res?.[0]?.transcript || '';
+            if (res?.isFinal) {
+              finalTranscriptRef.current += chunk;
+            } else {
+              interim += chunk;
+            }
           }
-          transcriptRef.current = transcript;
+          transcriptRef.current = `${finalTranscriptRef.current} ${interim}`.trim();
         };
         recognition.onerror = () => {};
         recognition.start();
@@ -190,6 +251,11 @@ const AIVoiceView = () => {
         if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
         setVolume(0);
         stream.getTracks().forEach(t => t.stop());
+
+        if (stopRequestedRef.current) {
+          stopRequestedRef.current = false;
+          return;
+        }
 
         const transcript = transcriptRef.current.trim();
         if (transcript) {
@@ -215,6 +281,9 @@ const AIVoiceView = () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       streamRef.current?.getTracks().forEach(t => t.stop());
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
+      try {
+        if ('speechSynthesis' in window) speechSynthesis.cancel();
+      } catch {}
     };
   }, []);
 
@@ -222,7 +291,7 @@ const AIVoiceView = () => {
     <div className="h-full flex flex-col items-center justify-between pb-6 px-6">
       {/* Orb Visualizer */}
       <div className="flex-1 flex flex-col items-center justify-center w-full relative gap-5">
-        <div onClick={isRecording ? stopRecordingAndProcess : startRecording}
+        <div onClick={isRecording ? stopEverything : startRecording}
           className={cn(
             'relative w-40 h-40 rounded-full cursor-pointer transition-all duration-500 z-10 flex items-center justify-center',
             isRecording ? 'scale-125' : 'scale-100 hover:scale-105'
@@ -262,6 +331,18 @@ const AIVoiceView = () => {
             <Loader2 className="h-3 w-3 animate-spin" /> Javob tayyorlanmoqda...
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={stopEverything}
+          className={cn(
+            'h-9 px-4 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl text-xs font-semibold',
+            'hover:bg-white/10 transition-colors',
+            (!isRecording && !isProcessing) && 'opacity-50 pointer-events-none'
+          )}
+        >
+          <Square className="h-3.5 w-3.5 inline-block mr-2" /> Stop
+        </button>
       </div>
 
       {/* Transcript Area */}
