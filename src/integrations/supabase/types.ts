@@ -895,7 +895,9 @@ export type Database = {
           gender: string | null
           hide_collections: boolean
           hide_highlights: boolean
+          hide_online_status: boolean
           id: string
+          is_private: boolean
           last_seen: string | null
           name: string | null
           social_links: Json | null
@@ -912,7 +914,9 @@ export type Database = {
           gender?: string | null
           hide_collections?: boolean
           hide_highlights?: boolean
+          hide_online_status?: boolean
           id: string
+          is_private?: boolean
           last_seen?: string | null
           name?: string | null
           social_links?: Json | null
@@ -929,7 +933,9 @@ export type Database = {
           gender?: string | null
           hide_collections?: boolean
           hide_highlights?: boolean
+          hide_online_status?: boolean
           id?: string
+          is_private?: boolean
           last_seen?: string | null
           name?: string | null
           social_links?: Json | null
