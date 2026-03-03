@@ -7,23 +7,36 @@ import { StarUsername } from '@/components/user/StarUsername';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadMedia } from '@/lib/r2Upload';
-import { Check, AtSign, Users, ChevronRight, X, ChevronLeft, Video, Music } from 'lucide-react';
-import { AudioPicker } from '@/components/create/AudioPicker';
+import { Check, AtSign, Users, ChevronRight, X, ChevronLeft, Video, Music, MapPin, Loader2 } from 'lucide-react';
+import { MusicPicker, type SelectedMusic } from '@/components/create/MusicPicker';
 import InstagramMediaCapture from '@/components/create/InstagramMediaCapture';
 import { STORY_RINGS, type StoryRingId } from '@/components/stories/storyRings';
 import { StoryRingPreview } from '@/components/stories/StoryRingPreview';
 import { useMentionsCollabs } from '@/hooks/useMentionsCollabs';
+import { usePostCollections } from '@/hooks/usePostCollections';
+import { useStoryHighlights } from '@/hooks/useStoryHighlights';
 import { UserSearchPicker } from '@/components/post/UserSearchPicker';
 import { startBackgroundPublish } from '@/lib/backgroundPublish';
+
+interface NominatimPlace {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
 
 type Step = 'media' | 'publish';
 
 const CreateContent = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const { collections: postCollections, createCollection: createPostCollection } = usePostCollections();
+  const { highlights: storyHighlights, createHighlight: createStoryHighlight } = useStoryHighlights();
 
   const [step, setStep] = useState<Step>('media');
   const [editedFiles, setEditedFiles] = useState<{ file: File; filter: string }[]>([]);
@@ -40,9 +53,24 @@ const CreateContent = () => {
   const [showCollabPicker, setShowCollabPicker] = useState(false);
   const [mentionProfiles, setMentionProfiles] = useState<any[]>([]);
   const [collabProfiles, setCollabProfiles] = useState<any[]>([]);
-  const [selectedAudio, setSelectedAudio] = useState<File | null>(null);
-  const [showAudioPicker, setShowAudioPicker] = useState(false);
+  const [selectedMusic, setSelectedMusic] = useState<SelectedMusic | null>(null);
+  const [showMusicPicker, setShowMusicPicker] = useState(false);
   const { addMentions, addCollabs } = useMentionsCollabs();
+
+  const [selectedPostCollectionIds, setSelectedPostCollectionIds] = useState<Set<string>>(new Set());
+  const [showNewPostCollection, setShowNewPostCollection] = useState(false);
+  const [newPostCollectionName, setNewPostCollectionName] = useState('');
+
+  const [selectedStoryHighlightId, setSelectedStoryHighlightId] = useState<string | null>(null);
+  const [showNewStoryHighlight, setShowNewStoryHighlight] = useState(false);
+  const [newStoryHighlightName, setNewStoryHighlightName] = useState('');
+
+  const [showLocationSearch, setShowLocationSearch] = useState(false);
+  const [locationQuery, setLocationQuery] = useState('');
+  const [locationResults, setLocationResults] = useState<NominatimPlace[]>([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<NominatimPlace | null>(null);
 
   useEffect(() => {
     if (mentionIds.length > 0) {
@@ -57,6 +85,45 @@ const CreateContent = () => {
         .then(({ data }) => setCollabProfiles(data || []));
     } else setCollabProfiles([]);
   }, [collabIds]);
+
+  useEffect(() => {
+    if (!showLocationSearch) return;
+    if (selectedLocation) return;
+
+    const q = locationQuery.trim();
+    if (q.length < 2) {
+      setLocationResults([]);
+      setLocationError(null);
+      setLocationLoading(false);
+      return;
+    }
+
+    const t = window.setTimeout(async () => {
+      setLocationLoading(true);
+      setLocationError(null);
+      try {
+        const targetUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=uz`;
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+        const res = await fetch(proxyUrl, {
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+        if (!res.ok) throw new Error('Joy qidirishda xatolik');
+        const data = (await res.json()) as NominatimPlace[];
+        setLocationResults(Array.isArray(data) ? data : []);
+      } catch (e: any) {
+        setLocationResults([]);
+        setLocationError(e?.message || 'Joy qidirishda xatolik');
+      } finally {
+        setLocationLoading(false);
+      }
+    }, 450);
+
+    return () => {
+      window.clearTimeout(t);
+    };
+  }, [locationQuery, showLocationSearch, selectedLocation]);
 
   const handleMediaFromCapture = useCallback((items: { file: File; filter: string }[]) => {
     setEditedFiles(items);
@@ -75,17 +142,29 @@ const CreateContent = () => {
       return;
     }
     try {
+      const shortLocation = (full: string) => {
+        const parts = full.split(',').map((p) => p.trim()).filter(Boolean);
+        return parts.slice(Math.max(parts.length - 2, 0)).join(', ');
+      };
+
+      const finalCaption = selectedLocation
+        ? `${caption || ''}${caption ? '\n\n' : ''}📍 ${shortLocation(selectedLocation.display_name)} || ${selectedLocation.lat},${selectedLocation.lon}`
+        : (caption || '');
+
       startBackgroundPublish({
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         userId: user.id,
         files: editedFiles.map((m) => m.file),
-        audioFile: selectedAudio || null,
-        caption,
+        audioFile: null,
+        audioMeta: selectedMusic,
+        caption: finalCaption,
         sharePost,
         shareStory,
         ringId: selectedRingId,
         mentionIds,
         collabIds,
+        postCollectionIds: sharePost ? Array.from(selectedPostCollectionIds) : [],
+        storyHighlightId: shareStory ? selectedStoryHighlightId : null,
       });
 
       toast.success('Yuklanmoqda…');
@@ -188,33 +267,109 @@ const CreateContent = () => {
               )}
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
             </button>
+
+            {!selectedLocation ? (
+              <button
+                onClick={() => {
+                  setShowLocationSearch(prev => {
+                    const next = !prev;
+                    if (!next) {
+                      setLocationQuery('');
+                      setLocationResults([]);
+                      setLocationError(null);
+                      setLocationLoading(false);
+                    }
+                    return next;
+                  });
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background hover:bg-muted/30 transition-colors"
+              >
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span className="flex-1 text-left text-xs font-medium">Joylashuv qo'shish</span>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+              </button>
+            ) : (
+              <div className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span className="flex-1 text-left text-xs font-medium truncate">{selectedLocation.display_name}</span>
+                <button
+                  onClick={() => {
+                    setSelectedLocation(null);
+                    setLocationQuery('');
+                    setLocationResults([]);
+                    setLocationError(null);
+                    setShowLocationSearch(false);
+                  }}
+                  aria-label="Joylashuvni o'chirish"
+                >
+                  <X className="h-3.5 w-3.5 text-muted-foreground/70" />
+                </button>
+              </div>
+            )}
           </div>
+
+          {showLocationSearch && !selectedLocation && (
+            <div className="rounded-xl border border-border/50 p-3 space-y-2">
+              <div className="relative">
+                <Input
+                  value={locationQuery}
+                  onChange={(e) => setLocationQuery(e.target.value)}
+                  placeholder="Joy qidiring..."
+                  className="h-9 text-sm rounded-xl border-border/50 bg-muted/30 focus:bg-background transition-colors pr-9"
+                  autoFocus
+                />
+                {locationLoading && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                )}
+              </div>
+
+              {locationError && (
+                <p className="text-xs text-destructive">{locationError}</p>
+              )}
+
+              {locationResults.length > 0 && (
+                <div className="space-y-2">
+                  {locationResults.map((p) => (
+                    <button
+                      key={p.place_id}
+                      onClick={() => {
+                        setSelectedLocation(p);
+                        setShowLocationSearch(false);
+                        setLocationResults([]);
+                        setLocationError(null);
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-xl border border-border/50 bg-background hover:bg-muted/30 transition-colors"
+                    >
+                      <p className="text-xs font-medium">{p.display_name}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!locationLoading && !locationError && locationQuery.trim().length >= 2 && locationResults.length === 0 && (
+                <p className="text-xs text-muted-foreground">Hech narsa topilmadi</p>
+              )}
+            </div>
+          )}
 
           {/* Audio/Music picker */}
           <div className="rounded-xl border border-border/50 overflow-hidden">
             <button
-              onClick={() => setShowAudioPicker(true)}
+              onClick={() => setShowMusicPicker(true)}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background hover:bg-muted/30 transition-colors"
             >
               <Music className="h-4 w-4 text-muted-foreground" />
               <span className="flex-1 text-left text-xs font-medium">Musiqa qo'shish</span>
-              {selectedAudio && (
+              {selectedMusic && (
                 <span className="text-[10px] text-primary font-semibold bg-primary/10 px-1.5 py-0.5 rounded-full truncate max-w-[120px]">
-                  {selectedAudio.name}
+                  {selectedMusic.audio_title}
                 </span>
               )}
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
             </button>
           </div>
-          {selectedAudio && (
-            <AudioPicker
-              open={false}
-              onOpenChange={() => {}}
-              onSelect={setSelectedAudio}
-              selectedAudio={selectedAudio}
-              onRemove={() => setSelectedAudio(null)}
-            />
-          )}
 
           {/* Selected chips */}
           {(mentionProfiles.length > 0 || collabProfiles.length > 0) && (
@@ -267,6 +422,98 @@ const CreateContent = () => {
             </label>
           </div>
 
+          {/* Post collections */}
+          {sharePost && (
+            <div className="rounded-xl border border-border/50 p-3 space-y-2">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Post ro'yxati</p>
+              <div className="space-y-2">
+                {postCollections.map((c) => {
+                  const selected = selectedPostCollectionIds.has(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => {
+                        setSelectedPostCollectionIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(c.id)) next.delete(c.id);
+                          else next.add(c.id);
+                          return next;
+                        });
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-border/50 bg-background hover:bg-muted/30 transition-colors"
+                    >
+                      <span className="text-xs font-medium">{c.name}</span>
+                      {selected && (
+                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                          <Check className="h-3 w-3 text-primary-foreground" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+
+                {showNewPostCollection ? (
+                  <div className="flex gap-2">
+                    <Input
+                      value={newPostCollectionName}
+                      onChange={(e) => setNewPostCollectionName(e.target.value)}
+                      placeholder="Ro'yxat nomi"
+                      className="h-9 text-sm rounded-xl border-border/50 bg-muted/30 focus:bg-background transition-colors"
+                      autoFocus
+                      onKeyDown={async (e) => {
+                        if (e.key !== 'Enter') return;
+                        const name = newPostCollectionName.trim();
+                        if (!name) return;
+                        const created = await createPostCollection(name);
+                        if (created?.id) {
+                          setSelectedPostCollectionIds((prev) => new Set(prev).add(created.id));
+                          setNewPostCollectionName('');
+                          setShowNewPostCollection(false);
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      className="h-9 rounded-xl"
+                      disabled={!newPostCollectionName.trim()}
+                      onClick={async () => {
+                        const name = newPostCollectionName.trim();
+                        if (!name) return;
+                        const created = await createPostCollection(name);
+                        if (created?.id) {
+                          setSelectedPostCollectionIds((prev) => new Set(prev).add(created.id));
+                          setNewPostCollectionName('');
+                          setShowNewPostCollection(false);
+                        }
+                      }}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 rounded-xl"
+                      onClick={() => {
+                        setShowNewPostCollection(false);
+                        setNewPostCollectionName('');
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowNewPostCollection(true)}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-border/60 text-muted-foreground text-xs hover:bg-muted/20 transition-colors"
+                  >
+                    <span className="text-sm leading-none">+</span>
+                    Yangi ro'yxat yaratish
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Story ring selector */}
           {shareStory && (
             <div className="rounded-xl border border-border/50 p-3 space-y-2">
@@ -283,6 +530,91 @@ const CreateContent = () => {
                     label={ring.label}
                   />
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Story collections (highlights) */}
+          {shareStory && (
+            <div className="rounded-xl border border-border/50 p-3 space-y-2">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Story kolleksiya</p>
+              <div className="space-y-2">
+                {storyHighlights.map((h) => {
+                  const selected = selectedStoryHighlightId === h.id;
+                  return (
+                    <button
+                      key={h.id}
+                      onClick={() => setSelectedStoryHighlightId(selected ? null : h.id)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-border/50 bg-background hover:bg-muted/30 transition-colors"
+                    >
+                      <span className="text-xs font-medium">{h.name}</span>
+                      {selected && (
+                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                          <Check className="h-3 w-3 text-primary-foreground" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+
+                {showNewStoryHighlight ? (
+                  <div className="flex gap-2">
+                    <Input
+                      value={newStoryHighlightName}
+                      onChange={(e) => setNewStoryHighlightName(e.target.value)}
+                      placeholder="Kolleksiya nomi"
+                      className="h-9 text-sm rounded-xl border-border/50 bg-muted/30 focus:bg-background transition-colors"
+                      autoFocus
+                      onKeyDown={async (e) => {
+                        if (e.key !== 'Enter') return;
+                        const name = newStoryHighlightName.trim();
+                        if (!name) return;
+                        const created = await createStoryHighlight(name);
+                        if (created?.id) {
+                          setSelectedStoryHighlightId(created.id);
+                          setNewStoryHighlightName('');
+                          setShowNewStoryHighlight(false);
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      className="h-9 rounded-xl"
+                      disabled={!newStoryHighlightName.trim()}
+                      onClick={async () => {
+                        const name = newStoryHighlightName.trim();
+                        if (!name) return;
+                        const created = await createStoryHighlight(name);
+                        if (created?.id) {
+                          setSelectedStoryHighlightId(created.id);
+                          setNewStoryHighlightName('');
+                          setShowNewStoryHighlight(false);
+                        }
+                      }}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 rounded-xl"
+                      onClick={() => {
+                        setShowNewStoryHighlight(false);
+                        setNewStoryHighlightName('');
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowNewStoryHighlight(true)}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-border/60 text-muted-foreground text-xs hover:bg-muted/20 transition-colors"
+                  >
+                    <span className="text-sm leading-none">+</span>
+                    Yangi kolleksiya
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -325,12 +657,12 @@ const CreateContent = () => {
           maxSelection={5}
         />
       )}
-      <AudioPicker
-        open={showAudioPicker}
-        onOpenChange={setShowAudioPicker}
-        onSelect={setSelectedAudio}
-        selectedAudio={selectedAudio}
-        onRemove={() => setSelectedAudio(null)}
+      <MusicPicker
+        open={showMusicPicker}
+        onOpenChange={setShowMusicPicker}
+        onSelect={setSelectedMusic}
+        selectedMusic={selectedMusic}
+        onRemove={() => setSelectedMusic(null)}
       />
     </div>
   );

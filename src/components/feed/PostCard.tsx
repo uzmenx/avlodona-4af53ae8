@@ -26,7 +26,9 @@ import { FollowButton } from '@/components/user/FollowButton';
 
 import { SamsungUltraVideoPlayer } from '@/components/video/SamsungUltraVideoPlayer';
 
-import { Heart } from 'lucide-react';
+import { Heart, Pause, Play } from 'lucide-react';
+
+import { Icon } from '@iconify/react';
 
 import { usePostViews, useIntersectionObserver } from '@/hooks/usePostViews';
 
@@ -37,6 +39,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { StoryViewer } from '@/components/stories/StoryViewer';
 import type { StoryGroup, Story } from '@/hooks/useStories';
 import { usePostLikes } from '@/hooks/usePostLikes';
+
+let activePostAudio: HTMLAudioElement | null = null;
+let activePostAudioPostId: string | null = null;
 
 interface PostCardProps {
   post: Post;
@@ -61,14 +66,93 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
 
   const [videoPlayerSrc, setVideoPlayerSrc] = useState('');
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
   const [storyViewerGroups, setStoryViewerGroups] = useState<StoryGroup[]>([]);
 
   const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false);
+  const lastTapRef = useRef(0);
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [collabPartner, setCollabPartner] = useState<{ name: string | null; username: string | null; } | null>(null);
 
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: true });
+  const rawContent = post.content || '';
+  const locationMatch = rawContent.match(/(?:^|\n)📍\s*(.+?)\s*$/m);
+  const locationLine = locationMatch ? locationMatch[1].trim() : '';
+  const locationParts = locationLine.split('||').map((p) => p.trim()).filter(Boolean);
+  const locationText = locationParts[0] || '';
+  const coordsPart = locationParts[1] || '';
+  const coordsMatch = coordsPart.match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/);
+  const lat = coordsMatch?.[1] || '';
+  const lon = coordsMatch?.[2] || '';
+  const mapUrl = locationText
+    ? lat && lon
+      ? 'https://www.google.com/maps?q=' + encodeURIComponent(lat + ',' + lon)
+      : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(locationText)
+    : '';
+  const contentWithoutLocation = rawContent.replace(/(?:\n|^)📍\s*.+\s*$/m, '').trim();
+
+  const stopAudio = useCallback(() => {
+    if (!audioRef.current) return;
+    audioRef.current.pause();
+    setIsAudioPlaying(false);
+    if (activePostAudioPostId === post.id) {
+      activePostAudio = null;
+      activePostAudioPostId = null;
+    }
+  }, [post.id]);
+
+  const playAudio = useCallback(async () => {
+    if (!post.audio_url) return;
+    if (!audioRef.current) return;
+
+    try {
+      if (activePostAudio && activePostAudio !== audioRef.current) {
+        activePostAudio.pause();
+      }
+
+      activePostAudio = audioRef.current;
+      activePostAudioPostId = post.id;
+
+      await audioRef.current.play();
+      setIsAudioPlaying(true);
+    } catch {
+      setIsAudioPlaying(false);
+    }
+  }, [post.audio_url, post.id]);
+
+  const toggleAudio = useCallback(() => {
+    if (!post.audio_url) return;
+    if (isAudioPlaying) stopAudio();
+    else void playAudio();
+  }, [isAudioPlaying, playAudio, post.audio_url, stopAudio]);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || !post.audio_url) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            void playAudio();
+          } else {
+            if (activePostAudioPostId === post.id) stopAudio();
+          }
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    obs.observe(el);
+    return () => {
+      obs.disconnect();
+      if (activePostAudioPostId === post.id) stopAudio();
+    };
+  }, [playAudio, post.audio_url, post.id, stopAudio]);
 
   const fetchStoryGroupForUser = useCallback(async (targetUserId: string): Promise<StoryGroup | null> => {
     try {
@@ -225,7 +309,30 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
               const t = e.target as HTMLElement | null;
               if (t?.closest('button')) return;
 
-              onMediaClick?.();
+              const now = Date.now();
+              const DOUBLE_TAP_DELAY = 300;
+
+              if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+                if (singleTapTimerRef.current) {
+                  clearTimeout(singleTapTimerRef.current);
+                  singleTapTimerRef.current = null;
+                }
+                lastTapRef.current = 0;
+
+                setShowDoubleTapHeart(true);
+                if (!isLiked) toggleLike();
+                setTimeout(() => setShowDoubleTapHeart(false), 900);
+                return;
+              }
+
+              lastTapRef.current = now;
+              if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+              singleTapTimerRef.current = setTimeout(() => {
+                if (lastTapRef.current === 0) return;
+                lastTapRef.current = 0;
+                singleTapTimerRef.current = null;
+                onMediaClick?.();
+              }, DOUBLE_TAP_DELAY + 40);
             }}
             className={onMediaClick ? "cursor-pointer" : ""}
           >
@@ -265,15 +372,59 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
             }}
           />
 
-          {post.content && (
+          {post.audio_url && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/20">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleAudio();
+                }}
+                className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center"
+                aria-label={isAudioPlaying ? 'Pause' : 'Play'}
+              >
+                {isAudioPlaying ? (
+                  <Pause className="h-3.5 w-3.5 text-primary" />
+                ) : (
+                  <Play className="h-3.5 w-3.5 text-primary" />
+                )}
+              </button>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate">{post.audio_title || 'Musiqa'}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{post.audio_artist || ''}</p>
+              </div>
+              <audio
+                ref={audioRef}
+                src={post.audio_url}
+                onPlay={() => setIsAudioPlaying(true)}
+                onPause={() => setIsAudioPlaying(false)}
+                onEnded={() => setIsAudioPlaying(false)}
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground uppercase">{timeAgo}</p>
+            {locationText && mapUrl && (
+              <a
+                href={mapUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1 text-xs text-muted-foreground min-w-0 max-w-[55%] hover:text-foreground transition-colors"
+                title={locationText}
+              >
+                <Icon icon="gis:location-poi" className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className="truncate">{locationText}</span>
+              </a>
+            )}
+          </div>
+
+          {contentWithoutLocation && (
             <PostCaption
               username={post.author?.username || 'user'}
-              content={post.content}
+              content={contentWithoutLocation}
               postId={post.id}
             />
           )}
-
-          <p className="text-xs text-muted-foreground uppercase">{timeAgo}</p>
         </div>
       </CardContent>
     </Card>

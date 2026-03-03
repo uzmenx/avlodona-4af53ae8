@@ -32,6 +32,9 @@ export interface Post {
   content: string;
   image_url?: string; // deprecated, use media_urls
   media_urls: string[];
+  audio_url?: string | null;
+  audio_title?: string | null;
+  audio_artist?: string | null;
   likes_count: number;
   comments_count: number;
   views_count?: number;

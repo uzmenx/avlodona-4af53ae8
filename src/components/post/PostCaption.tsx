@@ -74,31 +74,37 @@ export const PostCaption = ({ username, content, className, variant = 'default',
 
   return (
     <div className={cn("text-sm", className)}>
-      {username && !isFullscreen && (
-        <span className="font-semibold mr-1">{username}</span>
-      )}
-      
-      <span className={cn(
-        isFullscreen ? "text-white/90" : "text-foreground",
-        !isExpanded && shouldTruncate && "line-clamp-2"
-      )}>
+      <span
+        className={cn(
+          isFullscreen ? 'text-white/90' : 'text-foreground',
+          !isExpanded && shouldTruncate && 'line-clamp-2',
+          !isFullscreen && shouldTruncate && 'cursor-pointer'
+        )}
+        onClick={(e) => {
+          if (isFullscreen || !shouldTruncate) return;
+          e.stopPropagation();
+          setIsExpanded((v) => !v);
+        }}
+      >
+        {username && !isFullscreen && (
+          <span className="font-semibold mr-1">{username}</span>
+        )}
         {renderContent(content)}
+        {shouldTruncate && !isExpanded && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(true);
+            }}
+            className={cn(
+              'ml-1 font-medium whitespace-nowrap',
+              isFullscreen ? 'text-white/70 hover:text-white' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            ko'proq
+          </button>
+        )}
       </span>
-      
-      {shouldTruncate && !isExpanded && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsExpanded(true);
-          }}
-          className={cn(
-            "ml-1 font-medium",
-            isFullscreen ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          ko'proq
-        </button>
-      )}
       
       {shouldTruncate && isExpanded && (
         <button

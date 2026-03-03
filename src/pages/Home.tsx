@@ -55,6 +55,7 @@ const Home = () => {
 
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useSmoothScroll(true, true); // Enable snap and swipe gestures
+  const topAnchorRef = useRef<HTMLDivElement>(null);
 
   const openPostViewer = (index: number) => {
     setViewerTab('posts');
@@ -112,6 +113,12 @@ const Home = () => {
         return;
       }
 
+      const anchor = topAnchorRef.current;
+      if (anchor) {
+        anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
       const el = scrollContainerRef.current;
       if (el) {
         el.scrollTo({ top: 0, behavior: 'smooth' });
@@ -131,6 +138,7 @@ const Home = () => {
   return (
     <AppLayout showNav={!hideNav}>
       <div className="relative max-w-lg mx-auto min-h-[calc(100vh-4rem)]">
+        <div ref={topAnchorRef} />
         <motion.header
           initial={{ y: -24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}

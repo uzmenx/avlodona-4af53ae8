@@ -4,8 +4,9 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, X, Plus, Check, AtSign, Users } from 'lucide-react';
+import { ArrowLeft, X, Plus, Check, AtSign, Users, MapPin, Loader2, Music } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import InstagramMediaCapture from '@/components/create/InstagramMediaCapture';
 import { uploadMedia } from '@/lib/r2Upload';
@@ -15,6 +16,14 @@ import { UserSearchPicker } from '@/components/post/UserSearchPicker';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarUsername } from "@/components/user/StarUsername";
 import { cn } from '@/lib/utils';
+import { MusicPicker, type SelectedMusic } from '@/components/create/MusicPicker';
+
+interface NominatimPlace {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
 
 interface MediaFile {
   file: File;
@@ -46,6 +55,16 @@ const CreatePost = () => {
   const [collabProfiles, setCollabProfiles] = useState<any[]>([]);
   const { addMentions, addCollabs } = useMentionsCollabs();
 
+  const [selectedMusic, setSelectedMusic] = useState<SelectedMusic | null>(null);
+  const [showMusicPicker, setShowMusicPicker] = useState(false);
+
+  const [showLocationSearch, setShowLocationSearch] = useState(false);
+  const [locationQuery, setLocationQuery] = useState('');
+  const [locationResults, setLocationResults] = useState<NominatimPlace[]>([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<NominatimPlace | null>(null);
+
   const handleMediaFromCapture = (items: { file: File; filter: string }[]) => {
     const newMedia: MediaFile[] = items.map((item) => ({
       file: item.file,
@@ -71,6 +90,45 @@ const CreatePost = () => {
         .then(({ data }) => setCollabProfiles(data || []));
     } else setCollabProfiles([]);
   }, [collabIds]);
+
+  useEffect(() => {
+    if (!showLocationSearch) return;
+    if (selectedLocation) return;
+
+    const q = locationQuery.trim();
+    if (q.length < 2) {
+      setLocationResults([]);
+      setLocationError(null);
+      setLocationLoading(false);
+      return;
+    }
+
+    const t = window.setTimeout(async () => {
+      setLocationLoading(true);
+      setLocationError(null);
+      try {
+        const targetUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=uz`;
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+        const res = await fetch(proxyUrl, {
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+        if (!res.ok) throw new Error('Joy qidirishda xatolik');
+        const data = (await res.json()) as NominatimPlace[];
+        setLocationResults(Array.isArray(data) ? data : []);
+      } catch (e: any) {
+        setLocationResults([]);
+        setLocationError(e?.message || 'Joy qidirishda xatolik');
+      } finally {
+        setLocationLoading(false);
+      }
+    }, 450);
+
+    return () => {
+      window.clearTimeout(t);
+    };
+  }, [locationQuery, showLocationSearch, selectedLocation]);
 
   const handleBack = () => {
     if (step === 'caption') setStep('media');
@@ -110,6 +168,10 @@ const CreatePost = () => {
 
     setIsLoading(true);
     try {
+      const finalContent = selectedLocation
+        ? `${content || ''}${content ? '\n\n' : ''}📍 ${selectedLocation.display_name}`
+        : (content || '');
+
       const uploadPromises = selectedMedia.map(media => uploadFile(media.file));
       const uploadedUrls = await Promise.all(uploadPromises);
       const validUrls = uploadedUrls.filter((url): url is string => url !== null);
@@ -118,7 +180,14 @@ const CreatePost = () => {
 
       const { data: post, error } = await supabase
         .from('posts')
-        .insert({ user_id: user.id, content: content || null, media_urls: validUrls })
+        .insert({
+          user_id: user.id,
+          content: finalContent || null,
+          media_urls: validUrls,
+          audio_url: selectedMusic?.audio_url ?? null,
+          audio_title: selectedMusic?.audio_title ?? null,
+          audio_artist: selectedMusic?.audio_artist ?? null,
+        })
         .select()
         .single();
 
@@ -245,6 +314,121 @@ const CreatePost = () => {
               </button>
             </div>
 
+            {/* Location */}
+            <div className="space-y-2">
+              {!selectedLocation ? (
+                <button
+                  onClick={() => {
+                    setShowLocationSearch(prev => {
+                      const next = !prev;
+                      if (!next) {
+                        setLocationQuery('');
+                        setLocationResults([]);
+                        setLocationError(null);
+                        setLocationLoading(false);
+                      }
+                      return next;
+                    });
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-3 rounded-xl border transition-colors",
+                    showLocationSearch ? "border-primary bg-primary/5" : "border-border hover:bg-muted",
+                  )}
+                >
+                  <MapPin className="h-5 w-5 text-primary" />
+                  <div className="text-left">
+                    <p className="text-sm font-semibold">Joylashuv qo'shish</p>
+                    <p className="text-xs text-muted-foreground">Qayerda</p>
+                  </div>
+                </button>
+              ) : (
+                <div className="flex items-center justify-between px-3 py-3 rounded-xl border border-primary bg-primary/5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
+                    <p className="text-sm font-medium truncate">{selectedLocation.display_name}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedLocation(null);
+                      setLocationQuery('');
+                      setLocationResults([]);
+                      setLocationError(null);
+                      setShowLocationSearch(false);
+                    }}
+                    className="ml-2"
+                    aria-label="Joylashuvni o'chirish"
+                  >
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </div>
+              )}
+
+              {showLocationSearch && !selectedLocation && (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Input
+                      value={locationQuery}
+                      onChange={(e) => setLocationQuery(e.target.value)}
+                      placeholder="Joy qidiring..."
+                      className="pr-10"
+                      autoFocus
+                    />
+                    {locationLoading && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    )}
+                  </div>
+
+                  {locationError && (
+                    <p className="text-xs text-destructive">{locationError}</p>
+                  )}
+
+                  {locationResults.length > 0 && (
+                    <div className="space-y-2">
+                      {locationResults.map((p) => (
+                        <button
+                          key={p.place_id}
+                          onClick={() => {
+                            setSelectedLocation(p);
+                            setShowLocationSearch(false);
+                            setLocationResults([]);
+                            setLocationError(null);
+                          }}
+                          className="w-full text-left px-3 py-2.5 rounded-lg border border-border hover:bg-muted transition-colors"
+                        >
+                          <p className="text-sm font-medium">{p.display_name}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {!locationLoading && !locationError && locationQuery.trim().length >= 2 && locationResults.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Hech narsa topilmadi</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Music */}
+            <div className="space-y-2">
+              <button
+                onClick={() => setShowMusicPicker(true)}
+                className={cn(
+                  "w-full flex items-center gap-2 px-3 py-3 rounded-xl border transition-colors",
+                  selectedMusic ? "border-primary bg-primary/5" : "border-border hover:bg-muted"
+                )}
+              >
+                <Music className="h-5 w-5 text-primary" />
+                <div className="text-left min-w-0 flex-1">
+                  <p className="text-sm font-semibold">Musiqa qo'shish</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {selectedMusic ? `${selectedMusic.audio_title} — ${selectedMusic.audio_artist}` : 'Musiqa tanlang'}
+                  </p>
+                </div>
+              </button>
+            </div>
+
             {/* Selected mention/collab chips */}
             {(mentionProfiles.length > 0 || collabProfiles.length > 0) && (
               <div className="flex flex-wrap gap-2">
@@ -343,6 +527,13 @@ const CreatePost = () => {
           onSelectionChange={setCollabIds}
           title="Hamkor qo'shish"
           maxSelection={5}
+        />
+        <MusicPicker
+          open={showMusicPicker}
+          onOpenChange={setShowMusicPicker}
+          onSelect={setSelectedMusic}
+          selectedMusic={selectedMusic}
+          onRemove={() => setSelectedMusic(null)}
         />
       </div>
       )}

@@ -134,7 +134,7 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const params = new URLSearchParams({
         q: currentQueryRef.current,
-        maxResults: '30',
+        maxResults: '5',
         regionCode: 'UZ',
         relevanceLanguage: 'uz'
       });

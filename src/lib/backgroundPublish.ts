@@ -6,12 +6,52 @@ export type PublishTask = {
   userId: string;
   files: File[];
   audioFile?: File | null;
+  audioMeta?: {
+    audio_url: string;
+    audio_title: string;
+    audio_artist: string;
+  } | null;
   caption: string;
   sharePost: boolean;
   shareStory: boolean;
   ringId: string;
   mentionIds: string[];
   collabIds: string[];
+  postCollectionIds?: string[];
+  storyHighlightId?: string | null;
+};
+
+const ensureYearHighlight = async (userId: string) => {
+  const year = new Date().getFullYear().toString();
+
+  const { data: existing, error: findError } = await supabase
+    .from('story_highlights')
+    .select('id, name')
+    .eq('user_id', userId)
+    .eq('name', year)
+    .maybeSingle();
+
+  if (!findError && existing?.id) return existing.id as string;
+
+  const { data: created, error: createError } = await supabase
+    .from('story_highlights')
+    .insert({ user_id: userId, name: year, cover_url: null, sort_order: 9999 })
+    .select('id')
+    .single();
+
+  if (createError) throw createError;
+  return created.id as string;
+};
+
+const addStoryToHighlight = async (highlightId: string, storyId: string, mediaUrl: string, mediaType: string, caption?: string | null) => {
+  const { error } = await supabase.from('story_highlight_items').insert({
+    highlight_id: highlightId,
+    story_id: storyId,
+    media_url: mediaUrl,
+    media_type: mediaType,
+    caption: caption || null,
+  });
+  if (error) throw error;
 };
 
 const mimeForAudio = (audio: File) => {
@@ -220,6 +260,9 @@ const runPublish = async (task: PublishTask) => {
           user_id: task.userId,
           content: task.caption || null,
           media_urls: postUrls,
+          audio_url: task.audioMeta?.audio_url ?? null,
+          audio_title: task.audioMeta?.audio_title ?? null,
+          audio_artist: task.audioMeta?.audio_artist ?? null,
         })
         .select()
         .single();
@@ -245,6 +288,12 @@ const runPublish = async (task: PublishTask) => {
         if (task.collabIds.length > 0) {
           await supabase.from('post_collabs').insert(task.collabIds.map((uid) => ({ post_id: post.id, user_id: uid })));
         }
+
+        if (Array.isArray(task.postCollectionIds) && task.postCollectionIds.length > 0) {
+          for (const colId of task.postCollectionIds) {
+            await supabase.from('post_collection_items').insert({ collection_id: colId, post_id: post.id });
+          }
+        }
       }
 
       tick();
@@ -252,14 +301,33 @@ const runPublish = async (task: PublishTask) => {
 
     if (task.shareStory && storyUrl) {
       const mediaType = task.files[0].type.startsWith('video/') ? 'video' : 'image';
-      const { error } = await supabase.from('stories').insert({
-        user_id: task.userId,
-        media_url: storyUrl,
-        media_type: mediaType,
-        caption: task.caption || null,
-        ring_id: task.ringId,
-      });
+      const { data: story, error } = await supabase
+        .from('stories')
+        .insert({
+          user_id: task.userId,
+          media_url: storyUrl,
+          media_type: mediaType,
+          caption: task.caption || null,
+          ring_id: task.ringId,
+        })
+        .select('id')
+        .single();
+
       if (error) throw error;
+
+      // Auto-save story into year highlight
+      try {
+        const yearHighlightId = await ensureYearHighlight(task.userId);
+        await addStoryToHighlight(yearHighlightId, story.id, storyUrl, mediaType, task.caption || null);
+
+        if (task.storyHighlightId) {
+          await addStoryToHighlight(task.storyHighlightId, story.id, storyUrl, mediaType, task.caption || null);
+        }
+      } catch (e) {
+        // Don't fail publish if highlight save fails
+        console.error('Story highlight autosave error:', e);
+      }
+
       tick();
     }
 
