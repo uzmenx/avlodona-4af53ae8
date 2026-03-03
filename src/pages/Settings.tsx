@@ -59,8 +59,10 @@ const Settings = () => {
 
   const hideHighlights = (profile as any)?.hide_highlights === true;
   const hideCollections = (profile as any)?.hide_collections === true;
+  const isPrivate = (profile as any)?.is_private === true;
+  const hideOnlineStatus = (profile as any)?.hide_online_status === true;
 
-  const toggleVisibility = async (field: 'hide_highlights' | 'hide_collections', current: boolean) => {
+  const toggleVisibility = async (field: 'hide_highlights' | 'hide_collections' | 'is_private' | 'hide_online_status', current: boolean) => {
     if (!user) return;
     await supabase.from('profiles').update({ [field]: !current } as any).eq('id', user.id);
     window.location.reload();
@@ -191,6 +193,20 @@ const Settings = () => {
                 <p className="text-xs text-muted-foreground">{t('securityDesc')}</p>
               </div>
 
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Yopiq akkaunt</p>
+                  <p className="text-xs text-muted-foreground">Faqat kuzatuvchilar postlaringizni ko'rsin</p>
+                </div>
+                <Switch checked={isPrivate} onCheckedChange={() => toggleVisibility('is_private', isPrivate)} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Onlaynlikni yashirish</p>
+                  <p className="text-xs text-muted-foreground">Boshqalar online holatni ko'rmasin</p>
+                </div>
+                <Switch checked={hideOnlineStatus} onCheckedChange={() => toggleVisibility('hide_online_status', hideOnlineStatus)} />
+              </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Hikoya lentani yashirish</p>

@@ -17,7 +17,7 @@ interface YouTubeShortsProps {
 }
 
 const SEEN_KEY = 'yt_shorts_seen_ids';
-const SEEN_MAX = 200;
+const SEEN_MAX = 500;
 
 function getSeenIds(): Set<string> {
   try {
@@ -36,6 +36,10 @@ function markSeen(ids: string[]) {
     if (arr.length > SEEN_MAX) arr.splice(0, arr.length - SEEN_MAX);
     localStorage.setItem(SEEN_KEY, JSON.stringify(arr));
   } catch {}
+}
+
+function clearSeenCache() {
+  try { localStorage.removeItem(SEEN_KEY); } catch {}
 }
 
 // Rotating search queries for variety
@@ -244,12 +248,14 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
 
   useEffect(() => {
     const handler = () => {
+      clearSeenCache();
       setShorts([]);
       setNextToken(null);
       setHasMore(true);
       exhaustedQueriesRef.current = false;
       startQueryIndexRef.current = null;
       rotatedAtLeastOnceRef.current = false;
+      fetchingRef.current = false;
       fetchShorts();
     };
     window.addEventListener('refresh-shorts', handler);
