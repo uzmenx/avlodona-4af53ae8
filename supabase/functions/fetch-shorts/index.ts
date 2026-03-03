@@ -14,8 +14,46 @@ const FALLBACK_SHORTS = [
   { id: "dQw4w9WgXcQ", title: "Short Clip", thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg", channelTitle: "Shorts" },
 ];
 
+// ============ SERVER-SIDE CACHE ============
+// Cache results for 30 minutes to dramatically reduce API calls
+// All users hitting the same query within 30 min get cached results
+interface CacheEntry {
+  shorts: unknown[];
+  nextPageToken: string | null;
+  timestamp: number;
+}
+
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const cache = new Map<string, CacheEntry>();
+
+function getCacheKey(query: string, pageToken: string, regionCode: string): string {
+  return `${regionCode}:${query}:${pageToken}`;
+}
+
+function getCached(key: string): CacheEntry | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    cache.delete(key);
+    return null;
+  }
+  return entry;
+}
+
+function setCache(key: string, shorts: unknown[], nextPageToken: string | null) {
+  // Limit cache size to prevent memory issues
+  if (cache.size > 200) {
+    // Remove oldest entries
+    const entries = [...cache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+    for (let i = 0; i < 50; i++) {
+      cache.delete(entries[i][0]);
+    }
+  }
+  cache.set(key, { shorts, nextPageToken, timestamp: Date.now() });
+}
+// ============ END CACHE ============
+
 function parseIsoDurationToSeconds(duration: string): number {
-  // ISO 8601 duration, e.g. PT59S, PT1M2S
   const match = duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
   if (!match) return Number.POSITIVE_INFINITY;
   const hours = match[1] ? Number(match[1]) : 0;
@@ -23,6 +61,34 @@ function parseIsoDurationToSeconds(duration: string): number {
   const seconds = match[3] ? Number(match[3]) : 0;
   return hours * 3600 + minutes * 60 + seconds;
 }
+
+const BLOCKED_KEYWORDS = [
+  'india', 'indian', 'hindi', 'bollywood',
+  'punjabi', 'tamil', 'telugu', 'malayalam',
+  'bengali', 'gujarati', 'marathi',
+];
+
+const MUSIC_KEYWORDS = [
+  'official video', 'music video', 'lyrics', 'lyric video', 'audio',
+  'official audio', 'karaoke', 'remix', 'full album', 'playlist',
+  'mv', 'song', 'album', 'concert', 'live performance', 'cover song',
+  'acoustic version', 'instrumental',
+];
+const MUSIC_CHANNEL_PATTERNS = [' - topic', 'vevo', 'records', 'music'];
+
+const isBlocked = (title?: string, channelTitle?: string) => {
+  const t = (title || '').toLowerCase();
+  const c = (channelTitle || '').toLowerCase();
+  return BLOCKED_KEYWORDS.some((k) => t.includes(k) || c.includes(k));
+};
+
+const likelyMusic = (title?: string, channelTitle?: string) => {
+  const t = (title || '').toLowerCase();
+  const c = (channelTitle || '').toLowerCase();
+  if (MUSIC_CHANNEL_PATTERNS.some(p => c.includes(p))) return true;
+  if (MUSIC_KEYWORDS.some(k => t.includes(k))) return true;
+  return false;
+};
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -50,6 +116,18 @@ serve(async (req: Request) => {
       );
     }
 
+    // ===== CHECK CACHE FIRST =====
+    const cacheKey = getCacheKey(query, pageToken, regionCode);
+    const cached = getCached(cacheKey);
+    if (cached) {
+      console.log(`CACHE HIT: ${cacheKey.substring(0, 60)}... (${cached.shorts.length} shorts)`);
+      return new Response(
+        JSON.stringify({ shorts: cached.shorts, nextPageToken: cached.nextPageToken, fallback: false, cached: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    // ===== END CACHE CHECK =====
+
     const searchParams = new URLSearchParams({
       part: "snippet",
       type: "video",
@@ -61,21 +139,9 @@ serve(async (req: Request) => {
       key: apiKey,
     });
 
-    if (regionCode) {
-
-      searchParams.set('regionCode', regionCode);
-
-    }
-
-    if (relevanceLanguage) {
-
-      searchParams.set('relevanceLanguage', relevanceLanguage);
-
-    }
-
-    if (pageToken) {
-      searchParams.set("pageToken", pageToken);
-    }
+    if (regionCode) searchParams.set('regionCode', regionCode);
+    if (relevanceLanguage) searchParams.set('relevanceLanguage', relevanceLanguage);
+    if (pageToken) searchParams.set("pageToken", pageToken);
 
     const ytUrl = `https://www.googleapis.com/youtube/v3/search?${searchParams.toString()}`;
     console.log("Fetching YouTube:", ytUrl.replace(apiKey, "KEY"));
@@ -97,26 +163,6 @@ serve(async (req: Request) => {
 
     const data = await response.json();
 
-    const BLOCKED_KEYWORDS = [
-
-      'india', 'indian', 'hindi', 'bollywood',
-
-      'punjabi', 'tamil', 'telugu', 'malayalam',
-
-      'bengali', 'gujarati', 'marathi',
-
-    ];
-
-    const isBlocked = (title?: string, channelTitle?: string) => {
-
-      const t = (title || '').toLowerCase();
-
-      const c = (channelTitle || '').toLowerCase();
-
-      return BLOCKED_KEYWORDS.some((k) => t.includes(k) || c.includes(k));
-
-    };
-
     const shorts = (data.items || [])
       .map((item: Record<string, unknown>) => {
         const id = (item.id as Record<string, unknown>)?.videoId as string;
@@ -134,23 +180,7 @@ serve(async (req: Request) => {
       })
       .filter((s: { id: string }) => s.id);
 
-    const MUSIC_KEYWORDS = [
-      'official video', 'music video', 'lyrics', 'lyric video', 'audio',
-      'official audio', 'karaoke', 'remix', 'full album', 'playlist',
-      'mv', 'song', 'album', 'concert', 'live performance', 'cover song',
-      'acoustic version', 'instrumental',
-    ];
-    const MUSIC_CHANNEL_PATTERNS = [' - topic', 'vevo', 'records', 'music'];
-
-    const likelyMusic = (title?: string, channelTitle?: string) => {
-      const t = (title || '').toLowerCase();
-      const c = (channelTitle || '').toLowerCase();
-      if (MUSIC_CHANNEL_PATTERNS.some(p => c.includes(p))) return true;
-      if (MUSIC_KEYWORDS.some(k => t.includes(k))) return true;
-      return false;
-    };
-
-    // Enforce Shorts-like durations (<= 60s) to avoid YouTube Music / regular videos
+    // Enforce Shorts-like durations (<= 60s)
     const ids = shorts.map((s: { id: string }) => s.id).filter(Boolean);
     let durationFiltered = shorts;
     if (ids.length > 0) {
@@ -186,15 +216,18 @@ serve(async (req: Request) => {
       }
     }
 
-    console.log(`Returned ${durationFiltered.length} shorts (after duration filter), nextPageToken: ${data.nextPageToken || "none"}`);
+    console.log(`Returned ${durationFiltered.length} shorts, nextPageToken: ${data.nextPageToken || "none"}`);
 
-    // If API returned too few results, supplement with fallbacks
+    // Supplement with fallbacks if too few
     let finalShorts = durationFiltered;
     if (durationFiltered.length < 5) {
       const existingIds = new Set(durationFiltered.map((s: { id: string }) => s.id));
       const extras = FALLBACK_SHORTS.filter(f => !existingIds.has(f.id));
       finalShorts = [...durationFiltered, ...extras];
     }
+
+    // ===== SAVE TO CACHE =====
+    setCache(cacheKey, finalShorts, data.nextPageToken || null);
 
     return new Response(
       JSON.stringify({ shorts: finalShorts, nextPageToken: data.nextPageToken || null, fallback: false }),
