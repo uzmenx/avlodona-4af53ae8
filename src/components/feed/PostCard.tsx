@@ -26,7 +26,7 @@ import { FollowButton } from '@/components/user/FollowButton';
 
 import { SamsungUltraVideoPlayer } from '@/components/video/SamsungUltraVideoPlayer';
 
-import { Heart, Pause, Play } from 'lucide-react';
+import { Heart } from 'lucide-react';
 
 import { Icon } from '@iconify/react';
 
@@ -35,13 +35,20 @@ import { usePostViews, useIntersectionObserver } from '@/hooks/usePostViews';
 import { supabase } from '@/integrations/supabase/client';
 
 import { useActiveStories } from '@/hooks/useActiveStories';
+
 import { useAuth } from '@/contexts/AuthContext';
+
 import { StoryViewer } from '@/components/stories/StoryViewer';
+
 import type { StoryGroup, Story } from '@/hooks/useStories';
+
 import { usePostLikes } from '@/hooks/usePostLikes';
 
-let activePostAudio: HTMLAudioElement | null = null;
-let activePostAudioPostId: string | null = null;
+import { MusicOverlay } from '@/components/music/MusicOverlay';
+
+import { playExclusiveAudio, stopActiveAudio } from '@/lib/audioController';
+
+import { useSavedMusic } from '@/hooks/useSavedMusic';
 
 interface PostCardProps {
   post: Post;
@@ -68,6 +75,8 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+
+  const { isSaved, save, unsave } = useSavedMusic();
 
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
   const [storyViewerGroups, setStoryViewerGroups] = useState<StoryGroup[]>([]);
@@ -99,29 +108,14 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
     if (!audioRef.current) return;
     audioRef.current.pause();
     setIsAudioPlaying(false);
-    if (activePostAudioPostId === post.id) {
-      activePostAudio = null;
-      activePostAudioPostId = null;
-    }
-  }, [post.id]);
+  }, []);
 
   const playAudio = useCallback(async () => {
     if (!post.audio_url) return;
     if (!audioRef.current) return;
 
-    try {
-      if (activePostAudio && activePostAudio !== audioRef.current) {
-        activePostAudio.pause();
-      }
-
-      activePostAudio = audioRef.current;
-      activePostAudioPostId = post.id;
-
-      await audioRef.current.play();
-      setIsAudioPlaying(true);
-    } catch {
-      setIsAudioPlaying(false);
-    }
+    await playExclusiveAudio(`post:${post.id}`, audioRef.current);
+    setIsAudioPlaying(!audioRef.current.paused);
   }, [post.audio_url, post.id]);
 
   const toggleAudio = useCallback(() => {
@@ -140,7 +134,7 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
           if (entry.isIntersecting) {
             void playAudio();
           } else {
-            if (activePostAudioPostId === post.id) stopAudio();
+            stopAudio();
           }
         }
       },
@@ -150,7 +144,8 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
     obs.observe(el);
     return () => {
       obs.disconnect();
-      if (activePostAudioPostId === post.id) stopAudio();
+      stopActiveAudio(`post:${post.id}`);
+      stopAudio();
     };
   }, [playAudio, post.audio_url, post.id, stopAudio]);
 
@@ -348,6 +343,40 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
                   onMediaClick?.();
                 }}
               />
+
+              {post.audio_url && (
+                <div className="absolute bottom-3 right-3 z-30">
+                  <MusicOverlay
+                    audioTitle={post.audio_title}
+                    audioArtist={post.audio_artist}
+                    isPlaying={isAudioPlaying}
+                    isSaved={isSaved(post.audio_url)}
+                    onTogglePlay={() => toggleAudio()}
+                    onToggleSave={() => {
+                      if (!post.audio_url) return;
+                      if (isSaved(post.audio_url)) {
+                        void unsave(post.audio_url);
+                      } else {
+                        void save({
+                          audio_url: post.audio_url,
+                          audio_title: post.audio_title,
+                          audio_artist: post.audio_artist,
+                        });
+                      }
+                    }}
+                  />
+
+                  <audio
+                    ref={audioRef}
+                    src={post.audio_url}
+                    preload="none"
+                    onPlay={() => setIsAudioPlaying(true)}
+                    onPause={() => setIsAudioPlaying(false)}
+                    onEnded={() => setIsAudioPlaying(false)}
+                  />
+                </div>
+              )}
+
               {showDoubleTapHeart && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
                   <Heart className="h-24 w-24 text-white fill-white drop-shadow-lg animate-heartBurst" />
@@ -371,36 +400,6 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
               setShowVideoPlayer(true);
             }}
           />
-
-          {post.audio_url && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/20">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleAudio();
-                }}
-                className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center"
-                aria-label={isAudioPlaying ? 'Pause' : 'Play'}
-              >
-                {isAudioPlaying ? (
-                  <Pause className="h-3.5 w-3.5 text-primary" />
-                ) : (
-                  <Play className="h-3.5 w-3.5 text-primary" />
-                )}
-              </button>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate">{post.audio_title || 'Musiqa'}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{post.audio_artist || ''}</p>
-              </div>
-              <audio
-                ref={audioRef}
-                src={post.audio_url}
-                onPlay={() => setIsAudioPlaying(true)}
-                onPause={() => setIsAudioPlaying(false)}
-                onEnded={() => setIsAudioPlaying(false)}
-              />
-            </div>
-          )}
 
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground uppercase">{timeAgo}</p>
@@ -467,3 +466,5 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
     </>
   );
 };
+
+

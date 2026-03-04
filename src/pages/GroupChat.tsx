@@ -70,6 +70,8 @@ const GroupChat = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [canSend, setCanSend] = useState(false);
+  const [isMember, setIsMember] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
   // Media handling
   const [selectedMedia, setSelectedMedia] = useState<MediaFile | null>(null);
@@ -108,13 +110,24 @@ const GroupChat = () => {
       setGroupInfo({ ...group, memberCount: (memberCount || 0) + 1 });
 
       if (group.owner_id === user?.id) {
+        setIsMember(true);
         setCanSend(true);
-      } else if (group.type === 'group') {
-        const { data: membership } = await supabase
-          .from('group_members').select('id').eq('group_id', groupId).eq('user_id', user?.id).maybeSingle();
-        setCanSend(!!membership);
       } else {
-        setCanSend(group.owner_id === user?.id);
+        const { data: membership } = await supabase
+          .from('group_members')
+          .select('id')
+          .eq('group_id', groupId)
+          .eq('user_id', user?.id)
+          .maybeSingle();
+
+        const member = !!membership;
+        setIsMember(member);
+
+        if (group.type === 'group') {
+          setCanSend(member);
+        } else {
+          setCanSend(false);
+        }
       }
     } catch (error) {
       console.error('Error fetching group info:', error);
@@ -122,6 +135,29 @@ const GroupChat = () => {
       navigate('/messages');
     }
   }, [groupId, user?.id, navigate]);
+
+  const handleJoin = useCallback(async () => {
+    if (!groupId || !user?.id) return;
+    if (isJoining) return;
+    setIsJoining(true);
+    try {
+      const { error } = await supabase.from('group_members').upsert(
+        {
+          group_id: groupId,
+          user_id: user.id,
+          role: 'member',
+        } as any,
+        { onConflict: 'group_id,user_id' }
+      );
+      if (error) throw error;
+      toast.success("Qo'shildingiz");
+      await fetchGroupInfo();
+    } catch (e: any) {
+      toast.error(e?.message || 'Xatolik yuz berdi');
+    } finally {
+      setIsJoining(false);
+    }
+  }, [fetchGroupInfo, groupId, isJoining, user?.id]);
 
   const fetchMessages = useCallback(async () => {
     if (!groupId) return;
@@ -388,6 +424,21 @@ const GroupChat = () => {
       {/* Reply Preview */}
       {replyTo && <ReplyPreview replyToContent={replyTo.content} onCancel={() => setReplyTo(null)} />}
 
+      {/* Join Bar (Telegram-style) */}
+      {!canSend && !isMember && groupInfo?.visibility === 'public' && user?.id !== groupInfo?.owner_id ? (
+        <div className="sticky bottom-0 bg-background/70 backdrop-blur-xl border-t border-border/50 p-3">
+          <div className="max-w-2xl mx-auto">
+            <Button
+              onClick={handleJoin}
+              disabled={isJoining}
+              className="w-full h-11 rounded-2xl bg-gradient-to-r from-[hsl(217,91%,60%)] to-[hsl(263,70%,50%)] text-white"
+            >
+              {isJoining ? 'Qo\'shilmoqda...' : 'JOIN'}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {/* Premium Input Bar */}
       {canSend ? (
         <div className="sticky bottom-0 bg-background/50 backdrop-blur-xl border-t border-border/50 p-2">
@@ -463,7 +514,9 @@ const GroupChat = () => {
       ) : (
         <div className="sticky bottom-0 bg-muted/30 backdrop-blur-xl border-t border-border/50 p-4 text-center">
           <p className="text-sm text-muted-foreground">
-            Faqat kanal egasi xabar yuborishi mumkin
+            {groupInfo?.type === 'channel'
+              ? 'Faqat kanal egasi xabar yuborishi mumkin'
+              : 'Xabar yozish uchun guruhga qo\'shiling'}
           </p>
         </div>
       )}

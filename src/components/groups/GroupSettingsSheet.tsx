@@ -55,6 +55,7 @@ export const GroupSettingsSheet = ({ open, onOpenChange, groupInfo, onGroupUpdat
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
 
   const isOwner = groupInfo.owner_id === user?.id;
@@ -149,12 +150,14 @@ export const GroupSettingsSheet = ({ open, onOpenChange, groupInfo, onGroupUpdat
       const newIds = userIds.filter(id => !existingIds.includes(id) && id !== groupInfo.owner_id);
       if (newIds.length === 0) { toast.info('Bu foydalanuvchilar allaqachon a\'zo'); return; }
       const inserts = newIds.map(uid => ({ group_id: groupInfo.id, user_id: uid, role: 'member' }));
-      const { error } = await supabase.from('group_members').insert(inserts);
+      const { error } = await supabase.from('group_members').upsert(inserts as any, { onConflict: 'group_id,user_id' });
       if (error) throw error;
       toast.success(`${newIds.length} ta a'zo qo'shildi`);
       fetchMembers();
       onGroupUpdated();
-    } catch { toast.error('Xatolik yuz berdi'); }
+    } catch (e: any) {
+      toast.error(e?.message || 'Xatolik yuz berdi');
+    }
     setAddMemberOpen(false);
   };
 
@@ -165,6 +168,23 @@ export const GroupSettingsSheet = ({ open, onOpenChange, groupInfo, onGroupUpdat
     setLinkCopied(true);
     toast.success('Havola nusxalandi');
     setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const generateInviteLink = async () => {
+    if (!isOwner) return;
+    if (groupInfo.invite_link) return;
+    setIsGeneratingLink(true);
+    try {
+      const newLink = `${groupInfo.type}_${Date.now().toString(36)}`;
+      const { error } = await supabase.from('group_chats').update({ invite_link: newLink }).eq('id', groupInfo.id);
+      if (error) throw error;
+      toast.success('Havola yaratildi');
+      onGroupUpdated();
+    } catch (e: any) {
+      toast.error(e?.message || 'Xatolik yuz berdi');
+    } finally {
+      setIsGeneratingLink(false);
+    }
   };
 
   const getInitials = (name: string | null | undefined) => {
@@ -239,18 +259,29 @@ export const GroupSettingsSheet = ({ open, onOpenChange, groupInfo, onGroupUpdat
               )}
 
               {/* Invite Link */}
-              {groupInfo.visibility === 'public' && groupInfo.invite_link && (
+              {(groupInfo.invite_link || isOwner) && (
                 <div className="p-3 bg-card/50 border border-border/30 rounded-xl">
                   <div className="flex items-center gap-2 mb-2">
                     <Link className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Taklif havolasi</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xs bg-muted/50 p-2 rounded-lg truncate">{window.location.origin}/join/{groupInfo.invite_link}</code>
-                    <Button variant="ghost" size="icon" onClick={copyInviteLink} className="h-8 w-8 rounded-lg">
-                      {linkCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  {groupInfo.invite_link ? (
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-xs bg-muted/50 p-2 rounded-lg truncate">{window.location.origin}/join/{groupInfo.invite_link}</code>
+                      <Button variant="ghost" size="icon" onClick={copyInviteLink} className="h-8 w-8 rounded-lg">
+                        {linkCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={generateInviteLink}
+                      disabled={isGeneratingLink}
+                      className="w-full h-10 rounded-xl bg-primary/10 text-primary hover:bg-primary/15"
+                      variant="ghost"
+                    >
+                      {isGeneratingLink ? 'Yaratilmoqda...' : 'Taklif havolasi yaratish'}
                     </Button>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -389,7 +420,7 @@ const AddMemberInlineDialog = ({ open, onOpenChange, onComplete, existingMemberI
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[70vh] flex flex-col">
+      <DialogContent className="sm:max-w-md max-h-[70vh] flex flex-col z-[100]">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>A'zo qo'shish</span>

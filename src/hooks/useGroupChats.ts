@@ -151,7 +151,7 @@ export const useGroupChats = () => {
           role: 'member'
         }));
 
-        await supabase.from('group_members').insert(members);
+        await supabase.from('group_members').upsert(members as any, { onConflict: 'group_id,user_id' });
       }
 
       await fetchGroupChats();

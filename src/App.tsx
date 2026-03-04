@@ -26,6 +26,7 @@ import Messages from "./pages/Messages";
 import Chat from "./pages/Chat";
 import AIChat from "./pages/AIChat";
 import GroupChat from "./pages/GroupChat";
+import JoinGroup from "./pages/JoinGroup";
 import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
 
@@ -99,6 +100,7 @@ const App = () => (
               <Route path="/chat/:userId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
               <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />
               <Route path="/group-chat/:groupId" element={<ProtectedRoute><GroupChat /></ProtectedRoute>} />
+              <Route path="/join/:inviteLink" element={<ProtectedRoute><JoinGroup /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
