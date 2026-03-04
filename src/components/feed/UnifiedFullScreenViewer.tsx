@@ -181,10 +181,10 @@ export const UnifiedFullScreenViewer = ({
 
 
 
+
           // ignore
         }} // keep play/pause in sync
       if (main.paused) {if (!ambient.paused) ambient.pause();} else {if (ambient.paused) {const p = ambient.play();if (p && typeof (p as any).catch === 'function') (p as any).catch(() => {});}}};const tick = () => {sync();raf = window.requestAnimationFrame(tick);};
-
     const handleLoaded = () => {
       try {
         ambient.currentTime = main.currentTime || 0;
@@ -205,9 +205,9 @@ export const UnifiedFullScreenViewer = ({
 
 
 
+
         // ignore
-      }sync();};ambient.muted = true;ambient.volume = 0;ambient.addEventListener('loadedmetadata', handleLoaded);raf = window.requestAnimationFrame(tick);return () => {ambient.removeEventListener('loadedmetadata', handleLoaded);if (raf) window.cancelAnimationFrame(raf);};}, [activeTab, currentMediaUrl]);useEffect(() => {if (activeTab === 'shorts') {
-        if (videoRef.current) videoRef.current.pause();
+      }sync();};ambient.muted = true;ambient.volume = 0;ambient.addEventListener('loadedmetadata', handleLoaded);raf = window.requestAnimationFrame(tick);return () => {ambient.removeEventListener('loadedmetadata', handleLoaded);if (raf) window.cancelAnimationFrame(raf);};}, [activeTab, currentMediaUrl]);useEffect(() => {if (activeTab === 'shorts') {if (videoRef.current) videoRef.current.pause();
         setIsPlaying(false);
       }
     }, [activeTab]);
@@ -549,7 +549,7 @@ export const UnifiedFullScreenViewer = ({
               e.stopPropagation();
               setShowShortShare(true);
             }}
-            className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors py-[4px] my-[90px] px-[9px]">
+            className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors py-[4px] px-[9px] my-[190px]">
 
             <Send className="h-5 w-5 text-white" />
           </button>
