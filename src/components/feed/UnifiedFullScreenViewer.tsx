@@ -83,11 +83,11 @@ export const UnifiedFullScreenViewer = ({
   const mediaUrls = currentPost?.media_urls || (currentPost?.image_url ? [currentPost.image_url] : []);
   const currentMediaUrl = mediaUrls[currentMediaIndex];
 
-  const ambientUrl = activeTab === 'posts'
-    ? currentMediaUrl
-    : currentShort
-    ? `https://img.youtube.com/vi/${currentShort.id}/hqdefault.jpg`
-    : undefined;
+  const ambientUrl = activeTab === 'posts' ?
+  currentMediaUrl :
+  currentShort ?
+  `https://img.youtube.com/vi/${currentShort.id}/hqdefault.jpg` :
+  undefined;
 
   const { isLiked, toggleLike } = usePostLikes(currentPost?.id || '');
 
@@ -165,52 +165,52 @@ export const UnifiedFullScreenViewer = ({
         try {
           ambient.currentTime = main.currentTime;
         } catch {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
           // ignore
-        }
-      }
-
-      // keep play/pause in sync
-      if (main.paused) {
-        if (!ambient.paused) ambient.pause();
-      } else {
-        if (ambient.paused) {
-          const p = ambient.play();
-          if (p && typeof (p as any).catch === 'function') (p as any).catch(() => {});
-        }
-      }
-    };
-
-    const tick = () => {
-      sync();
-      raf = window.requestAnimationFrame(tick);
-    };
+        }} // keep play/pause in sync
+      if (main.paused) {if (!ambient.paused) ambient.pause();} else {if (ambient.paused) {const p = ambient.play();if (p && typeof (p as any).catch === 'function') (p as any).catch(() => {});}}};const tick = () => {sync();raf = window.requestAnimationFrame(tick);};
 
     const handleLoaded = () => {
       try {
         ambient.currentTime = main.currentTime || 0;
       } catch {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         // ignore
+      }sync();};ambient.muted = true;ambient.volume = 0;ambient.addEventListener('loadedmetadata', handleLoaded);raf = window.requestAnimationFrame(tick);return () => {ambient.removeEventListener('loadedmetadata', handleLoaded);if (raf) window.cancelAnimationFrame(raf);};}, [activeTab, currentMediaUrl]);useEffect(() => {if (activeTab === 'shorts') {
+        if (videoRef.current) videoRef.current.pause();
+        setIsPlaying(false);
       }
-      sync();
-    };
-
-    ambient.muted = true;
-    ambient.volume = 0;
-    ambient.addEventListener('loadedmetadata', handleLoaded);
-    raf = window.requestAnimationFrame(tick);
-
-    return () => {
-      ambient.removeEventListener('loadedmetadata', handleLoaded);
-      if (raf) window.cancelAnimationFrame(raf);
-    };
-  }, [activeTab, currentMediaUrl]);
-
-  useEffect(() => {
-    if (activeTab === 'shorts') {
-      if (videoRef.current) videoRef.current.pause();
-      setIsPlaying(false);
-    }
-  }, [activeTab]);
+    }, [activeTab]);
 
   useEffect(() => {
     if (activeTab !== 'shorts') {
@@ -464,14 +464,14 @@ export const UnifiedFullScreenViewer = ({
         handleShortsTap();
       }}>
         <div className="relative w-full h-full">
-          {!isShortIframeReady && (
-            <>
+          {!isShortIframeReady &&
+          <>
               <img
-                key={`thumb-${currentShort.id}`}
-                src={currentShort.thumbnail}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover z-[1]"
-              />
+              key={`thumb-${currentShort.id}`}
+              src={currentShort.thumbnail}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover z-[1]" />
+            
               <div className="absolute inset-0 z-[2] bg-black/35" />
               <div className="absolute inset-0 z-[2] flex items-center justify-center">
                 <div className="p-4 rounded-full bg-black/35 backdrop-blur-sm border border-white/10">
@@ -479,7 +479,7 @@ export const UnifiedFullScreenViewer = ({
                 </div>
               </div>
             </>
-          )}
+          }
 
           {/* Render current + adjacent iframes for instant switching */}
           {preloadRange.map((idx) => {
@@ -549,7 +549,7 @@ export const UnifiedFullScreenViewer = ({
               e.stopPropagation();
               setShowShortShare(true);
             }}
-            className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors">
+            className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors py-[4px] my-[90px] px-[9px]">
 
             <Send className="h-5 w-5 text-white" />
           </button>
@@ -737,54 +737,54 @@ export const UnifiedFullScreenViewer = ({
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}>
 
-        {ambientUrl && (
-          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        {ambientUrl &&
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
             <div className="absolute inset-0">
-              {activeTab === 'posts' && isVideo(ambientUrl) ? (
-                <video
-                  key={ambientUrl}
-                  ref={ambientVideoRef}
-                  src={ambientUrl}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{
-                    filter: 'blur(16px) saturate(145%) brightness(0.92) contrast(1.05)',
-                    transform: 'scale(1.08)',
-                    opacity: 0.72
-                  }}
-                  muted
-                  playsInline
-                  autoPlay
-                  loop
-                  preload="metadata"
-                  controls={false}
-                  disablePictureInPicture
-                />
-              ) : (
-                <img
-                  key={ambientUrl}
-                  src={ambientUrl}
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{
-                    filter: 'blur(16px) saturate(145%) brightness(0.92) contrast(1.05)',
-                    transform: 'scale(1.08)',
-                    opacity: 0.72
-                  }}
-                />
-              )}
+              {activeTab === 'posts' && isVideo(ambientUrl) ?
+            <video
+              key={ambientUrl}
+              ref={ambientVideoRef}
+              src={ambientUrl}
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{
+                filter: 'blur(16px) saturate(145%) brightness(0.92) contrast(1.05)',
+                transform: 'scale(1.08)',
+                opacity: 0.72
+              }}
+              muted
+              playsInline
+              autoPlay
+              loop
+              preload="metadata"
+              controls={false}
+              disablePictureInPicture /> :
+
+
+            <img
+              key={ambientUrl}
+              src={ambientUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{
+                filter: 'blur(16px) saturate(145%) brightness(0.92) contrast(1.05)',
+                transform: 'scale(1.08)',
+                opacity: 0.72
+              }} />
+
+            }
 
               <div className="absolute inset-0 bg-black/28" />
               <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/55" />
               <div
-                className="absolute inset-[-10%]"
-                style={{
-                  background:
-                    'radial-gradient(ellipse at center, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.38) 58%, rgba(0,0,0,0.72) 100%)'
-                }}
-              />
+              className="absolute inset-[-10%]"
+              style={{
+                background:
+                'radial-gradient(ellipse at center, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.38) 58%, rgba(0,0,0,0.72) 100%)'
+              }} />
+            
             </div>
           </div>
-        )}
+        }
 
         {activeTab === 'posts' && dominantColor &&
         <div className="absolute inset-0 z-0" style={{
