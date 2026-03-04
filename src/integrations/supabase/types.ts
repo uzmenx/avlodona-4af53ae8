@@ -990,6 +990,33 @@ export type Database = {
           },
         ]
       }
+      shorts_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          expires_at: string
+          id: string
+          next_page_token: string | null
+          shorts: Json
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          next_page_token?: string | null
+          shorts?: Json
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          next_page_token?: string | null
+          shorts?: Json
+        }
+        Relationships: []
+      }
       stories: {
         Row: {
           caption: string | null
