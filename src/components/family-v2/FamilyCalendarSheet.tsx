@@ -52,6 +52,7 @@ const EventCard = ({ event, onDelete, canDelete }: { event: FamilyEvent; onDelet
 };
 
 export const FamilyCalendarSheet = () => {
+  const { user } = useAuth();
   const { events, addEvent, deleteEvent, getTodayEvents, getUpcomingEvents } = useFamilyCalendar();
   const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState('');
