@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, UserPlus, Send, TreeDeciduous, Check, AtSign, Users } from 'lucide-react';
+import { Heart, MessageCircle, UserPlus, Send, TreeDeciduous, Check, AtSign, Users, CalendarDays } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { uz } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -26,10 +26,14 @@ export const NotificationItem = ({ notification, onRead }: NotificationItemProps
       case 'like':
       case 'story_like':
         return <Heart className="h-4 w-4 text-destructive fill-destructive" />;
+      case 'story':
+        return <MessageCircle className="h-4 w-4 text-primary" />;
       case 'comment':
         return <MessageCircle className="h-4 w-4 text-primary" />;
       case 'message':
         return <Send className="h-4 w-4 text-primary" />;
+      case 'calendar_event':
+        return <CalendarDays className="h-4 w-4 text-primary" />;
       case 'family_invitation':
         return <TreeDeciduous className="h-4 w-4 text-emerald-600" />;
       case 'family_invitation_accepted':
@@ -55,10 +59,14 @@ export const NotificationItem = ({ notification, onRead }: NotificationItemProps
         return 'postingizni yoqtirdi';
       case 'story_like':
         return 'hikoyangizni yoqtirdi';
+      case 'story':
+        return 'yangi hikoya joyladi';
       case 'comment':
         return 'postingizga izoh qoldirdi';
       case 'message':
         return 'sizga xabar yubordi';
+      case 'calendar_event':
+        return 'kalendar voqeasi bugun';
       case 'family_invitation':
         return 'sizni oila daraxtiga taklif qildi';
       case 'family_invitation_accepted':
@@ -94,8 +102,14 @@ export const NotificationItem = ({ notification, onRead }: NotificationItemProps
           navigate(`/user/${notification.actor_id}`);
         }
         break;
+      case 'story':
+        navigate(`/user/${notification.actor_id}`);
+        break;
       case 'message':
         navigate(`/chat/${notification.actor_id}`);
+        break;
+      case 'calendar_event':
+        navigate('/');
         break;
       case 'mention':
         navigate('/profile');

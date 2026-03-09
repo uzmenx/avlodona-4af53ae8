@@ -32,8 +32,6 @@ import AuthCallback from "./pages/AuthCallback";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
 
-import { CookieBanner } from "@/components/legal/CookieBanner";
-
 const queryClient = new QueryClient();
 const FIRST_VISIT_KEY = 'avlodona:first-visit:v1';
 
@@ -98,7 +96,6 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <PushNotification />
-            <CookieBanner />
             <Routes>
 <Route path="/auth" element={<PublicRoute><AuthLogin /></PublicRoute>} />
               <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />

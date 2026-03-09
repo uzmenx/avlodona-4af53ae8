@@ -143,12 +143,33 @@ export const usePostLikes = (postId: string) => {
           .single();
 
         if (post && post.user_id !== userId) {
-          await supabase.from('notifications').insert({
-            user_id: post.user_id,
-            actor_id: userId,
-            type: 'like',
-            post_id: postId,
-          });
+          // Avoid accidental duplicates (e.g. rapid toggles / retries)
+          const { data: existing } = await supabase
+            .from('notifications')
+            .select('id')
+            .eq('user_id', post.user_id)
+            .eq('actor_id', userId)
+            .eq('type', 'like')
+            .eq('post_id', postId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (!existing) {
+            const { error: notifError } = await supabase.from('notifications').insert({
+              user_id: post.user_id,
+              actor_id: userId,
+              type: 'like',
+              post_id: postId,
+              comment_id: null,
+              message_id: null,
+              is_read: false,
+            });
+
+            if (notifError) {
+              console.error('Error creating like notification:', notifError);
+            }
+          }
         }
       }
     } catch (error: any) {

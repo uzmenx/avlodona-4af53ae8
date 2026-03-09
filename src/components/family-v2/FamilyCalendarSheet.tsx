@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarDays, Plus, Trash2, Gift, Heart, Star, Bell, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { useFamilyCalendar, FamilyEvent } from '@/hooks/useFamilyCalendar';
+import { useFamilyCalendar, type FamilyEvent } from '@/hooks/useFamilyCalendar';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 const EVENT_TYPES = [
@@ -63,6 +64,43 @@ export const FamilyCalendarSheet = () => {
 
   const todayEvents = getTodayEvents();
   const upcomingEvents = getUpcomingEvents(30);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    if (todayEvents.length === 0) return;
+
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const storageKey = `avlodona:calendar-reminded:${todayKey}`;
+
+    const run = async () => {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        const sent = new Set<string>(raw ? JSON.parse(raw) : []);
+
+        const toSend = todayEvents.filter(e => e.notify !== false && !sent.has(e.id));
+        if (toSend.length === 0) return;
+
+        const rows = toSend.map(e => ({
+          user_id: user.id,
+          actor_id: user.id,
+          type: 'calendar_event',
+          post_id: null,
+          comment_id: null,
+          message_id: null,
+          is_read: false,
+        }));
+
+        await supabase.from('notifications').insert(rows as any);
+
+        toSend.forEach(e => sent.add(e.id));
+        localStorage.setItem(storageKey, JSON.stringify(Array.from(sent)));
+      } catch {
+        // ignore
+      }
+    };
+
+    void run();
+  }, [todayEvents, user?.id]);
 
   const handleAdd = async () => {
     if (!title.trim() || !eventDate) return;

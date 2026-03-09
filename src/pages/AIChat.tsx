@@ -29,6 +29,8 @@ interface ChatSession {
   messages: AIChatMessage[];
 }
 
+const DEFAULT_SESSION_STORAGE_KEY = 'avlodona:ai_default_session_id';
+
 const newId = () => {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -108,6 +110,30 @@ const AIChat = () => {
     loadFromDB();
   }, [user?.id]);
 
+  // Ensure we have exactly one stable default session when DB is empty
+  useEffect(() => {
+    if (!dbLoaded || !user?.id) return;
+    if (sessions.length > 0) return;
+
+    let id = '';
+    try {
+      id = localStorage.getItem(DEFAULT_SESSION_STORAGE_KEY) || '';
+    } catch {
+      id = '';
+    }
+
+    if (!id) {
+      id = newId();
+      try {
+        localStorage.setItem(DEFAULT_SESSION_STORAGE_KEY, id);
+      } catch {}
+    }
+
+    const s: ChatSession = { id, title: 'New Chat', updatedAt: Date.now(), messages: [] };
+    setSessions([s]);
+    setActiveSessionId(id);
+  }, [dbLoaded, user?.id, sessions.length]);
+
   // Debounced save to DB
   const saveToDb = useCallback(async (sessionsToSave: ChatSession[]) => {
     if (!user?.id) return;
@@ -182,8 +208,14 @@ const AIChat = () => {
 
   const ensureSession = () => {
     if (activeSession) return activeSession;
+    // Fallback: if something cleared activeSessionId, reuse the first session if present
+    const first = sessions[0];
+    if (first) {
+      setActiveSessionId(first.id);
+      return first;
+    }
     const s: ChatSession = { id: newId(), title: 'New Chat', updatedAt: Date.now(), messages: [] };
-    setSessions((prev) => [s, ...prev]);
+    setSessions([s]);
     setActiveSessionId(s.id);
     return s;
   };

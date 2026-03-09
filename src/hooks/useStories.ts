@@ -180,30 +180,56 @@ export const useStories = () => {
           .eq('story_id', storyId)
           .eq('user_id', user.id);
       } else {
-        await supabase
+        const { error: likeError } = await supabase
           .from('story_likes')
           .insert({ story_id: storyId, user_id: user.id });
 
+        if (likeError) {
+          console.error('Error liking story:', likeError);
+          return;
+        }
+
         // Create notification for story owner - look up from DB to handle all contexts
-        const { data: storyData } = await supabase
+        const { data: storyData, error: storyFetchError } = await supabase
           .from('stories')
           .select('user_id')
           .eq('id', storyId)
           .maybeSingle();
+
+        if (storyFetchError) {
+          console.error('Error fetching story owner:', storyFetchError);
+        }
         
         if (storyData && storyData.user_id !== user.id) {
-          const { error: notifError } = await supabase.from('notifications').insert({
-            user_id: storyData.user_id,
-            actor_id: user.id,
-            type: 'story_like',
-            post_id: null,
-            comment_id: null,
-            message_id: null,
-            is_read: false,
-          });
+          // Avoid accidental duplicates (e.g. rapid toggles / retries)
+          const { data: existing, error: existingErr } = await supabase
+            .from('notifications')
+            .select('id')
+            .eq('user_id', storyData.user_id)
+            .eq('actor_id', user.id)
+            .eq('type', 'story_like')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-          if (notifError) {
-            console.error('Error creating story_like notification:', notifError);
+          if (existingErr) {
+            console.error('Error checking existing story_like notification:', existingErr);
+          }
+
+          if (!existing) {
+            const { error: notifError } = await supabase.from('notifications').insert({
+              user_id: storyData.user_id,
+              actor_id: user.id,
+              type: 'story_like',
+              post_id: null,
+              comment_id: null,
+              message_id: null,
+              is_read: false,
+            });
+
+            if (notifError) {
+              console.error('Error creating story_like notification:', notifError);
+            }
           }
         }
       }

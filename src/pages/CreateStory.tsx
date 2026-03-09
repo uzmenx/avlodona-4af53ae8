@@ -80,6 +80,30 @@ const CreateStory = () => {
 
       if (storyError) throw storyError;
 
+      // Notify followers about new story
+      try {
+        const { data: followers } = await supabase
+          .from('follows')
+          .select('follower_id')
+          .eq('following_id', user.id);
+
+        const followerIds = (followers || []).map((f: any) => f.follower_id).filter(Boolean);
+        if (followerIds.length > 0) {
+          const rows = followerIds.map((fid: string) => ({
+            user_id: fid,
+            actor_id: user.id,
+            type: 'story',
+            post_id: null,
+            comment_id: null,
+            message_id: null,
+            is_read: false,
+          }));
+          await supabase.from('notifications').insert(rows as any);
+        }
+      } catch {
+        // ignore
+      }
+
       // Auto-save to year highlight
       if (storyData) {
         await autoSaveStoryToHighlight(storyData.id, publicUrl, mediaType, caption || null);

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, Heart, MessageCircle, UserPlus, MessageSquare, X } from 'lucide-react';
+import { User, Heart, MessageCircle, UserPlus, MessageSquare, X, CalendarDays } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { uz } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 
 interface PushNotificationData {
   id: string;
-  type: 'follow' | 'like' | 'comment' | 'message' | 'story_like' | 'mention' | 'collab_request' | 'collab_accepted';
+  type: 'follow' | 'like' | 'comment' | 'message' | 'story_like' | 'story' | 'calendar_event' | 'mention' | 'collab_request' | 'collab_accepted';
   actor: {
     id: string;
     name: string | null;
@@ -111,6 +111,8 @@ export const PushNotification = () => {
       case 'like':
       case 'comment':
       case 'story_like':
+      case 'story':
+      case 'calendar_event':
         navigate('/notifications');
         break;
       case 'message':
@@ -126,6 +128,10 @@ export const PushNotification = () => {
       case 'like':
       case 'story_like':
         return <Heart className="h-4 w-4 text-destructive fill-destructive" />;
+      case 'story':
+        return <MessageCircle className="h-4 w-4 text-primary" />;
+      case 'calendar_event':
+        return <CalendarDays className="h-4 w-4 text-primary" />;
       case 'comment':
         return <MessageCircle className="h-4 w-4 text-primary" />;
       case 'message':
@@ -143,6 +149,10 @@ export const PushNotification = () => {
         return `${actorName} postingizni yoqtirdi`;
       case 'story_like':
         return `${actorName} hikoyangizni yoqtirdi`;
+      case 'story':
+        return `${actorName} yangi hikoya joyladi`;
+      case 'calendar_event':
+        return `${actorName} kalendar voqeasi bugun`;
       case 'comment':
         return `${actorName} izoh qoldirdi`;
       case 'message':
