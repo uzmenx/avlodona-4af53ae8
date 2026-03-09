@@ -109,7 +109,7 @@ export const FamilyCalendarSheet = () => {
               <div>
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Yaqin 30 kun</h3>
                 <div className="space-y-2">
-                  {upcomingEvents.map(e => <EventCard key={e.id} event={e} onDelete={() => deleteEvent(e.id)} />)}
+                  {upcomingEvents.map(e => <EventCard key={e.id} event={e} canDelete={e.owner_id === user?.id} onDelete={() => deleteEvent(e.id)} />)}
                 </div>
               </div>
             )}
