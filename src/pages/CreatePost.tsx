@@ -93,6 +93,57 @@ const CreatePost = () => {
     } else setCollabProfiles([]);
   }, [collabIds]);
 
+  // Auto-detect location on mount if enabled
+  useEffect(() => {
+    const saved = localStorage.getItem('avlodona_auto_location');
+    if (saved === 'true') {
+      setAutoLocationEnabled(true);
+      detectCurrentLocation();
+    }
+  }, []);
+
+  const detectCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      toast({ title: "Xatolik", description: "Geolokatsiya qo'llab-quvvatlanmaydi", variant: "destructive" });
+      return;
+    }
+    setDetectingLocation(true);
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
+      });
+      const { latitude, longitude } = pos.coords;
+      // Reverse geocode via edge function
+      const { data, error } = await supabase.functions.invoke('nominatim-search', {
+        body: { q: `${latitude},${longitude}`, limit: 1, lang: 'uz', reverse: true, lat: latitude, lon: longitude },
+      });
+      if (error) throw error;
+      const results = Array.isArray(data) ? data : [];
+      if (results.length > 0) {
+        setSelectedLocation(results[0]);
+      } else {
+        // Fallback: just use coords
+        setSelectedLocation({ place_id: 0, display_name: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, lat: String(latitude), lon: String(longitude) });
+      }
+    } catch (err: any) {
+      console.error('Location detect error:', err);
+      if (err?.code === 1) {
+        toast({ title: "Ruxsat berilmadi", description: "Joylashuvga ruxsat bering", variant: "destructive" });
+      }
+    } finally {
+      setDetectingLocation(false);
+    }
+  };
+
+  const toggleAutoLocation = () => {
+    const next = !autoLocationEnabled;
+    setAutoLocationEnabled(next);
+    localStorage.setItem('avlodona_auto_location', String(next));
+    if (next && !selectedLocation) {
+      detectCurrentLocation();
+    }
+  };
+
   useEffect(() => {
     if (!showLocationSearch) return;
     if (selectedLocation) return;
@@ -109,15 +160,10 @@ const CreatePost = () => {
       setLocationLoading(true);
       setLocationError(null);
       try {
-        const targetUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=uz`;
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
-        const res = await fetch(proxyUrl, {
-          headers: {
-            Accept: 'application/json',
-          },
+        const { data, error } = await supabase.functions.invoke('nominatim-search', {
+          body: { q, limit: 5, lang: 'uz' },
         });
-        if (!res.ok) throw new Error('Joy qidirishda xatolik');
-        const data = (await res.json()) as NominatimPlace[];
+        if (error) throw error;
         setLocationResults(Array.isArray(data) ? data : []);
       } catch (e: any) {
         setLocationResults([]);
