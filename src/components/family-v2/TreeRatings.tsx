@@ -32,18 +32,22 @@ export const TreeRatings = () => {
   const loadRatings = async () => {
     setLoading(true);
     try {
-      // Likes rating
-      const { data: likes } = await (supabase as any)
-        .from('tree_post_likes')
-        .select('tree_post_id');
-
       const { data: publishedPosts } = await supabase
         .from('tree_posts')
-        .select('id, user_id')
-        .eq('is_published', true);
+        .select('id, user_id, tree_data')
+        .eq('is_published', true)
+        .limit(500);
 
-      if (publishedPosts && likes) {
-        const postOwnerMap = new Map(publishedPosts.map(p => [p.id, p.user_id]));
+      const postIds = (publishedPosts || []).map((p: any) => p.id);
+
+      // Likes rating (published posts only)
+      if (postIds.length > 0) {
+        const { data: likes } = await supabase
+          .from('tree_post_likes')
+          .select('tree_post_id')
+          .in('tree_post_id', postIds);
+
+        const postOwnerMap = new Map((publishedPosts || []).map((p: any) => [p.id, p.user_id]));
         const userLikes = new Map<string, number>();
         ((likes as any[]) || []).forEach((l: any) => {
           const owner = postOwnerMap.get(l.tree_post_id);
@@ -67,28 +71,32 @@ export const TreeRatings = () => {
               ...(profileMap.get(uid) || { name: null, username: null, avatar_url: null }),
             }));
           setLikesRating(sorted);
+        } else {
+          setLikesRating([]);
         }
+      } else {
+        setLikesRating([]);
       }
 
-      // Members rating
-      const { data: memberCounts } = await supabase
-        .from('family_tree_members')
-        .select('owner_id');
+      // Members rating based on published tree posts (max member count per user)
+      const membersMax = new Map<string, number>();
+      (publishedPosts || []).forEach((p: any) => {
+        const raw = p.tree_data;
+        const tree = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : (raw || {});
+        const count = Object.keys(tree || {}).length;
+        const prev = membersMax.get(p.user_id) || 0;
+        if (count > prev) membersMax.set(p.user_id, count);
+      });
 
-      if (memberCounts) {
-        const ownerCounts = new Map<string, number>();
-        memberCounts.forEach(m => {
-          ownerCounts.set(m.owner_id, (ownerCounts.get(m.owner_id) || 0) + 1);
-        });
-
-        const userIds = [...ownerCounts.keys()];
+      const memberUserIds = [...membersMax.keys()];
+      if (memberUserIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, name, username, avatar_url')
-          .in('id', userIds);
+          .in('id', memberUserIds);
 
         const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-        const sorted = [...ownerCounts.entries()]
+        const sorted = [...membersMax.entries()]
           .sort((a, b) => b[1] - a[1])
           .slice(0, 20)
           .map(([uid, count]) => ({
@@ -97,6 +105,8 @@ export const TreeRatings = () => {
             ...(profileMap.get(uid) || { name: null, username: null, avatar_url: null }),
           }));
         setMembersRating(sorted);
+      } else {
+        setMembersRating([]);
       }
     } catch (err) {
       console.error('Rating error:', err);

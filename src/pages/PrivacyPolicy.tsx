@@ -48,15 +48,34 @@ const PrivacyPolicy = () => {
           </p>
         </section>
 
+        <section className="mt-6 space-y-2">
+          <h2 className="text-lg font-semibold">Device storage</h2>
+          <p className="text-sm text-muted-foreground">
+            We use local storage (device storage in your browser/app webview) to store essential settings such as session state,
+            preferences, and feature state (for example, which Shorts you’ve already seen) to improve performance and reduce
+            repeated requests.
+          </p>
+        </section>
+
         <section className="mt-6 space-y-3">
           <h2 className="text-lg font-semibold">Third-party services</h2>
 
           <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-4">
             <h3 className="font-semibold">YouTube API Services</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground/90">Data:</span> search queries and video identifiers.
+              We use YouTube API Services to display YouTube Shorts.
               <br />
-              <span className="font-medium text-foreground/90">Why:</span> to show YouTube content and previews.
+              <br />
+              <span className="font-medium text-foreground/90">Data we collect through YouTube API:</span> search queries you
+              submit in the Shorts feature (or generated queries used to load Shorts), YouTube video identifiers, and
+              associated metadata returned by YouTube (such as title, thumbnail, and channel name).
+              <br />
+              <span className="font-medium text-foreground/90">How we use this data:</span> to fetch, display, and improve the
+              relevance of YouTube Shorts content inside the app.
+              <br />
+              <span className="font-medium text-foreground/90">How we share this data:</span> when you use Shorts, we send your
+              query (or a generated query) and related request parameters to YouTube API Services (via our backend) to retrieve
+              results. We do not sell this data.
               <br />
               <a className="underline underline-offset-4" href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer">
                 youtube.com/t/terms
@@ -71,8 +90,8 @@ const PrivacyPolicy = () => {
               <br />
               <span className="font-medium text-foreground/90">Why:</span> authentication.
               <br />
-              <a className="underline underline-offset-4" href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">
-                policies/google privacy
+              <a className="underline underline-offset-4" href="http://www.google.com/policies/privacy" target="_blank" rel="noreferrer">
+                http://www.google.com/policies/privacy
               </a>
             </p>
           </div>

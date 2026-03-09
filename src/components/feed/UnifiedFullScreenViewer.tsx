@@ -636,9 +636,9 @@ export const UnifiedFullScreenViewer = ({
               <iframe
                 key={s.id}
                 ref={isCurrent ? shortsIframeRef : undefined}
-                src={`https://www.youtube.com/embed/${s.id}?rel=0&autoplay=${isCurrent ? '1' : '0'}&controls=0&modestbranding=1&playsinline=1&loop=1&playlist=${s.id}&showinfo=0&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&origin=${encodeURIComponent(ytOrigin)}`}
+                src={`https://www.youtube.com/embed/${s.id}?rel=0&autoplay=${isCurrent ? '1' : '0'}&controls=1&modestbranding=0&playsinline=1&loop=1&playlist=${s.id}&iv_load_policy=3&fs=0&enablejsapi=1&origin=${encodeURIComponent(ytOrigin)}`}
                 className={cn(
-                  "absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-150",
+                  "absolute inset-0 w-full h-full transition-opacity duration-150",
                   isCurrent ? "opacity-100 z-[2]" : "opacity-0 z-[1]"
                 )}
                 onLoad={isCurrent ? () => setIsShortIframeReady(true) : undefined}
@@ -646,56 +646,47 @@ export const UnifiedFullScreenViewer = ({
                 allowFullScreen
                 title={s.title} />);
           })}
-
-          {/* Mask YouTube UI overlays */}
-          <div className="absolute top-0 left-0 right-0 h-14 z-[3] pointer-events-none bg-black" />
-          <div className="absolute bottom-0 left-0 right-0 h-28 z-[3] pointer-events-none bg-black" />
         </div>
 
-        {/* Play/Pause indicator */}
-        <div className={cn(
-          "absolute inset-0 z-[4] flex items-center justify-center pointer-events-none transition-opacity duration-300",
-          showPlayIndicator ? "opacity-100" : "opacity-0"
-        )}>
-          <div className="p-4 rounded-full bg-black/35 backdrop-blur-sm border border-white/10">
-            {shortsPlaying ?
-            <Play className="h-8 w-8 text-white" /> :
-            <Pause className="h-8 w-8 text-white" />}
-          </div>
-        </div>
-
-        <div className="absolute bottom-14 left-0 right-0 px-4 pb-4 pt-16 z-[5] pointer-events-none">
-          <div className="flex items-end gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-white leading-snug line-clamp-2 drop-shadow-lg">
-                {currentShort.title}
-              </p>
-              <p className="text-[11px] text-white/50 mt-1 drop-shadow">{currentShort.channelTitle}</p>
-            </div>
-            <div className="shrink-0 flex items-center gap-1 bg-white/10 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/10">
-              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-red-500 fill-current">
-                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z" />
-                <path d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z" className="fill-white" />
-              </svg>
-              <span className="text-[10px] text-white/70 font-medium">Shorts</span>
+          {/* Play/Pause indicator */}
+          <div className={cn(
+            "absolute inset-0 z-[4] flex items-center justify-center pointer-events-none transition-opacity duration-300",
+            showPlayIndicator ? "opacity-100" : "opacity-0"
+          )}>
+            <div className="p-4 rounded-full bg-black/35 backdrop-blur-sm border border-white/10">
+              {shortsPlaying ?
+              <Play className="h-8 w-8 text-white" /> :
+              <Pause className="h-8 w-8 text-white" />}
             </div>
           </div>
-        </div>
 
-        {/* Position counter */}
-        <div className="absolute right-3 bottom-20 z-[5] bg-white/10 backdrop-blur-md rounded-full px-2 py-0.5 border border-white/10 opacity-0">
-          <span className="text-[10px] text-white/70 font-medium">{shortIndex + 1}/{shorts.length}</span>
-        </div>
+          <div className="absolute bottom-16 left-0 right-16 px-4 pb-4 pt-16 z-[5] pointer-events-none">
+            <div className="flex items-end gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-white leading-snug line-clamp-2 drop-shadow-lg">
+                  {currentShort.title}
+                </p>
+                <p className="text-[11px] text-white/50 mt-1 drop-shadow">{currentShort.channelTitle}</p>
+              </div>
+              <div className="shrink-0 flex items-center gap-1 bg-white/10 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/10">
+                <svg viewBox="0 0 24 24" className="w-4 h-4 text-red-500 fill-current">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z" />
+                  <path d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z" className="fill-white" />
+                </svg>
+                <span className="text-[10px] text-white/70 font-medium">Shorts</span>
+              </div>
+            </div>
+          </div>
 
         {/* Shorts Share */}
-        <div className="absolute right-3 bottom-28 z-[6]">
+        <div className="absolute right-3 top-20 z-[6]">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               setShowShortShare(true);
             }}
-            className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors py-[4px] px-[9px] my-[190px]">
+            className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors">
 
             <Send className="h-5 w-5 text-white" />
           </button>

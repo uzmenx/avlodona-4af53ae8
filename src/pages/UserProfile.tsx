@@ -90,6 +90,8 @@ interface UserProfile {
   bio: string | null;
   cover_url: string | null;
   social_links: SocialLink[] | null;
+  theme_mode?: ThemeMode | null;
+  bg_theme?: BackgroundTheme | null;
 }
 
 const UserProfilePage = () => {
@@ -209,8 +211,8 @@ const UserProfilePage = () => {
   }, [fetchProfile]);
 
   useEffect(() => {
-    const rawMode = (profile as any)?.theme_mode as ThemeMode | undefined;
-    const rawBg = (profile as any)?.bg_theme as BackgroundTheme | undefined;
+    const rawMode = profile?.theme_mode ?? undefined;
+    const rawBg = profile?.bg_theme ?? undefined;
 
     const isValidMode = rawMode === 'light' || rawMode === 'dark' || rawMode === 'system';
     const isValidBg = rawBg === 'none' || rawBg === 'aurora' || rawBg === 'sunset' || rawBg === 'ocean';
@@ -227,7 +229,7 @@ const UserProfilePage = () => {
     return () => {
       setOverride(null);
     };
-  }, [profile, setOverride]);
+  }, [profile?.bg_theme, profile?.theme_mode, setOverride]);
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';

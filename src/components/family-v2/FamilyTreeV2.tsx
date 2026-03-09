@@ -262,18 +262,50 @@ export const FamilyTreeV2 = () => {
 
       {/* Merge Mode Bar */}
       {isMergeMode && (
-        <div className="fixed inset-x-0 top-0 z-50 bg-background/95 backdrop-blur-lg border-b border-border shadow-lg">
-          <div className="px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={cancelMerge}><X className="h-5 w-5" /></Button>
-              <div>
-                <h3 className="font-semibold text-foreground">Birlashtirish rejimi</h3>
-                <p className="text-sm text-muted-foreground">{mergeSelectedIds.length} ta profil tanlandi</p>
+        <div className="fixed inset-x-0 top-0 z-50">
+          <div className="bg-background/70 backdrop-blur-2xl border-b border-white/10">
+            <div className="mx-auto max-w-6xl px-3 sm:px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={cancelMerge}
+                    className="h-11 w-11 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10"
+                    aria-label="Yopish"
+                    title="Yopish"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-emerald-500/25 via-teal-500/20 to-sky-500/25 border border-white/10 flex items-center justify-center shrink-0">
+                        <GitMerge className="h-4.5 w-4.5 text-emerald-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-foreground leading-tight truncate">Birlashtirish rejimi</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground leading-tight">
+                          Tanlandi:
+                          <span className="ml-1 inline-flex items-center justify-center min-w-6 h-5 px-2 rounded-full bg-primary/10 text-primary font-bold">
+                            {mergeSelectedIds.length}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleOpenManualMergeDialog}
+                  disabled={mergeSelectedIds.length < 2 || isMergeProcessing}
+                  className="h-11 rounded-2xl px-4 sm:px-5 gap-2 font-bold shadow-lg shadow-emerald-500/15 disabled:opacity-60"
+                >
+                  <GitMerge className="h-4 w-4" />
+                  {isMergeProcessing ? 'Tayyorlanmoqda...' : 'Birlashtirish'}
+                </Button>
               </div>
             </div>
-            <Button onClick={handleOpenManualMergeDialog} disabled={mergeSelectedIds.length < 2 || isMergeProcessing} className="gap-2">
-              <GitMerge className="h-4 w-4" /> Birlashtirish
-            </Button>
           </div>
         </div>
       )}

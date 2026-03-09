@@ -33,7 +33,7 @@ const Terms = () => {
         <section className="mt-6 space-y-2">
           <h2 className="text-lg font-semibold">YouTube Terms</h2>
           <p className="text-sm text-muted-foreground">
-            If you use features powered by YouTube API Services, you also agree to YouTube’s Terms of Service.
+            By using this app, you agree to YouTube Terms of Service at https://www.youtube.com/t/terms
           </p>
           <a
             className="text-sm underline underline-offset-4"

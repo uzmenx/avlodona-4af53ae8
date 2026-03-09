@@ -27,6 +27,7 @@ interface FamilyTreeCanvasProps {
   onPositionChange: (memberId: string, x: number, y: number) => void;
   onDragStart?: () => void;
   onDragEnd?: () => void;
+  readOnly?: boolean;
    // Merge mode props
    isMergeMode?: boolean;
    mergeSelectedIds?: string[];
@@ -53,6 +54,7 @@ export const FamilyTreeCanvas = ({
   onPositionChange,
   onDragStart,
   onDragEnd,
+  readOnly = false,
    isMergeMode = false,
    mergeSelectedIds = [],
    mergedProfiles = new Map(),
@@ -72,6 +74,10 @@ export const FamilyTreeCanvas = ({
 
   // Handle node changes - support locked spouse pairs moving together
   const handleNodesChange = useCallback((changes: NodeChange<Node>[]) => {
+    if (readOnly) {
+      onNodesChange(changes);
+      return;
+    }
     // Process position changes for locked spouses
     const modifiedChanges = [...changes];
     const additionalChanges: NodeChange<Node>[] = [];
@@ -148,7 +154,7 @@ export const FamilyTreeCanvas = ({
     });
     
     onNodesChange([...modifiedChanges, ...additionalChanges]);
-  }, [onNodesChange, onPositionChange, onDragStart, onDragEnd, members, isPairLocked, nodes]);
+  }, [onNodesChange, onPositionChange, onDragStart, onDragEnd, members, isPairLocked, nodes, readOnly]);
 
   // Build edges from relationships
   const edgesMemo = useMemo(() => {
@@ -270,6 +276,9 @@ export const FamilyTreeCanvas = ({
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        nodesDraggable={!readOnly}
+        nodesConnectable={!readOnly}
+        elementsSelectable={!readOnly}
         fitView={false}
         style={{ touchAction: 'none' }}
         onInit={(instance) => {

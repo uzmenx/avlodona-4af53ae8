@@ -52,10 +52,15 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
     storyGroupIndex: -1 
   });
   const [showStoryViewer, setShowStoryViewer] = useState(false);
- 
-   // Long press detection
-   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-   const isLongPressRef = useRef(false);
+
+  // Long press detection
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressRef = useRef(false);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const didMoveRef = useRef(false);
+
+  const LONG_PRESS_MS = 500;
+  const MOVE_CANCEL_THRESHOLD_PX = 12;
 
   const yearDisplay = member.birthYear 
     ? `${member.birthYear}${member.deathYear ? ` - ${member.deathYear}` : ''}`
@@ -102,15 +107,39 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
    // Long press handlers
    const handlePointerDown = useCallback((e: React.PointerEvent) => {
      isLongPressRef.current = false;
+     didMoveRef.current = false;
+     pointerStartRef.current = { x: e.clientX, y: e.clientY };
+
+     if (longPressTimerRef.current) {
+       clearTimeout(longPressTimerRef.current);
+       longPressTimerRef.current = null;
+     }
+
      longPressTimerRef.current = setTimeout(() => {
+       if (didMoveRef.current) return;
        isLongPressRef.current = true;
        if (onLongPress && !isMergeMode) {
          onLongPress(member.id);
        }
-     }, 500); // 500ms for long press
+     }, LONG_PRESS_MS);
    }, [member.id, onLongPress, isMergeMode]);
+
+   const handlePointerMove = useCallback((e: React.PointerEvent) => {
+     if (!longPressTimerRef.current) return;
+     const start = pointerStartRef.current;
+     if (!start) return;
+     const dx = e.clientX - start.x;
+     const dy = e.clientY - start.y;
+     if ((dx * dx + dy * dy) > (MOVE_CANCEL_THRESHOLD_PX * MOVE_CANCEL_THRESHOLD_PX)) {
+       didMoveRef.current = true;
+       clearTimeout(longPressTimerRef.current);
+       longPressTimerRef.current = null;
+     }
+   }, []);
  
    const handlePointerUp = useCallback(() => {
+     pointerStartRef.current = null;
+     didMoveRef.current = false;
      if (longPressTimerRef.current) {
        clearTimeout(longPressTimerRef.current);
        longPressTimerRef.current = null;
@@ -118,6 +147,8 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
    }, []);
  
    const handlePointerLeave = useCallback(() => {
+     pointerStartRef.current = null;
+     didMoveRef.current = false;
      if (longPressTimerRef.current) {
        clearTimeout(longPressTimerRef.current);
        longPressTimerRef.current = null;
@@ -156,6 +187,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
        <div 
          className="relative flex flex-col items-center"
          onPointerDown={handlePointerDown}
+         onPointerMove={handlePointerMove}
          onPointerUp={handlePointerUp}
          onPointerLeave={handlePointerLeave}
        >
@@ -163,6 +195,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
         <Handle
           type="target"
           position={Position.Top}
+          isConnectable={false}
           className="!bg-sky-500 !w-2.5 !h-2.5 !border-2 !border-background !-top-1"
         />
         
@@ -202,6 +235,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
               type="source"
               position={Position.Right}
               id="spouse-right"
+              isConnectable={false}
               className="!bg-red-500 !w-2 !h-2 !border-2 !border-background"
             />
           )}
@@ -210,6 +244,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
               type="target"
               position={Position.Left}
               id="spouse-left"
+              isConnectable={false}
               className="!bg-red-500 !w-2 !h-2 !border-2 !border-background"
             />
           )}
@@ -280,6 +315,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
         <Handle
           type="source"
           position={Position.Bottom}
+          isConnectable={false}
           className="!bg-sky-500 !w-2.5 !h-2.5 !border-2 !border-background !-bottom-1"
         />
       </div>

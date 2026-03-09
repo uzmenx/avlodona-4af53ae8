@@ -32,14 +32,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     };
 
-    if (mode === 'system') {
+    if (effectiveMode === 'system') {
       const mq = window.matchMedia('(prefers-color-scheme: dark)');
       applyTheme(mq.matches);
       const handler = (e: MediaQueryListEvent) => applyTheme(e.matches);
       mq.addEventListener('change', handler);
       return () => mq.removeEventListener('change', handler);
     } else {
-      applyTheme(mode === 'dark');
+      applyTheme(effectiveMode === 'dark');
     }
   }, [effectiveMode]);
 

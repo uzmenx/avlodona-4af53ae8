@@ -43,6 +43,7 @@ export const TreeFullscreenView = ({
           positions={positions}
           onOpenProfile={() => {}}
           onPositionChange={() => {}}
+          readOnly={true}
         />
         {overlays.length > 0 && (
           <TreeOverlayLayer overlays={overlays} onChange={() => {}} editable={false} />
