@@ -64,6 +64,8 @@ const CreatePost = () => {
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<NominatimPlace | null>(null);
+  const [autoLocationEnabled, setAutoLocationEnabled] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
 
   const handleMediaFromCapture = (items: { file: File; filter: string }[]) => {
     const newMedia: MediaFile[] = items.map((item) => ({
