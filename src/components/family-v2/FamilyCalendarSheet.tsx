@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { CalendarDays, Plus, Trash2, Gift, Heart, Star, Bell } from 'lucide-react';
+import { CalendarDays, Plus, Trash2, Gift, Heart, Star, Bell, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
