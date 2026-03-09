@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, X, Plus, Check, AtSign, Users, MapPin, Loader2, Music } from 'lucide-react';
+import { ArrowLeft, X, Plus, Check, AtSign, Users, MapPin, Loader2, Music, Navigation, ToggleLeft, ToggleRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import InstagramMediaCapture from '@/components/create/InstagramMediaCapture';
 import { uploadMedia } from '@/lib/r2Upload';
