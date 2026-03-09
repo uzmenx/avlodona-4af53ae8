@@ -1,0 +1,37 @@
+project_id = "wsuljngcdfagrkbtxltb"
+
+[functions.send-otp]
+verify_jwt = false
+
+[functions.verify-otp]
+verify_jwt = false
+
+[functions.create-daily-room]
+verify_jwt = false
+
+[functions.end-call]
+verify_jwt = false
+
+[functions.calculate-family-lines]
+verify_jwt = false
+
+[functions.send-phone-otp]
+verify_jwt = false
+
+[functions.verify-phone-otp]
+verify_jwt = false
+
+[functions.r2-upload]
+verify_jwt = false
+
+[functions.ai-chat]
+verify_jwt = false
+
+[functions.ai-chat-groq]
+verify_jwt = false
+
+[functions.ai-image-gen]
+verify_jwt = false
+
+[functions.fetch-shorts]
+verify_jwt = false
