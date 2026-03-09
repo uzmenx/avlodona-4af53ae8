@@ -364,52 +364,83 @@ const CreatePost = () => {
 
             {/* Location */}
             <div className="space-y-2">
-              {!selectedLocation ? (
-                <button
-                  onClick={() => {
-                    setShowLocationSearch(prev => {
-                      const next = !prev;
-                      if (!next) {
+              <div className="flex gap-2">
+                {!selectedLocation ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowLocationSearch(prev => {
+                          const next = !prev;
+                          if (!next) {
+                            setLocationQuery('');
+                            setLocationResults([]);
+                            setLocationError(null);
+                            setLocationLoading(false);
+                          }
+                          return next;
+                        });
+                      }}
+                      className={cn(
+                        "flex-1 flex items-center gap-2 px-3 py-3 rounded-xl border transition-colors",
+                        showLocationSearch ? "border-primary bg-primary/5" : "border-border hover:bg-muted",
+                      )}
+                    >
+                      <MapPin className="h-5 w-5 text-primary" />
+                      <div className="text-left">
+                        <p className="text-sm font-semibold">Joylashuv qo'shish</p>
+                        <p className="text-xs text-muted-foreground">Qayerda</p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={detectCurrentLocation}
+                      disabled={detectingLocation}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-3 rounded-xl border transition-colors",
+                        "border-border hover:bg-muted",
+                      )}
+                    >
+                      {detectingLocation ? (
+                        <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                      ) : (
+                        <Navigation className="h-5 w-5 text-primary" />
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-between px-3 py-3 rounded-xl border border-primary bg-primary/5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
+                      <p className="text-sm font-medium truncate">{selectedLocation.display_name}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedLocation(null);
                         setLocationQuery('');
                         setLocationResults([]);
                         setLocationError(null);
-                        setLocationLoading(false);
-                      }
-                      return next;
-                    });
-                  }}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-3 py-3 rounded-xl border transition-colors",
-                    showLocationSearch ? "border-primary bg-primary/5" : "border-border hover:bg-muted",
-                  )}
-                >
-                  <MapPin className="h-5 w-5 text-primary" />
-                  <div className="text-left">
-                    <p className="text-sm font-semibold">Joylashuv qo'shish</p>
-                    <p className="text-xs text-muted-foreground">Qayerda</p>
+                        setShowLocationSearch(false);
+                      }}
+                      className="ml-2"
+                      aria-label="Joylashuvni o'chirish"
+                    >
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </button>
                   </div>
-                </button>
-              ) : (
-                <div className="flex items-center justify-between px-3 py-3 rounded-xl border border-primary bg-primary/5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
-                    <p className="text-sm font-medium truncate">{selectedLocation.display_name}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedLocation(null);
-                      setLocationQuery('');
-                      setLocationResults([]);
-                      setLocationError(null);
-                      setShowLocationSearch(false);
-                    }}
-                    className="ml-2"
-                    aria-label="Joylashuvni o'chirish"
-                  >
-                    <X className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
+
+              {/* Auto-location toggle */}
+              <button
+                onClick={toggleAutoLocation}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {autoLocationEnabled ? (
+                  <ToggleRight className="h-4 w-4 text-primary" />
+                ) : (
+                  <ToggleLeft className="h-4 w-4" />
+                )}
+                <span>Har doim joylashuvni avtomatik aniqlash</span>
+              </button>
 
               {showLocationSearch && !selectedLocation && (
                 <div className="space-y-2">
