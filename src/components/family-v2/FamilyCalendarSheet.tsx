@@ -157,7 +157,7 @@ export const FamilyCalendarSheet = () => {
               )}
 
               <div className="space-y-2">
-                {events.map(e => <EventCard key={e.id} event={e} onDelete={() => deleteEvent(e.id)} />)}
+                {events.map(e => <EventCard key={e.id} event={e} canDelete={e.owner_id === user?.id} onDelete={() => deleteEvent(e.id)} />)}
                 {events.length === 0 && !showAdd && (
                   <p className="text-center text-sm text-muted-foreground py-8">Hali voqealar qo'shilmagan</p>
                 )}
