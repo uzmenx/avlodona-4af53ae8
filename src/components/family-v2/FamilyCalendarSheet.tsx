@@ -99,7 +99,7 @@ export const FamilyCalendarSheet = () => {
                   <Bell className="h-3 w-3" /> Bugun
                 </h3>
                 <div className="space-y-2">
-                  {todayEvents.map(e => <EventCard key={e.id} event={e} onDelete={() => deleteEvent(e.id)} />)}
+                  {todayEvents.map(e => <EventCard key={e.id} event={e} canDelete={e.owner_id === user?.id} onDelete={() => deleteEvent(e.id)} />)}
                 </div>
               </div>
             )}
