@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, X, Plus, Check, AtSign, Users, MapPin, Loader2, Music } from 'lucide-react';
+import { ArrowLeft, X, Plus, Check, AtSign, Users, MapPin, Loader2, Music, Navigation, ToggleLeft, ToggleRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import InstagramMediaCapture from '@/components/create/InstagramMediaCapture';
 import { uploadMedia } from '@/lib/r2Upload';
@@ -64,6 +64,8 @@ const CreatePost = () => {
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<NominatimPlace | null>(null);
+  const [autoLocationEnabled, setAutoLocationEnabled] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
 
   const handleMediaFromCapture = (items: { file: File; filter: string }[]) => {
     const newMedia: MediaFile[] = items.map((item) => ({
@@ -91,6 +93,57 @@ const CreatePost = () => {
     } else setCollabProfiles([]);
   }, [collabIds]);
 
+  // Auto-detect location on mount if enabled
+  useEffect(() => {
+    const saved = localStorage.getItem('avlodona_auto_location');
+    if (saved === 'true') {
+      setAutoLocationEnabled(true);
+      detectCurrentLocation();
+    }
+  }, []);
+
+  const detectCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      toast({ title: "Xatolik", description: "Geolokatsiya qo'llab-quvvatlanmaydi", variant: "destructive" });
+      return;
+    }
+    setDetectingLocation(true);
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
+      });
+      const { latitude, longitude } = pos.coords;
+      // Reverse geocode via edge function
+      const { data, error } = await supabase.functions.invoke('nominatim-search', {
+        body: { q: `${latitude},${longitude}`, limit: 1, lang: 'uz', reverse: true, lat: latitude, lon: longitude },
+      });
+      if (error) throw error;
+      const results = Array.isArray(data) ? data : [];
+      if (results.length > 0) {
+        setSelectedLocation(results[0]);
+      } else {
+        // Fallback: just use coords
+        setSelectedLocation({ place_id: 0, display_name: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, lat: String(latitude), lon: String(longitude) });
+      }
+    } catch (err: any) {
+      console.error('Location detect error:', err);
+      if (err?.code === 1) {
+        toast({ title: "Ruxsat berilmadi", description: "Joylashuvga ruxsat bering", variant: "destructive" });
+      }
+    } finally {
+      setDetectingLocation(false);
+    }
+  };
+
+  const toggleAutoLocation = () => {
+    const next = !autoLocationEnabled;
+    setAutoLocationEnabled(next);
+    localStorage.setItem('avlodona_auto_location', String(next));
+    if (next && !selectedLocation) {
+      detectCurrentLocation();
+    }
+  };
+
   useEffect(() => {
     if (!showLocationSearch) return;
     if (selectedLocation) return;
@@ -107,15 +160,10 @@ const CreatePost = () => {
       setLocationLoading(true);
       setLocationError(null);
       try {
-        const targetUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=uz`;
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
-        const res = await fetch(proxyUrl, {
-          headers: {
-            Accept: 'application/json',
-          },
+        const { data, error } = await supabase.functions.invoke('nominatim-search', {
+          body: { q, limit: 5, lang: 'uz' },
         });
-        if (!res.ok) throw new Error('Joy qidirishda xatolik');
-        const data = (await res.json()) as NominatimPlace[];
+        if (error) throw error;
         setLocationResults(Array.isArray(data) ? data : []);
       } catch (e: any) {
         setLocationResults([]);
@@ -316,52 +364,83 @@ const CreatePost = () => {
 
             {/* Location */}
             <div className="space-y-2">
-              {!selectedLocation ? (
-                <button
-                  onClick={() => {
-                    setShowLocationSearch(prev => {
-                      const next = !prev;
-                      if (!next) {
+              <div className="flex gap-2">
+                {!selectedLocation ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowLocationSearch(prev => {
+                          const next = !prev;
+                          if (!next) {
+                            setLocationQuery('');
+                            setLocationResults([]);
+                            setLocationError(null);
+                            setLocationLoading(false);
+                          }
+                          return next;
+                        });
+                      }}
+                      className={cn(
+                        "flex-1 flex items-center gap-2 px-3 py-3 rounded-xl border transition-colors",
+                        showLocationSearch ? "border-primary bg-primary/5" : "border-border hover:bg-muted",
+                      )}
+                    >
+                      <MapPin className="h-5 w-5 text-primary" />
+                      <div className="text-left">
+                        <p className="text-sm font-semibold">Joylashuv qo'shish</p>
+                        <p className="text-xs text-muted-foreground">Qayerda</p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={detectCurrentLocation}
+                      disabled={detectingLocation}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-3 rounded-xl border transition-colors",
+                        "border-border hover:bg-muted",
+                      )}
+                    >
+                      {detectingLocation ? (
+                        <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                      ) : (
+                        <Navigation className="h-5 w-5 text-primary" />
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-between px-3 py-3 rounded-xl border border-primary bg-primary/5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
+                      <p className="text-sm font-medium truncate">{selectedLocation.display_name}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedLocation(null);
                         setLocationQuery('');
                         setLocationResults([]);
                         setLocationError(null);
-                        setLocationLoading(false);
-                      }
-                      return next;
-                    });
-                  }}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-3 py-3 rounded-xl border transition-colors",
-                    showLocationSearch ? "border-primary bg-primary/5" : "border-border hover:bg-muted",
-                  )}
-                >
-                  <MapPin className="h-5 w-5 text-primary" />
-                  <div className="text-left">
-                    <p className="text-sm font-semibold">Joylashuv qo'shish</p>
-                    <p className="text-xs text-muted-foreground">Qayerda</p>
+                        setShowLocationSearch(false);
+                      }}
+                      className="ml-2"
+                      aria-label="Joylashuvni o'chirish"
+                    >
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </button>
                   </div>
-                </button>
-              ) : (
-                <div className="flex items-center justify-between px-3 py-3 rounded-xl border border-primary bg-primary/5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <MapPin className="h-5 w-5 text-primary flex-shrink-0" />
-                    <p className="text-sm font-medium truncate">{selectedLocation.display_name}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedLocation(null);
-                      setLocationQuery('');
-                      setLocationResults([]);
-                      setLocationError(null);
-                      setShowLocationSearch(false);
-                    }}
-                    className="ml-2"
-                    aria-label="Joylashuvni o'chirish"
-                  >
-                    <X className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
+
+              {/* Auto-location toggle */}
+              <button
+                onClick={toggleAutoLocation}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {autoLocationEnabled ? (
+                  <ToggleRight className="h-4 w-4 text-primary" />
+                ) : (
+                  <ToggleLeft className="h-4 w-4" />
+                )}
+                <span>Har doim joylashuvni avtomatik aniqlash</span>
+              </button>
 
               {showLocationSearch && !selectedLocation && (
                 <div className="space-y-2">

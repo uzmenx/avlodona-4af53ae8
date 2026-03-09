@@ -1075,8 +1075,8 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
-          bio: string | null
           bg_theme: string | null
+          bio: string | null
           cover_url: string | null
           created_at: string
           email: string | null
@@ -1097,8 +1097,8 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
-          bio?: string | null
           bg_theme?: string | null
+          bio?: string | null
           cover_url?: string | null
           created_at?: string
           email?: string | null
@@ -1119,8 +1119,8 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
-          bio?: string | null
           bg_theme?: string | null
+          bio?: string | null
           cover_url?: string | null
           created_at?: string
           email?: string | null
@@ -1546,6 +1546,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_group_invite_preview: {
+        Args: { invite: string }
+        Returns: {
+          avatar_url: string
+          description: string
+          id: string
+          invite_link: string
+          name: string
+          owner_id: string
+          type: Database["public"]["Enums"]["chat_type"]
+          visibility: Database["public"]["Enums"]["chat_visibility"]
+        }[]
+      }
       is_group_admin: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean

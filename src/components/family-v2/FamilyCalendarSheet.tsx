@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { CalendarDays, Plus, Trash2, Gift, Heart, Star, Bell } from 'lucide-react';
+import { CalendarDays, Plus, Trash2, Gift, Heart, Star, Bell, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,7 @@ const EVENT_TYPES = [
   { value: 'custom', label: 'Boshqa', icon: CalendarDays, color: 'text-emerald-500' },
 ];
 
-const EventCard = ({ event, onDelete }: { event: FamilyEvent; onDelete: () => void }) => {
+const EventCard = ({ event, onDelete, canDelete }: { event: FamilyEvent; onDelete: () => void; canDelete: boolean }) => {
   const type = EVENT_TYPES.find(t => t.value === event.event_type) || EVENT_TYPES[3];
   const Icon = type.icon;
   const d = new Date(event.event_date);
@@ -29,21 +30,29 @@ const EventCard = ({ event, onDelete }: { event: FamilyEvent; onDelete: () => vo
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold truncate">{event.title}</p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-muted-foreground">{dateStr}</span>
           {event.member_name && <span className="text-xs text-primary">• {event.member_name}</span>}
           {event.recurring && <Badge variant="secondary" className="text-[9px] px-1 py-0">Har yil</Badge>}
+          {event.owner_name && (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+              <User className="h-2.5 w-2.5" /> {event.owner_name}
+            </span>
+          )}
         </div>
         {event.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{event.description}</p>}
       </div>
-      <button onClick={onDelete} className="text-muted-foreground hover:text-destructive p-1">
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
+      {canDelete && (
+        <button onClick={onDelete} className="text-muted-foreground hover:text-destructive p-1">
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 };
 
 export const FamilyCalendarSheet = () => {
+  const { user } = useAuth();
   const { events, addEvent, deleteEvent, getTodayEvents, getUpcomingEvents } = useFamilyCalendar();
   const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState('');
@@ -90,7 +99,7 @@ export const FamilyCalendarSheet = () => {
                   <Bell className="h-3 w-3" /> Bugun
                 </h3>
                 <div className="space-y-2">
-                  {todayEvents.map(e => <EventCard key={e.id} event={e} onDelete={() => deleteEvent(e.id)} />)}
+                  {todayEvents.map(e => <EventCard key={e.id} event={e} canDelete={e.owner_id === user?.id} onDelete={() => deleteEvent(e.id)} />)}
                 </div>
               </div>
             )}
@@ -100,7 +109,7 @@ export const FamilyCalendarSheet = () => {
               <div>
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Yaqin 30 kun</h3>
                 <div className="space-y-2">
-                  {upcomingEvents.map(e => <EventCard key={e.id} event={e} onDelete={() => deleteEvent(e.id)} />)}
+                  {upcomingEvents.map(e => <EventCard key={e.id} event={e} canDelete={e.owner_id === user?.id} onDelete={() => deleteEvent(e.id)} />)}
                 </div>
               </div>
             )}
@@ -148,7 +157,7 @@ export const FamilyCalendarSheet = () => {
               )}
 
               <div className="space-y-2">
-                {events.map(e => <EventCard key={e.id} event={e} onDelete={() => deleteEvent(e.id)} />)}
+                {events.map(e => <EventCard key={e.id} event={e} canDelete={e.owner_id === user?.id} onDelete={() => deleteEvent(e.id)} />)}
                 {events.length === 0 && !showAdd && (
                   <p className="text-center text-sm text-muted-foreground py-8">Hali voqealar qo'shilmagan</p>
                 )}
