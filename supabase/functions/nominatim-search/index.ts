@@ -12,12 +12,49 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { q, limit, lang } = (await req.json().catch(() => ({}))) as {
+    const { q, limit, lang, reverse, lat, lon } = (await req.json().catch(() => ({}))) as {
       q?: string;
       limit?: number;
       lang?: string;
+      reverse?: boolean;
+      lat?: number;
+      lon?: number;
     };
 
+    const acceptLang = (lang || "uz").toLowerCase();
+
+    // Reverse geocoding
+    if (reverse && lat !== undefined && lon !== undefined) {
+      const searchParams = new URLSearchParams({
+        lat: String(lat),
+        lon: String(lon),
+        format: "json",
+        "accept-language": acceptLang,
+      });
+
+      const url = `https://nominatim.openstreetmap.org/reverse?${searchParams.toString()}`;
+      const res = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "AvlodonaApp/1.0",
+        },
+      });
+
+      if (!res.ok) {
+        return new Response(
+          JSON.stringify({ error: "Reverse geocoding xatolik", status: res.status }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const data = await res.json();
+      // Return as array for consistency
+      return new Response(JSON.stringify(data?.place_id ? [data] : []), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Forward search
     const query = (q || "").trim();
     if (!query) {
       return new Response(JSON.stringify([]), {
@@ -29,7 +66,7 @@ serve(async (req: Request) => {
       q: query,
       format: "json",
       limit: String(typeof limit === "number" ? limit : 5),
-      "accept-language": (lang || "uz").toLowerCase(),
+      "accept-language": acceptLang,
     });
 
     const url = `https://nominatim.openstreetmap.org/search?${searchParams.toString()}`;
