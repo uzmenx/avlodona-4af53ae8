@@ -193,6 +193,7 @@ const UserProfilePage = () => {
         setProfile({
           ...data,
           theme_mode: (data.theme_mode as ThemeMode) || 'system',
+          bg_theme: (data.bg_theme as BackgroundTheme) || null,
           social_links: (data.social_links as unknown as SocialLink[] | null) || null,
         });
       }
