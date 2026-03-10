@@ -317,19 +317,19 @@ const Messages = () => {
       try {
         const searchTerm = `%${q}%`;
 
-        const usersQuery = supabase
-          .from('profiles')
-          .select('id, name, username, avatar_url')
-          .or(`username.ilike.${searchTerm},name.ilike.${searchTerm}`)
-          .limit(10);
+        const usersQuery = supabase.
+        from('profiles').
+        select('id, name, username, avatar_url').
+        or(`username.ilike.${searchTerm},name.ilike.${searchTerm}`).
+        limit(10);
 
-        const groupsQuery = supabase
-          .from('group_chats')
-          .select('id, name, description, avatar_url, type, visibility')
-          .eq('visibility', 'public')
-          .or(`name.ilike.${searchTerm},description.ilike.${searchTerm}`)
-          .order('created_at', { ascending: false })
-          .limit(10);
+        const groupsQuery = supabase.
+        from('group_chats').
+        select('id, name, description, avatar_url, type, visibility').
+        eq('visibility', 'public').
+        or(`name.ilike.${searchTerm},description.ilike.${searchTerm}`).
+        order('created_at', { ascending: false }).
+        limit(10);
 
         const [usersRes, groupsRes] = await Promise.all([usersQuery, groupsQuery]);
         if (cancelled) return;
@@ -670,24 +670,24 @@ const Messages = () => {
                 </div> :
 
             <>
-                  {searchQuery.trim() && (
-                    <div className="px-4 pb-2 space-y-2">
-                      {globalLoading && (
-                        <p className="text-xs text-muted-foreground">{t('loading')}</p>
-                      )}
+                  {searchQuery.trim() &&
+              <div className="px-4 pb-2 space-y-2">
+                      {globalLoading &&
+                <p className="text-xs text-muted-foreground">{t('loading')}</p>
+                }
 
-                      {!globalLoading && globalUsers.length === 0 && globalGroups.length === 0 && (
-                        <p className="text-xs text-muted-foreground">Hech narsa topilmadi</p>
-                      )}
+                      {!globalLoading && globalUsers.length === 0 && globalGroups.length === 0 &&
+                <p className="text-xs text-muted-foreground">Hech narsa topilmadi</p>
+                }
 
-                      {globalUsers.length > 0 && (
-                        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md overflow-hidden">
-                          {globalUsers.map((u) => (
-                            <button
-                              key={u.id}
-                              onClick={() => handleOpenGlobalUser(u.id)}
-                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors"
-                            >
+                      {globalUsers.length > 0 &&
+                <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md overflow-hidden">
+                          {globalUsers.map((u) =>
+                  <button
+                    key={u.id}
+                    onClick={() => handleOpenGlobalUser(u.id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors">
+                    
                               <Avatar className="h-10 w-10">
                                 <AvatarImage src={u.avatar_url || undefined} />
                                 <AvatarFallback>{getInitials(u.name)}</AvatarFallback>
@@ -702,26 +702,26 @@ const Messages = () => {
                                 {t('messageBtn')}
                               </span>
                             </button>
-                          ))}
+                  )}
                         </div>
-                      )}
+                }
 
-                      {globalGroups.length > 0 && (
-                        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md overflow-hidden">
-                          {globalGroups.map((g) => (
-                            <button
-                              key={g.id}
-                              onClick={() => handleGroupClick(g.id)}
-                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors"
-                            >
+                      {globalGroups.length > 0 &&
+                <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md overflow-hidden">
+                          {globalGroups.map((g) =>
+                  <button
+                    key={g.id}
+                    onClick={() => handleGroupClick(g.id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors">
+                    
                               <Avatar className="h-10 w-10">
                                 <AvatarImage src={g.avatar_url || undefined} />
                                 <AvatarFallback className="bg-primary/10">
-                                  {g.type === 'group' ? (
-                                    <Users className="h-5 w-5 text-primary" />
-                                  ) : (
-                                    <Megaphone className="h-5 w-5 text-primary" />
-                                  )}
+                                  {g.type === 'group' ?
+                        <Users className="h-5 w-5 text-primary" /> :
+
+                        <Megaphone className="h-5 w-5 text-primary" />
+                        }
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex-1 min-w-0 text-left">
@@ -734,18 +734,18 @@ const Messages = () => {
                                 {g.description && <p className="text-sm text-muted-foreground truncate">{g.description}</p>}
                               </div>
                             </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
                   )}
+                        </div>
+                }
+                    </div>
+              }
 
                   {/* AI Do'stim - pinned contact */}
                   <div
                 onClick={() => navigate('/ai-chat')}
                 className="flex items-center gap-3 p-4 cursor-pointer active:bg-muted transition-colors relative overflow-hidden group">
                     {/* Glass background effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-purple-500/5 to-pink-500/10 group-hover:from-violet-500/15 group-hover:to-pink-500/15 transition-all" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-purple-500/5 to-pink-500/10 group-hover:from-violet-500/15 group-hover:to-pink-500/15 transition-all rounded-2xl border" />
                     <div className="relative flex items-center gap-3 w-full">
                       <div className="relative">
                         <div className="h-12 w-12 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 p-[2px] shadow-lg shadow-purple-500/30">
