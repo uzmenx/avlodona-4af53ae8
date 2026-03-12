@@ -1,15 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MediaUploadProgress } from './MediaUploadProgress';
 
 interface MediaMessageProps {
   mediaUrl: string;
   mediaType: 'image' | 'video';
   isMine: boolean;
   onFullscreen?: () => void;
+  uploadProgress?: number;
 }
 
-export const MediaMessage = ({ mediaUrl, mediaType, isMine, onFullscreen }: MediaMessageProps) => {
+export const MediaMessage = ({ 
+  mediaUrl, 
+  mediaType, 
+  isMine, 
+  onFullscreen,
+  uploadProgress 
+}: MediaMessageProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -62,7 +70,14 @@ export const MediaMessage = ({ mediaUrl, mediaType, isMine, onFullscreen }: Medi
           className="max-w-full max-h-[300px] rounded-2xl object-cover cursor-pointer"
           onClick={onFullscreen}
         />
-        {onFullscreen && (
+        
+        {uploadProgress !== undefined && uploadProgress < 100 && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] z-10">
+            <MediaUploadProgress progress={uploadProgress} size={32} showText />
+          </div>
+        )}
+
+        {onFullscreen && uploadProgress === undefined && (
           <button
             onClick={onFullscreen}
             className="absolute top-2 right-2 p-1.5 bg-background/30 backdrop-blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
@@ -92,6 +107,12 @@ export const MediaMessage = ({ mediaUrl, mediaType, isMine, onFullscreen }: Medi
         playsInline
         onClick={togglePlay}
       />
+
+      {uploadProgress !== undefined && uploadProgress < 100 && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] z-10">
+          <MediaUploadProgress progress={uploadProgress} size={32} showText />
+        </div>
+      )}
 
       {/* Play overlay */}
       {!isPlaying && (

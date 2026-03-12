@@ -267,9 +267,9 @@ export const GroupSettingsSheet = ({ open, onOpenChange, groupInfo, onGroupUpdat
                     <span className="text-sm font-medium">Taklif havolasi</span>
                   </div>
                   {groupInfo.invite_link ? (
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 text-xs bg-muted/50 p-2 rounded-lg truncate">{window.location.origin}/join/{groupInfo.invite_link}</code>
-                      <Button variant="ghost" size="icon" onClick={copyInviteLink} className="h-8 w-8 rounded-lg">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <code className="text-xs bg-muted/50 p-2 rounded-lg truncate block whitespace-nowrap min-w-0" style={{ maxWidth: 'calc(100vw - 100px)' }}>{window.location.origin}/join/{groupInfo.invite_link}</code>
+                      <Button variant="ghost" size="icon" onClick={copyInviteLink} className="h-8 w-8 rounded-lg shrink-0">
                         {linkCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                       </Button>
                     </div>

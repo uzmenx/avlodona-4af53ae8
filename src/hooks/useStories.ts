@@ -201,13 +201,15 @@ export const useStories = () => {
         }
         
         if (storyData && storyData.user_id !== user.id) {
-          // Avoid accidental duplicates (e.g. rapid toggles / retries)
+          // Only block if a story_like notification was sent in the last 12 hours
+          const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
           const { data: existing, error: existingErr } = await supabase
             .from('notifications')
             .select('id')
             .eq('user_id', storyData.user_id)
             .eq('actor_id', user.id)
             .eq('type', 'story_like')
+            .gte('created_at', twelveHoursAgo)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();

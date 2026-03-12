@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -60,15 +60,22 @@ export const RelativeConnectionSheet = ({
     return null;
   }, [selectedNodeId, selectedFromTab, theirMembers, myMembers]);
 
-  const handleNodeSelect = (member: FamilyMember, fromTab: 'their' | 'mine') => {
-    if (selectedNodeId === member.id && selectedFromTab === fromTab) {
-      setSelectedNodeId(null);
-      setSelectedFromTab(null);
-    } else {
-      setSelectedNodeId(member.id);
-      setSelectedFromTab(fromTab);
-    }
-  };
+  const handleNodeSelect = useCallback((member: FamilyMember, fromTab: 'their' | 'mine') => {
+    setSelectedNodeId(prevNodeId => {
+      setSelectedFromTab(prevFromTab => {
+        if (prevNodeId === member.id && prevFromTab === fromTab) {
+          // Unselect if same node clicked
+          return null;
+        }
+        return fromTab;
+      });
+      return prevNodeId === member.id ? null : member.id;
+    });
+  }, []);
+
+  const handleNodeSelectTheir = useCallback((m: FamilyMember) => handleNodeSelect(m, 'their'), [handleNodeSelect]);
+  const handleNodeSelectMine = useCallback((m: FamilyMember) => handleNodeSelect(m, 'mine'), [handleNodeSelect]);
+  const NOOP_FUNC = useCallback(() => {}, []);
 
   const handleConnect = async () => {
     if (!user?.id || !targetUserId || !selectedNodeId || isSending) return;
@@ -177,8 +184,8 @@ export const RelativeConnectionSheet = ({
                 <FamilyTreeCanvas
                   members={theirMembers}
                   positions={theirPositions}
-                  onOpenProfile={(m) => handleNodeSelect(m, 'their')}
-                  onPositionChange={() => {}}
+                  onOpenProfile={handleNodeSelectTheir}
+                  onPositionChange={NOOP_FUNC}
                   isMergeMode={true}
                   mergeSelectedIds={selectedFromTab === 'their' && selectedNodeId ? [selectedNodeId] : []}
                 />
@@ -201,8 +208,8 @@ export const RelativeConnectionSheet = ({
                 <FamilyTreeCanvas
                   members={myMembers}
                   positions={myPositions}
-                  onOpenProfile={(m) => handleNodeSelect(m, 'mine')}
-                  onPositionChange={() => {}}
+                  onOpenProfile={handleNodeSelectMine}
+                  onPositionChange={NOOP_FUNC}
                   isMergeMode={true}
                   mergeSelectedIds={selectedFromTab === 'mine' && selectedNodeId ? [selectedNodeId] : []}
                 />

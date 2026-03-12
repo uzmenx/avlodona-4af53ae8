@@ -1,19 +1,18 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Send, Loader2, Square, Keyboard } from 'lucide-react';
+import { Send, Loader2, Square, Keyboard, Mic } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const GEMINI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
-interface VoiceMessage {
-  text: string;
-  isUser: boolean;
+interface AIChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+  model?: string;
+  attachments?: { type: string; data: string; name: string }[];
 }
-
-const SILENCE_THRESHOLD = 10;
-const SILENCE_DURATION = 1500;
-
-const STORAGE_KEY = 'ai_voice_history_v2';
 
 const VOICE_SYSTEM_PROMPT = `Siz foydalanuvchi bilan ovozli suhbat qilayotgan AI yordamchisiz.
 Javoblaringiz:
@@ -24,45 +23,36 @@ Javoblaringiz:
 
 type AIState = 'idle' | 'listening' | 'processing' | 'speaking';
 
-const AIVoiceView = () => {
+interface AIVoiceViewProps {
+  messages: AIChatMessage[];
+  setMessages: React.Dispatch<React.SetStateAction<AIChatMessage[]>>;
+}
+
+const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
   const [appState, setAppState] = useState<AIState>('idle');
-  const [history, setHistory] = useState<VoiceMessage[]>([]);
   const [volume, setVolume] = useState(0);
   const [textInput, setTextInput] = useState('');
 
-  const historyRef = useRef<VoiceMessage[]>([]);
+  const messagesRef = useRef<AIChatMessage[]>([]);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const animFrameRef = useRef<number | null>(null);
-  const transcriptRef = useRef('');
-  const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const appStateRef = useRef<AIState>('idle');
 
-  useEffect(() => { historyRef.current = history; }, [history]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { appStateRef.current = appState; }, [appState]);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setHistory(JSON.parse(raw).history || []);
-    } catch { }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ history }));
-  }, [history]);
-
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  useEffect(() => { scrollToBottom(); }, [history]);
+  useEffect(() => { scrollToBottom(); }, [messages]);
 
   const stopEverything = useCallback(() => {
-    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
     }
     window.speechSynthesis?.cancel();
     setAppState('idle');
@@ -95,20 +85,35 @@ const AIVoiceView = () => {
     fakeVolumeAnim();
   }, []);
 
-  const sendQuery = useCallback(async (text: string) => {
-    if (!text.trim() || appStateRef.current === 'processing') return;
+  const sendQuery = useCallback(async (text: string, audioData?: { base64: string, mimeType: string }) => {
+    if (!text.trim() && !audioData) return;
+    if (appStateRef.current === 'processing') return;
 
     stopEverything();
     setAppState('processing');
 
-    const nextHistory = [...historyRef.current, { text, isUser: true }];
-    setHistory(nextHistory);
+    const userMsg: AIChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: text.trim() || (audioData ? '🎤 Ovozli xabar...' : ''),
+      timestamp: new Date(),
+    };
+    
+    setMessages(prev => [...prev, userMsg]);
 
     try {
-      const messages = [
+      const allMsgs = [...messagesRef.current, userMsg];
+      const apiMessages = [
         { role: 'system', content: VOICE_SYSTEM_PROMPT },
-        ...nextHistory.map(h => ({ role: h.isUser ? 'user' : 'assistant', content: h.text }))
+        ...allMsgs.map(h => ({ role: h.role, content: h.content }))
       ];
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const body: any = { messages: apiMessages };
+      if (audioData) {
+        body.audio = audioData.base64;
+        body.mimeType = audioData.mimeType;
+      }
 
       const resp = await fetch(GEMINI_URL, {
         method: 'POST',
@@ -116,7 +121,7 @@ const AIVoiceView = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify(body),
       });
 
       if (!resp.ok) throw new Error('API xatosi');
@@ -126,6 +131,8 @@ const AIVoiceView = () => {
       let result = '';
       let buffer = '';
 
+      const assistantMsgId = crypto.randomUUID();
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -133,19 +140,33 @@ const AIVoiceView = () => {
 
         let idx;
         while ((idx = buffer.indexOf('\n')) !== -1) {
-          let line = buffer.slice(0, idx).trim();
+          const line = buffer.slice(0, idx).trim();
           buffer = buffer.slice(idx + 1);
           if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
           try {
             const parsed = JSON.parse(line.slice(6));
             const c = parsed.choices?.[0]?.delta?.content;
-            if (c) result += c;
-          } catch { }
+            if (c) {
+              result += c;
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.id === assistantMsgId) {
+                  return prev.map(m => m.id === assistantMsgId ? { ...m, content: result } : m);
+                }
+                return [...prev, { 
+                  id: assistantMsgId, 
+                  role: 'assistant', 
+                  content: result, 
+                  timestamp: new Date(),
+                  model: 'Gemini 1.5 Flash'
+                }];
+              });
+            }
+          } catch (err) { console.error('Parse error', err); }
         }
       }
 
       if (result) {
-        setHistory(prev => [...prev, { text: result, isUser: false }]);
         speakText(result);
       } else {
         setAppState('idle');
@@ -154,7 +175,50 @@ const AIVoiceView = () => {
       toast.error('Javob olishda xatolik yuz berdi');
       setAppState('idle');
     }
-  }, [stopEverything, speakText]);
+  }, [stopEverything, speakText, setMessages]);
+
+  const convertWebmToMp3 = async (webmBlob: Blob): Promise<{ base64: string, mimeType: string }> => {
+    try {
+      const { FFmpeg } = await import('@ffmpeg/ffmpeg');
+      const { fetchFile } = await import('@ffmpeg/util');
+
+      const ffmpeg = new FFmpeg();
+      await ffmpeg.load({
+        coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/ffmpeg-core.js',
+        wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/ffmpeg-core.wasm',
+      });
+
+      const inputName = 'input.webm';
+      const outputName = 'output.mp3';
+      
+      await ffmpeg.writeFile(inputName, await fetchFile(webmBlob));
+      
+      await ffmpeg.exec(['-i', inputName, '-vn', '-ab', '128k', '-ar', '44100', '-y', outputName]);
+
+      const data = await ffmpeg.readFile(outputName);
+      const uint8 = data instanceof Uint8Array ? data : new TextEncoder().encode(data as string);
+      
+      let binary = '';
+      const len = uint8.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(uint8[i]);
+      }
+      const base64 = btoa(binary);
+
+      ffmpeg.terminate();
+      return { base64, mimeType: 'audio/mp3' };
+    } catch (err) {
+      console.error('FFmpeg error:', err);
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(webmBlob);
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve({ base64, mimeType: 'audio/webm' });
+        };
+      });
+    }
+  };
 
   const startListening = async () => {
     stopEverything();
@@ -170,43 +234,27 @@ const AIVoiceView = () => {
       source.connect(analyser);
       analyserRef.current = analyser;
 
-      transcriptRef.current = '';
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
 
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'uz-UZ';
-        recognition.interimResults = true;
-        recognition.continuous = true;
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
 
-        recognition.onresult = (e: any) => {
-          let currentTranscript = '';
-          for (let i = e.resultIndex; i < e.results.length; i++) {
-            currentTranscript += e.results[i][0].transcript;
-          }
-          transcriptRef.current = currentTranscript;
+      mediaRecorder.onstop = async () => {
+        const webmBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (webmBlob.size < 1000) {
+          setAppState('idle');
+          return;
+        }
+        
+        setAppState('processing');
+        const audioData = await convertWebmToMp3(webmBlob);
+        sendQuery('', audioData);
+      };
 
-          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-          silenceTimerRef.current = setTimeout(() => {
-            if (transcriptRef.current.trim()) {
-              sendQuery(transcriptRef.current);
-            } else {
-              setAppState('idle');
-            }
-          }, SILENCE_DURATION);
-        };
-
-        recognition.onerror = (e: any) => {
-          if (e.error !== 'no-speech') setAppState('idle');
-        };
-
-        recognition.start();
-        recognitionRef.current = recognition;
-      } else {
-        toast.error("Brauzeringiz ovoz aniqlashni qo'llab-quvvatlamaydi. Matn yozing.");
-        setAppState('idle');
-        return;
-      }
+      mediaRecorder.start();
 
       const updateVolume = () => {
         if (!analyserRef.current || appStateRef.current !== 'listening') return;
@@ -275,31 +323,35 @@ const AIVoiceView = () => {
 
               {/* AI "Eyes" */}
               <div className="flex gap-3 z-10">
-                <div className={cn(
-                  "w-2.5 bg-foreground rounded-full transition-all duration-300",
-                  isListening ? "h-6 shadow-[0_0_10px_hsl(var(--foreground))]" :
-                  isSpeaking ? "h-8 animate-pulse shadow-[0_0_15px_hsl(var(--foreground))]" :
-                  isProcessing ? "h-3 animate-bounce" :
-                  "h-3 opacity-50"
-                )} />
-                <div className={cn(
-                  "w-2.5 bg-foreground rounded-full transition-all duration-300 delay-75",
-                  isListening ? "h-6 shadow-[0_0_10px_hsl(var(--foreground))]" :
-                  isSpeaking ? "h-8 animate-pulse shadow-[0_0_15px_hsl(var(--foreground))]" :
-                  isProcessing ? "h-3 animate-bounce" :
-                  "h-3 opacity-50"
-                )} />
+                {isListening ? (
+                  <Mic className="w-8 h-8 text-foreground animate-pulse" />
+                ) : (
+                  <>
+                    <div className={cn(
+                      "w-2.5 bg-foreground rounded-full transition-all duration-300",
+                      isSpeaking ? "h-8 animate-pulse shadow-[0_0_15px_hsl(var(--foreground))]" :
+                      isProcessing ? "h-3 animate-bounce" :
+                      "h-3 opacity-50"
+                    )} />
+                    <div className={cn(
+                      "w-2.5 bg-foreground rounded-full transition-all duration-300 delay-75",
+                      isSpeaking ? "h-8 animate-pulse shadow-[0_0_15px_hsl(var(--foreground))]" :
+                      isProcessing ? "h-3 animate-bounce" :
+                      "h-3 opacity-50"
+                    )} />
+                  </>
+                )}
               </div>
             </div>
           </div>
         </div>
 
         {/* Status text */}
-        <div className="h-6">
-          {isListening && <p className="text-sm font-medium tracking-widest text-foreground/70 animate-pulse">TINGLAYAPMAN...</p>}
+        <div className="h-6 text-center">
+          {isListening && <p className="text-sm font-medium tracking-widest text-foreground/70 animate-pulse uppercase">Tinglamoqda... (To'xtatish uchun bosing)</p>}
           {isProcessing && <p className="text-sm font-medium tracking-widest text-primary animate-pulse flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> O'YLANMOQDA</p>}
           {isSpeaking && <p className="text-sm font-medium tracking-widest text-emerald-400 animate-pulse">GAPIRYAPMAN...</p>}
-          {appState === 'idle' && <p className="text-xs text-muted-foreground tracking-wider">BOSHLASH UCHUN BOSING</p>}
+          {appState === 'idle' && <p className="text-xs text-muted-foreground tracking-wider underline underline-offset-4">GAPIRISH UCHUN BOSING</p>}
         </div>
 
         {appState !== 'idle' && (
@@ -316,14 +368,14 @@ const AIVoiceView = () => {
       <div className="w-full max-w-md bg-card/50 border border-border/50 rounded-3xl p-4 h-[160px] flex flex-col relative overflow-hidden mb-4 shadow-xl">
         <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-background to-transparent z-10" />
         <div className="flex-1 overflow-y-auto space-y-3 py-2 scrollbar-hide">
-          {history.length > 0 ? (
-            history.map((item, i) => (
-              <div key={i} className={cn('text-sm w-full flex', item.isUser ? 'justify-end' : 'justify-start')}>
+          {messages.length > 0 ? (
+            messages.map((item, i) => (
+              <div key={i} className={cn('text-sm w-full flex', item.role === 'user' ? 'justify-end' : 'justify-start')}>
                 <div className={cn(
                   "px-4 py-2 rounded-2xl max-w-[85%] leading-relaxed",
-                  item.isUser ? "bg-primary/20 text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
+                  item.role === 'user' ? "bg-primary/20 text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
                 )}>
-                  {item.text}
+                  {item.content}
                 </div>
               </div>
             ))

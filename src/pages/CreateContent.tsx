@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,6 +33,8 @@ type Step = 'media' | 'publish';
 
 const CreateContent = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const memoryMemberId = searchParams.get('memberId');
   const { user } = useAuth();
 
   const { collections: postCollections, createCollection: createPostCollection } = usePostCollections();
@@ -181,7 +183,8 @@ const CreateContent = () => {
         mentionIds,
         collabIds,
         postCollectionIds: sharePost ? Array.from(selectedPostCollectionIds) : [],
-        storyHighlightId: shareStory ? selectedStoryHighlightId : null
+        storyHighlightId: shareStory ? selectedStoryHighlightId : null,
+        memoryMemberId
       });
 
       toast.success('Yuklanmoqda…');
@@ -225,10 +228,16 @@ const CreateContent = () => {
           className="h-8 px-4 rounded-full text-xs font-semibold"
           onClick={handlePublish}
           disabled={editedFiles.length === 0}>
-          
           Ulashish
         </Button>
       </header>
+
+      {memoryMemberId && (
+        <div className="bg-primary/10 px-4 py-2 border-b border-primary/20 flex items-center gap-2">
+          <AtSign className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium text-primary">Bu post xotira sifatida saqlanadi</span>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-lg mx-auto px-3 py-3 space-y-3">

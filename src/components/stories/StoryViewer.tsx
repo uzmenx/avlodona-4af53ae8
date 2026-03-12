@@ -115,7 +115,7 @@ export const StoryViewer = ({
           savedAt: now,
         })
       );
-    } catch {}
+    } catch (e) { /* ignore */ }
   }, [currentGroupIndex, currentStory?.media_type, currentStoryIndex, getPersistKey, isMuted, isPaused]);
 
   useEffect(() => {
@@ -149,7 +149,7 @@ export const StoryViewer = ({
 
       if (typeof parsed.paused === 'boolean') setIsPaused(parsed.paused);
       if (typeof parsed.muted === 'boolean') setIsMuted(parsed.muted);
-    } catch {}
+    } catch (e) { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -181,13 +181,13 @@ export const StoryViewer = ({
         getLocalLikeKey(storyId),
         JSON.stringify({ liked, expiresAt: Date.now() + ttlMs })
       );
-    } catch {}
+    } catch (e) { /* ignore */ }
   }, [getLocalLikeKey]);
 
   const removeLocalLike = useCallback((storyId: string) => {
     try {
       localStorage.removeItem(getLocalLikeKey(storyId));
-    } catch {}
+    } catch (e) { /* ignore */ }
   }, [getLocalLikeKey]);
 
   // Record view when story changes
@@ -211,29 +211,51 @@ export const StoryViewer = ({
       try {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
-      } catch {}
+      } catch (e) { /* ignore */ }
     }
     stopActiveAudio(audioKey || undefined);
 
     // Auto-play music if story has audio
     if (currentStory?.audio_url && audioRef.current && audioKey) {
       const el = audioRef.current;
-      const autoPlay = async () => {
+      let cancelled = false;
+
+      const doPlay = async () => {
+        if (cancelled) return;
         try {
-          el.src = currentStory.audio_url!;
-          el.loop = true;
-          el.preload = 'auto';
-          el.crossOrigin = 'anonymous';
-          try { el.load(); } catch {}
           const ok = await playExclusiveAudio(audioKey, el);
-          setIsMusicPlaying(ok && !el.paused);
+          if (!cancelled) setIsMusicPlaying(ok && !el.paused);
         } catch {
-          setIsMusicPlaying(false);
+          if (!cancelled) setIsMusicPlaying(false);
         }
       };
-      // Small delay to let the story render first
-      const t = setTimeout(autoPlay, 300);
-      return () => clearTimeout(t);
+
+      // Set up source and load
+      el.src = currentStory.audio_url;
+      el.loop = true;
+      el.preload = 'auto';
+      el.crossOrigin = 'anonymous';
+
+      // Try to play once audio is ready
+      const onReady = () => {
+        el.removeEventListener('canplaythrough', onReady);
+        doPlay();
+      };
+      el.addEventListener('canplaythrough', onReady);
+
+      try { el.load(); } catch (e) { /* ignore */ }
+
+      // Fallback: if canplaythrough doesn't fire within 1.5s, try anyway
+      const fallback = setTimeout(() => {
+        el.removeEventListener('canplaythrough', onReady);
+        doPlay();
+      }, 1500);
+
+      return () => {
+        cancelled = true;
+        el.removeEventListener('canplaythrough', onReady);
+        clearTimeout(fallback);
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentGroupIndex, currentStoryIndex]);
@@ -250,7 +272,7 @@ export const StoryViewer = ({
     if (!audioRef.current) return;
     try {
       audioRef.current.pause();
-    } catch {}
+    } catch (e) { /* ignore */ }
     setIsMusicPlaying(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPaused]);
@@ -314,10 +336,10 @@ export const StoryViewer = ({
             ) {
               try {
                 el.currentTime = parsed.videoTime;
-              } catch {}
+              } catch (e) { /* ignore */ }
             }
           }
-        } catch {}
+        } catch (e) { /* ignore */ }
       }
 
       const onTime = () => {
@@ -370,14 +392,14 @@ export const StoryViewer = ({
     if (isPaused) {
       try {
         el.pause();
-      } catch {}
+      } catch (e) { /* ignore */ }
       persistState();
       return;
     }
     void (async () => {
       try {
         await el.play();
-      } catch {}
+      } catch (e) { /* ignore */ }
     })();
   }, [currentStory, isMuted, isPaused, persistState]);
 
@@ -392,7 +414,7 @@ export const StoryViewer = ({
       }
       try {
         el.pause();
-      } catch {}
+      } catch (e) { /* ignore */ }
       el.muted = true;
       el.volume = 0;
     }
@@ -457,7 +479,7 @@ export const StoryViewer = ({
     if (isActiveAudio(audioKey) && !el.paused) {
       try {
         el.pause();
-      } catch {}
+      } catch (e) { /* ignore */ }
       stopActiveAudio(audioKey);
       setIsMusicPlaying(false);
       return;
@@ -468,8 +490,8 @@ export const StoryViewer = ({
       el.loop = true;
       el.preload = 'auto';
       el.crossOrigin = 'anonymous';
-      try { el.load(); } catch {}
-    } catch {}
+      try { el.load(); } catch (e) { /* ignore */ }
+    } catch (e) { /* ignore */ }
 
     // If story is paused, unpause so the paused-effect doesn't immediately stop audio.
     setIsPaused(false);
@@ -728,7 +750,7 @@ export const StoryViewer = ({
                 audioUrl: currentStory?.audio_url,
                 mediaError: audioRef.current ? (audioRef.current as any).error : undefined,
               });
-            } catch {}
+            } catch (e) { /* ignore */ }
             toast.error('Musiqa yuklanmadi');
           }}
           onEnded={() => setIsMusicPlaying(false)}

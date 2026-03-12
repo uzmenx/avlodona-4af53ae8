@@ -47,6 +47,9 @@ const edgeTypes: EdgeTypes = {
   child: ChildEdge as any,
 };
 
+const EMPTY_MAP = new Map();
+const EMPTY_ARRAY: string[] = [];
+
 export const FamilyTreeCanvas = ({
   members,
   positions,
@@ -56,14 +59,13 @@ export const FamilyTreeCanvas = ({
   onDragEnd,
   readOnly = false,
    isMergeMode = false,
-   mergeSelectedIds = [],
-   mergedProfiles = new Map(),
+   mergeSelectedIds = EMPTY_ARRAY,
+   mergedProfiles = EMPTY_MAP,
    onLongPress,
    onToggleMergeSelect,
    // Spouse lock props
    isPairLocked,
 }: FamilyTreeCanvasProps) => {
-  const didFitViewRef = useRef(false);
   const flowInstanceRef = useRef<any>(null);
   const isDraggingRef = useRef(false);
   const draggedNodeIdRef = useRef<string | null>(null);
@@ -229,6 +231,7 @@ export const FamilyTreeCanvas = ({
        const mergedNames = [...new Set([...dbMergedNames, ...localMergedNames])];
  
         nextNodes.push({
+          ...(existing || {}),
           id: member.id,
           type: 'familyMember',
           position,
@@ -259,7 +262,7 @@ export const FamilyTreeCanvas = ({
 
       const inst = flowInstanceRef.current;
       if (inst && typeof inst.fitView === 'function') {
-        inst.fitView({ padding: 0.4 });
+        setTimeout(() => inst.fitView({ padding: 0.4, duration: 600 }), 100);
       }
     };
 
@@ -279,13 +282,11 @@ export const FamilyTreeCanvas = ({
         nodesDraggable={!readOnly}
         nodesConnectable={!readOnly}
         elementsSelectable={!readOnly}
-        fitView={false}
+        fitView={true}
+        fitViewOptions={{ padding: 0.4, duration: 600 }}
         style={{ touchAction: 'none' }}
         onInit={(instance) => {
           flowInstanceRef.current = instance;
-          if (didFitViewRef.current) return;
-          instance.fitView({ padding: 0.4 });
-          didFitViewRef.current = true;
         }}
         minZoom={0.2}
         maxZoom={2}

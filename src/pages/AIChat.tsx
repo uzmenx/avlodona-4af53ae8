@@ -10,6 +10,7 @@ import AIImageView from '@/components/ai/AIImageView';
 import AIVoiceView from '@/components/ai/AIVoiceView';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 type AITab = 'chat' | 'image' | 'voice';
 
@@ -118,15 +119,17 @@ const AIChat = () => {
     let id = '';
     try {
       id = localStorage.getItem(DEFAULT_SESSION_STORAGE_KEY) || '';
-    } catch {
-      id = '';
+    } catch (idErr) {
+      console.error('LocalStorage access error:', idErr);
     }
 
     if (!id) {
       id = newId();
       try {
         localStorage.setItem(DEFAULT_SESSION_STORAGE_KEY, id);
-      } catch {}
+      } catch (e) {
+        console.error('Failed to save to local storage', e);
+      }
     }
 
     const s: ChatSession = { id, title: 'New Chat', updatedAt: Date.now(), messages: [] };
@@ -167,7 +170,10 @@ const AIChat = () => {
             })),
             { onConflict: 'id' }
           );
-          if (!error) {
+          if (error) {
+            console.error('Supabase upsert error:', error);
+            toast.error('Xabarlarni saqlashda xatolik');
+          } else {
             newMsgs.forEach(m => savedMsgIdsRef.current.add(m.id));
           }
         }
@@ -187,12 +193,14 @@ const AIChat = () => {
         if (emptyConvIds.length > 0) {
           await supabase.from('ai_conversations').delete().in('id', emptyConvIds);
         }
-      } catch {}
+      } catch (cleanupErr) {
+        console.error('Cleanup empty conversations error:', cleanupErr);
+      }
     };
     cleanupEmpty();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbLoaded, user?.id]); // Only run once after load
 
-  // Watch for session changes and debounce save
   useEffect(() => {
     if (!dbLoaded || !user?.id) return;
     clearTimeout(saveTimerRef.current);
@@ -233,7 +241,7 @@ const AIChat = () => {
     setSessions((prev) =>
       prev.map((sess) => {
         if (sess.id !== s.id) return sess;
-        const nextMessages = typeof updater === 'function' ? (updater as any)(sess.messages) : updater;
+        const nextMessages = typeof updater === 'function' ? (updater as (prev: AIChatMessage[]) => AIChatMessage[])(sess.messages) : updater;
 
         let title = sess.title;
         if (!title || title === 'New Chat') {
@@ -373,7 +381,7 @@ const AIChat = () => {
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           )}>
           <div className="p-4 flex items-center justify-between">
-            <div className="font-bold text-foreground">​Avlodona</div>
+            <div className="font-bold text-foreground">Avlodona</div>
             <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
               <X className="h-5 w-5" />
             </Button>
@@ -431,7 +439,12 @@ const AIChat = () => {
               setMessages={setMessagesForActive} />
           }
           {activeTab === 'image' && <AIImageView />}
-          {activeTab === 'voice' && <AIVoiceView />}
+          {activeTab === 'voice' && 
+            <AIVoiceView 
+              messages={activeSession?.messages || []} 
+              setMessages={setMessagesForActive} 
+            />
+          }
         </main>
       </div>
 

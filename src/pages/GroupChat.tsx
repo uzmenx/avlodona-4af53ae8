@@ -102,7 +102,7 @@ const GroupChat = () => {
   const [isJoining, setIsJoining] = useState(false);
 
   // Media handling
-  const [selectedMedia, setSelectedMedia] = useState<MediaFile | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<MediaFile[]>([]);
   const [fullscreenMedia, setFullscreenMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
   const voiceRecorder = useVoiceRecorder();
 
@@ -183,14 +183,14 @@ const GroupChat = () => {
           group_id: groupId,
           user_id: user.id,
           role: 'member',
-        } as any,
+        } as { group_id: string; user_id: string; role: string },
         { onConflict: 'group_id,user_id' }
       );
       if (error) throw error;
       toast.success("Qo'shildingiz");
       await fetchGroupInfo();
-    } catch (e: any) {
-      toast.error(e?.message || 'Xatolik yuz berdi');
+    } catch (e: unknown) {
+      toast.error((e as { message?: string })?.message || 'Xatolik yuz berdi');
     } finally {
       setIsJoining(false);
     }
@@ -270,13 +270,13 @@ const GroupChat = () => {
       .channel(`group-messages-${groupId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages', filter: `group_id=eq.${groupId}` },
         async (payload) => {
-          const newMsg = payload.new as any;
-          const { data: profile } = await supabase.from('profiles').select('id, name, username, avatar_url').eq('id', newMsg.sender_id).single();
-          setMessages(prev => [...prev, { ...newMsg, sender: profile }]);
+          const newMsg = payload.new as Record<string, unknown>;
+          const { data: profile } = await supabase.from('profiles').select('id, name, username, avatar_url').eq('id', newMsg.sender_id as string).single();
+          setMessages(prev => [...prev, { ...newMsg, sender: profile } as GroupMessage]);
         })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'group_messages', filter: `group_id=eq.${groupId}` },
         (payload) => {
-          setMessages(prev => prev.filter(m => m.id !== (payload.old as any).id));
+          setMessages(prev => prev.filter(m => m.id !== (payload.old as Record<string, unknown>).id));
         })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -286,8 +286,11 @@ const GroupChat = () => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
+  const [voiceRecorderObj, setVoiceRecorderObj] = useState<ReturnType<typeof useVoiceRecorder>>(voiceRecorder);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+
   const handleSendMessage = async () => {
-    if (!groupId || !user?.id || (!newMessage.trim() && !selectedMedia && !voiceRecorder.audioBlob)) return;
+    if (!groupId || !user?.id || (!newMessage.trim() && !selectedMedia.length && !voiceRecorder.audioBlob)) return;
     if (isSending) return;
     setIsSending(true);
     try {
@@ -301,26 +304,57 @@ const GroupChat = () => {
         setReplyTo(null);
       }
 
+      const timestampForId = new Date().toISOString();
+
       if (voiceRecorder.audioBlob) {
         const audioFile = new File([voiceRecorder.audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
-        mediaUrl = await uploadToR2(audioFile, `group-messages/${user.id}`);
+        const voiceId = `voice-${user.id}-${timestampForId}`;
+        mediaUrl = await uploadToR2(
+          audioFile, 
+          `group-messages/${user.id}`, 
+          undefined, 
+          (prog) => setUploadProgress(prev => ({ ...prev, [voiceId]: prog }))
+        );
         mediaType = 'audio';
         content = content || '🎤 Ovozli xabar';
         voiceRecorder.cancelRecording();
+        setUploadProgress(prev => { const n = { ...prev }; delete n[voiceId]; return n; });
       }
 
-      if (selectedMedia) {
-        mediaUrl = await uploadMedia(selectedMedia.file, 'group-messages', user.id);
-        mediaType = selectedMedia.type;
-        content = content || (selectedMedia.type === 'image' ? '📷 Rasm' : '🎬 Video');
-        setSelectedMedia(null);
+      if (selectedMedia.length > 0) {
+        for (let i = 0; i < selectedMedia.length; i++) {
+          const media = selectedMedia[i];
+          const mediaId = `media-${user.id}-${timestampForId}`; 
+          const mUrl = await uploadMedia(
+            media.file, 
+            'group-messages', 
+            user.id, 
+            (prog) => setUploadProgress(prev => ({ ...prev, [mediaId]: prog }))
+          );
+          const mType = media.type;
+          const { error } = await supabase.from('group_messages').insert({
+            group_id: groupId, 
+            sender_id: user.id, 
+            content: (media.type === 'image' ? '📷 Rasm' : '🎬 Video'),
+            media_url: mUrl, 
+            media_type: mType,
+            created_at: timestampForId
+          });
+          if (error) throw error;
+          URL.revokeObjectURL(media.preview);
+          setUploadProgress(prev => { const n = { ...prev }; delete n[mediaId]; return n; });
+        }
+        setSelectedMedia([]);
       }
 
-      const { error } = await supabase.from('group_messages').insert({
-        group_id: groupId, sender_id: user.id, content: content || 'Xabar',
-        media_url: mediaUrl, media_type: mediaType
-      });
-      if (error) throw error;
+      if (newMessage.trim() || voiceRecorder.audioBlob) {
+        const { error } = await supabase.from('group_messages').insert({
+          group_id: groupId, sender_id: user.id, content: content || 'Xabar',
+          media_url: mediaUrl, media_type: mediaType,
+          created_at: timestampForId
+        });
+        if (error) throw error;
+      }
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
@@ -383,21 +417,21 @@ const GroupChat = () => {
     if (inviteLoadingRef.current.has(inviteLink)) return;
     inviteLoadingRef.current.add(inviteLink);
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await (supabase as unknown as { rpc: (fn: string, args: Record<string, string>) => { maybeSingle: () => Promise<{ data: InvitePreview | null; error: Error | null }> } })
         .rpc('get_group_invite_preview', { invite: inviteLink })
         .maybeSingle();
       if (error) throw error;
 
-      setInviteCache((prev) => ({ ...prev, [inviteLink]: (data as any as InvitePreview) || null }));
+      setInviteCache((prev) => ({ ...prev, [inviteLink]: data || null }));
 
       if (data?.id && user?.id) {
-        if ((data as any).owner_id === user.id) {
+        if ((data as InvitePreview & { owner_id?: string }).owner_id === user.id) {
           setInviteMemberCache((prev) => ({ ...prev, [inviteLink]: true }));
         } else {
           const { data: membership } = await supabase
             .from('group_members')
             .select('id')
-            .eq('group_id', (data as any).id)
+            .eq('group_id', (data as InvitePreview).id)
             .eq('user_id', user.id)
             .maybeSingle();
           setInviteMemberCache((prev) => ({ ...prev, [inviteLink]: !!membership }));
@@ -422,24 +456,39 @@ const GroupChat = () => {
           group_id: group.id,
           user_id: user.id,
           role: 'member',
-        } as any,
+        } as { group_id: string; user_id: string; role: string },
         { onConflict: 'group_id,user_id' }
       );
       if (error) throw error;
       toast.success("Qo'shildingiz");
       navigate(`/group-chat/${group.id}`);
-    } catch (e: any) {
-      toast.error(e?.message || 'Xatolik yuz berdi');
+    } catch (e: unknown) {
+      toast.error((e as { message?: string })?.message || 'Xatolik yuz berdi');
     }
   }, [navigate, user?.id]);
 
   const renderMessageContent = (message: GroupMessage) => {
     const isOwn = message.sender_id === user?.id;
-    if (message.media_type === 'audio' && message.media_url)
-      return <VoiceMessage audioUrl={message.media_url} isMine={isOwn} />;
-    if ((message.media_type === 'image' || message.media_type === 'video') && message.media_url)
-      return <MediaMessage mediaUrl={message.media_url} mediaType={message.media_type as 'image' | 'video'} isMine={isOwn}
-        onFullscreen={() => setFullscreenMedia({ url: message.media_url!, type: message.media_type as 'image' | 'video' })} />;
+    if (message.media_type === 'audio' && message.media_url) {
+      return (
+        <VoiceMessage
+          audioUrl={message.media_url}
+          isMine={isOwn}
+          uploadProgress={uploadProgress[`voice-${message.sender_id}-${new Date(message.created_at).getTime()}`]}
+        />
+      );
+    }
+    if ((message.media_type === 'image' || message.media_type === 'video') && message.media_url) {
+      return (
+        <MediaMessage
+          mediaUrl={message.media_url}
+          mediaType={message.media_type as 'image' | 'video'}
+          isMine={isOwn}
+          onFullscreen={() => setFullscreenMedia({ url: message.media_url!, type: message.media_type as 'image' | 'video' })}
+          uploadProgress={uploadProgress[`media-${message.sender_id}-${new Date(message.created_at).getTime()}-0`]} // Assuming single media per message for simplicity here, or adjust tempId logic
+        />
+      );
+    }
 
     const joinInvite = extractJoinInvite(message.content);
     if (joinInvite) {
@@ -532,7 +581,7 @@ const GroupChat = () => {
       )}
 
       {/* Premium Header */}
-      <div className="sticky top-0 z-40 bg-background/50 backdrop-blur-xl border-b border-border/20 px-4 py-2.5 relative">
+      <div className="sticky top-0 z-40 bg-background/50 backdrop-blur-xl border-b border-border/20 px-4 py-2.5">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/messages')} className="h-9 w-9 rounded-xl">
             <ArrowLeft className="h-5 w-5" />
@@ -670,7 +719,7 @@ const GroupChat = () => {
 
       {/* Premium Input Bar */}
       {canSend ? (
-        <div className="sticky bottom-0 bg-background/50 backdrop-blur-xl border-t border-border/20 p-2 relative z-20">
+        <div className="sticky bottom-0 bg-background/50 backdrop-blur-xl border-t border-border/20 p-2 z-20">
           {voiceRecorder.isRecording && (
             <div className="mb-2 flex items-center gap-3 px-4 py-2 bg-destructive/10 rounded-2xl mx-1">
               <div className="h-2.5 w-2.5 rounded-full bg-destructive animate-pulse" />
@@ -680,21 +729,28 @@ const GroupChat = () => {
               </Button>
             </div>
           )}
-          {selectedMedia && (
-            <div className="mb-2 mx-1 relative">
+          {selectedMedia.map((media, idx) => (
+            <div key={idx} className="mb-2 mx-1 relative inline-block">
               <div className="h-20 w-20 rounded-2xl overflow-hidden border border-border/50">
-                {selectedMedia.type === 'image' ? (
-                  <img src={selectedMedia.preview} alt="" className="w-full h-full object-cover" />
+                {media.type === 'image' ? (
+                  <img src={media.preview} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <video src={selectedMedia.preview} className="w-full h-full object-cover" />
+                  <video src={media.preview} className="w-full h-full object-cover" />
                 )}
               </div>
-              <button onClick={() => setSelectedMedia(null)}
-                className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-white rounded-full flex items-center justify-center">
+              <button 
+                onClick={() => {
+                  const next = [...selectedMedia];
+                  URL.revokeObjectURL(next[idx].preview);
+                  next.splice(idx, 1);
+                  setSelectedMedia(next);
+                }}
+                className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-white rounded-full flex items-center justify-center shadow-lg"
+              >
                 <X className="h-3 w-3" />
               </button>
             </div>
-          )}
+          ))}
           <div className="flex items-center gap-1.5 bg-card/50 backdrop-blur-md border border-border/50 rounded-[24px] px-2 py-1">
             <ChatMediaPicker selectedMedia={selectedMedia} onMediaSelect={setSelectedMedia} />
             {!voiceRecorder.isRecording && !voiceRecorder.audioBlob ? (
@@ -706,7 +762,7 @@ const GroupChat = () => {
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                   className="flex-1 bg-transparent border-none focus:outline-none text-foreground placeholder:text-muted-foreground h-9 text-sm px-1"
                 />
-                {newMessage.trim() || selectedMedia ? (
+                {newMessage.trim() || selectedMedia.length > 0 ? (
                   <button onClick={handleSendMessage} disabled={isSending}
                     className="w-9 h-9 rounded-full bg-gradient-to-r from-[hsl(217,91%,60%)] to-[hsl(263,70%,50%)] flex items-center justify-center text-white shadow-lg shadow-primary/30 transition-transform active:scale-90">
                     <Send className="h-4 w-4" />
@@ -741,7 +797,7 @@ const GroupChat = () => {
           </div>
         </div>
       ) : (
-        <div className="sticky bottom-0 bg-muted/30 backdrop-blur-xl border-t border-border/20 p-4 text-center relative z-20">
+        <div className="sticky bottom-0 bg-muted/30 backdrop-blur-xl border-t border-border/20 p-4 text-center z-20">
           <p className="text-sm text-muted-foreground">
             {groupInfo?.type === 'channel'
               ? 'Faqat kanal egasi xabar yuborishi mumkin'

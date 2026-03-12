@@ -43,7 +43,8 @@ export async function compressImage(
 export async function uploadToR2(
   file: File | Blob,
   folder: string,
-  fileName?: string
+  fileName?: string,
+  onProgress?: (progress: number) => void
 ): Promise<string> {
   const ext = file instanceof File
     ? file.name.split('.').pop() || 'bin'
@@ -62,25 +63,43 @@ export async function uploadToR2(
   const { data: { session } } = await supabase.auth.getSession();
 
   const doUpload = async (): Promise<string> => {
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/r2-upload?action=upload`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: formData,
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/r2-upload?action=upload`);
+      
+      xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`);
+      xhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+
+      if (onProgress) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = (event.loaded / event.total) * 100;
+            onProgress(percentComplete);
+          }
+        };
       }
-    );
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-      throw new Error(err.error || `Upload failed: ${res.status}`);
-    }
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            resolve(data.url);
+          } catch (e) {
+            reject(new Error('Failed to parse upload response'));
+          }
+        } else {
+          try {
+            const err = JSON.parse(xhr.responseText);
+            reject(new Error(err.error || `Upload failed: ${xhr.status}`));
+          } catch (e) {
+            reject(new Error(`Upload failed: ${xhr.status}`));
+          }
+        }
+      };
 
-    const data = await res.json();
-    return data.url;
+      xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.send(formData);
+    });
   };
 
   // Try once, retry on failure
@@ -98,7 +117,8 @@ export async function uploadToR2(
 export async function uploadMedia(
   file: File,
   folder: string,
-  userId: string
+  userId: string,
+  onProgress?: (progress: number) => void
 ): Promise<string> {
   const isImage = file.type.startsWith('image/');
   const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
@@ -106,12 +126,12 @@ export async function uploadMedia(
 
   if (isImage) {
     if (isGif) {
-      return uploadToR2(file, userFolder);
+      return uploadToR2(file, userFolder, undefined, onProgress);
     }
     const compressed = await compressImage(file);
-    return uploadToR2(compressed, userFolder);
+    return uploadToR2(compressed, userFolder, undefined, onProgress);
   }
 
   // Videos, audio (mp3, wav, ogg, m4a), and other files uploaded raw
-  return uploadToR2(file, userFolder);
+  return uploadToR2(file, userFolder, undefined, onProgress);
 }

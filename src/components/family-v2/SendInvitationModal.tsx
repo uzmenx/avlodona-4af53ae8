@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Send, User, Users, UserPlus } from 'lucide-react';
+import { Search, Send, User, Users, UserPlus, Phone, Link as LinkIcon, CheckCircle2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FamilyMember } from '@/types/family';
 import { cn } from '@/lib/utils';
 import { StarUsername } from '@/components/user/StarUsername';
+import { Contacts } from '@capacitor-community/contacts';
+import { Capacitor } from '@capacitor/core';
 
 interface SendInvitationModalProps {
   isOpen: boolean;
@@ -33,7 +35,7 @@ export const SendInvitationModal = ({
   onClose,
   member,
 }: SendInvitationModalProps) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
@@ -42,6 +44,8 @@ export const SendInvitationModal = ({
   const [isSearching, setIsSearching] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isLoadingFollows, setIsLoadingFollows] = useState(false);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // The gender that the invited person should be (matches the placeholder member's gender)
   const requiredGender = member?.gender;
@@ -50,6 +54,7 @@ export const SendInvitationModal = ({
   useEffect(() => {
     if (isOpen && user?.id) {
       fetchFollowData();
+      setCopiedLink(false);
     }
   }, [isOpen, user?.id]);
 
@@ -95,6 +100,114 @@ export const SendInvitationModal = ({
       console.error('Error fetching follow data:', error);
     } finally {
       setIsLoadingFollows(false);
+    }
+  };
+
+  const createInviteToken = async () => {
+    if (!member || !user?.id) return null;
+    
+    setIsGeneratingLink(true);
+    try {
+      const { data, error } = await supabase
+        .from('family_invites')
+        .insert({
+          invited_by: user.id,
+          tree_node_id: member.id, // Using the node ID 
+          relation_type: 'family_member', 
+        })
+        .select('token')
+        .single();
+        
+      if (error) throw error;
+      return data.token;
+    } catch (error) {
+      console.error('Error creating invite token:', error);
+      toast({
+        title: "Xato",
+        description: "Havola yaratishda xatolik ro'y berdi",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    const token = await createInviteToken();
+    if (!token) return;
+    
+    // Base URL dynamically based on environment or fixed
+    const baseUrl = window.location.origin;
+    const inviteLink = `${baseUrl}/invite/${token}`;
+    
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopiedLink(true);
+      toast({
+        title: "Nusxalandi!",
+        description: "Taklif havolasi xotiraga nusxalandi",
+      });
+      setTimeout(() => setCopiedLink(false), 3000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      toast({
+        title: "Xato",
+        description: "Havolani nusxalash imkonsiz",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePickContactAndSend = async () => {
+    if (!Capacitor.isNativePlatform()) {
+      toast({
+        title: "Platforma qo'llab-quvvatlanmaydi",
+        description: "Kontaktlardan tanlash faqat mobil ilovada mavjud.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      const permission = await Contacts.requestPermissions();
+      if (permission.contacts !== 'granted') {
+        toast({
+          title: "Ruxsat yo'q",
+          description: "Kontaktlarga kirishga ruxsat berilmadi",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const result = await Contacts.pickContact({ projection: { name: true, phones: true } });
+      const contact = result.contact;
+      
+      if (!contact || !contact.phones || contact.phones.length === 0) {
+        toast({
+          title: "Raqam yo'q",
+          description: "Tanlangan kontaktda telefon raqami mavjud emas",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const phoneNumber = contact.phones[0].number;
+      const token = await createInviteToken();
+      if (!token) return;
+      
+      const baseUrl = window.location.origin;
+      const inviteLink = `${baseUrl}/invite/${token}`;
+      const senderName = profile?.name || "foydalanuvchi";
+      const message = `Siz ${senderName} oila daraxtiga qo'shilishga taklif qilindingiz!\n${inviteLink}`;
+      
+      // Open native SMS composer
+      window.open(`sms:${phoneNumber}?body=${encodeURIComponent(message)}`, '_system');
+      
+      handleClose();
+      
+    } catch (err) {
+      console.log('Error or cancellation during contact picking:', err);
     }
   };
 
@@ -176,11 +289,11 @@ export const SendInvitationModal = ({
         description: "Taklifnoma muvaffaqiyatli yuborildi",
       });
       handleClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Send invitation error:', error);
       toast({
         title: "Xato",
-        description: error.message || "Taklifnoma yuborishda xatolik",
+        description: error instanceof Error ? error.message : "Taklifnoma yuborishda xatolik",
         variant: "destructive",
       });
     } finally {
@@ -213,13 +326,13 @@ export const SendInvitationModal = ({
 
     return (
       <div className="space-y-2">
-        {filteredUsers.map((profile) => {
-          const isGenderMatch = !requiredGender || profile.gender === requiredGender;
-          const genderMismatch = requiredGender && profile.gender && profile.gender !== requiredGender;
+        {filteredUsers.map((profileListMember) => {
+          const isGenderMatch = !requiredGender || profileListMember.gender === requiredGender;
+          const genderMismatch = requiredGender && profileListMember.gender && profileListMember.gender !== requiredGender;
           
           return (
             <div
-              key={profile.id}
+              key={profileListMember.id}
               className={cn(
                 "flex items-center justify-between p-3 rounded-lg border transition-colors",
                 genderMismatch 
@@ -229,41 +342,41 @@ export const SendInvitationModal = ({
             >
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={profile.avatar_url || undefined} />
+                  <AvatarImage src={profileListMember.avatar_url || undefined} />
                   <AvatarFallback className={cn(
-                    profile.gender === 'male' ? "bg-sky-500" : "bg-pink-500",
+                    profileListMember.gender === 'male' ? "bg-sky-500" : "bg-pink-500",
                     "text-primary-foreground"
                   )}>
-                    {profile.name?.[0]?.toUpperCase() || <User className="w-4 h-4" />}
+                    {profileListMember.name?.[0]?.toUpperCase() || <User className="w-4 h-4" />}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium truncate">{profile.name || "Noma'lum"}</p>
-                    {profile.gender && (
+                    <p className="font-medium truncate">{profileListMember.name || "Noma'lum"}</p>
+                    {profileListMember.gender && (
                       <Badge 
                         variant="outline" 
                         className={cn(
                           "text-xs",
-                          profile.gender === 'male' 
+                          profileListMember.gender === 'male' 
                             ? "border-sky-500/50 text-sky-600 dark:text-sky-400" 
                             : "border-pink-500/50 text-pink-600 dark:text-pink-400"
                         )}
                       >
-                        {profile.gender === 'male' ? 'Erkak' : 'Ayol'}
+                        {profileListMember.gender === 'male' ? 'Erkak' : 'Ayol'}
                       </Badge>
                     )}
                   </div>
-                  {profile.username && (
+                  {profileListMember.username && (
                     <div className="truncate">
-                      <StarUsername username={profile.username} textClassName="text-sm" />
+                      <StarUsername username={profileListMember.username} textClassName="text-sm" />
                     </div>
                   )}
                 </div>
               </div>
               <Button
                 size="sm"
-                onClick={() => handleSendInvitation(profile.id)}
+                onClick={() => handleSendInvitation(profileListMember.id)}
                 disabled={isSending || genderMismatch}
                 className={cn(
                   genderMismatch 
@@ -294,13 +407,13 @@ export const SendInvitationModal = ({
           {member && (
             <div className="text-center">
               <p className="text-muted-foreground text-sm">
-                <span className="font-medium text-foreground">{member.name || "Noma'lum"}</span> uchun foydalanuvchi tanlang
+                <span className="font-medium text-foreground">{member.name || "Noma'lum"}</span> uchun foydalanuvchi taklif qiling
               </p>
               {requiredGender && (
                 <Badge 
                   variant="outline" 
                   className={cn(
-                    "mt-2",
+                    "mt-2 mb-2",
                     requiredGender === 'male' 
                       ? "border-sky-500/50 text-sky-600 dark:text-sky-400" 
                       : "border-pink-500/50 text-pink-600 dark:text-pink-400"
@@ -312,6 +425,47 @@ export const SendInvitationModal = ({
             </div>
           )}
 
+          {/* New prominent action buttons */}
+          <div className="grid grid-cols-2 gap-3 mb-1">
+            <Button 
+              variant="outline" 
+              onClick={handlePickContactAndSend}
+              disabled={isGeneratingLink}
+              className="h-20 flex flex-col gap-2 rounded-2xl border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-all"
+            >
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Phone className="h-4 w-4 text-primary" />
+              </div>
+              <span className="text-sm font-semibold">Kontaktlardan tanlash</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleCopyLink}
+              disabled={isGeneratingLink}
+              className="h-20 flex flex-col gap-2 rounded-2xl border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-all"
+            >
+              <div className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                copiedLink ? "bg-emerald-500/10" : "bg-primary/10"
+              )}>
+                {copiedLink ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <LinkIcon className="h-4 w-4 text-primary" />
+                )}
+              </div>
+              <span className="text-sm font-semibold">Havola nusxalash</span>
+            </Button>
+          </div>
+
+          <div className="relative flex items-center py-1">
+            <div className="flex-grow border-t border-border"></div>
+            <span className="flex-shrink-0 mx-4 text-[10px] text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1.5 opacity-80">
+              <UserPlus className="w-3 h-3" /> Yoki tizim ichidan
+            </span>
+            <div className="flex-grow border-t border-border"></div>
+          </div>
+
           {/* Search Input */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -320,14 +474,14 @@ export const SendInvitationModal = ({
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Ism yoki username bo'yicha qidirish..."
-              className="pl-10"
+              className="pl-10 h-11 rounded-xl bg-muted/40 border-muted/60"
             />
           </div>
 
           {/* Search Results or Tabs */}
           <div className="flex-1 overflow-hidden">
             {searchQuery.length >= 2 ? (
-              <ScrollArea className="h-[300px]">
+              <ScrollArea className="h-[250px] sm:h-[300px]">
                 <div className="pr-4">
                   <p className="text-sm text-muted-foreground mb-2">Qidiruv natijalari</p>
                   {isSearching ? (
@@ -340,7 +494,7 @@ export const SendInvitationModal = ({
                 </div>
               </ScrollArea>
             ) : (
-              <Tabs defaultValue="followers" className="flex-1">
+              <Tabs defaultValue="followers" className="flex-1 flex flex-col h-[250px] sm:h-[300px]">
                 <TabsList className="w-full">
                   <TabsTrigger value="followers" className="flex-1">
                     <Users className="h-4 w-4 mr-2" />
@@ -352,9 +506,9 @@ export const SendInvitationModal = ({
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="followers" className="mt-4">
-                  <ScrollArea className="h-[250px]">
-                    <div className="pr-4">
+                <TabsContent value="followers" className="mt-4 flex-1 overflow-hidden">
+                  <ScrollArea className="h-full">
+                    <div className="pr-4 pb-4">
                       {isLoadingFollows ? (
                         <div className="text-center py-8 text-muted-foreground">
                           Yuklanmoqda...
@@ -366,9 +520,9 @@ export const SendInvitationModal = ({
                   </ScrollArea>
                 </TabsContent>
 
-                <TabsContent value="following" className="mt-4">
-                  <ScrollArea className="h-[250px]">
-                    <div className="pr-4">
+                <TabsContent value="following" className="mt-4 flex-1 overflow-hidden">
+                  <ScrollArea className="h-full">
+                    <div className="pr-4 pb-4">
                       {isLoadingFollows ? (
                         <div className="text-center py-8 text-muted-foreground">
                           Yuklanmoqda...

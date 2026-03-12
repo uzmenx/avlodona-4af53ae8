@@ -106,7 +106,7 @@ export function playRingtone(ringtoneId?: string) {
     const ctx = new AudioContext();
     currentAudioContext = ctx;
     
-    let time = ctx.currentTime;
+    const time = ctx.currentTime;
     
     const playPattern = () => {
       if (!currentAudioContext || currentAudioContext.state === 'closed') return;

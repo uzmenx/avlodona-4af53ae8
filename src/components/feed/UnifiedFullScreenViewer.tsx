@@ -116,7 +116,9 @@ export const UnifiedFullScreenViewer = ({
       el.loop = true;
       el.preload = 'auto';
       el.crossOrigin = 'anonymous';
-      try { el.load(); } catch {}
+      try { el.load(); } catch (e) {
+        console.error("Audio load error:", e);
+      }
     } catch {
       // ignore
     }
@@ -192,7 +194,7 @@ export const UnifiedFullScreenViewer = ({
     if (typeof window === 'undefined') return false;
     try {
       const isSmallScreen = window.matchMedia?.('(max-width: 768px)')?.matches ?? false;
-      const cores = typeof navigator !== 'undefined' ? (navigator as any).hardwareConcurrency : undefined;
+      const cores = typeof navigator !== 'undefined' ? (navigator as unknown as { hardwareConcurrency?: number }).hardwareConcurrency : undefined;
       const lowCpu = typeof cores === 'number' ? cores <= 6 : false;
       return isSmallScreen || lowCpu;
     } catch {
@@ -234,14 +236,14 @@ export const UnifiedFullScreenViewer = ({
     const ambient = ambientVideoRef.current;
     if (ambient && ambient.paused) {
       const p = ambient.play();
-      if (p && typeof (p as any).catch === 'function') (p as any).catch(() => {});
+      if (p && typeof p.catch === 'function') p.catch(() => {});
     }
 
     const main = videoRef.current;
     if (main && !main.paused && main.readyState >= 2) return;
     if (main && isPlaying && main.paused) {
       const p = main.play();
-      if (p && typeof (p as any).catch === 'function') (p as any).catch(() => {});
+      if (p && typeof p.catch === 'function') p.catch(() => {});
     }
   }, [isPlaying]);
 
@@ -257,11 +259,16 @@ export const UnifiedFullScreenViewer = ({
       const t = setTimeout(() => void playAudio(), 400);
       return () => clearTimeout(t);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postIndex, shortIndex, activeTab]);
 
   useEffect(() => {
     if (videoRef.current) {
-      isPlaying ? videoRef.current.play().catch(() => {}) : videoRef.current.pause();
+      if (isPlaying) {
+        videoRef.current.play().catch(() => {});
+      } else {
+        videoRef.current.pause();
+      }
     }
   }, [isPlaying, currentMediaIndex, postIndex]);
 
@@ -302,7 +309,7 @@ export const UnifiedFullScreenViewer = ({
       } else {
         if (ambient.paused) {
           const p = ambient.play();
-          if (p && typeof (p as any).catch === 'function') (p as any).catch(() => {});
+          if (p && typeof p.catch === 'function') p.catch(() => {});
         }
       }
     };
@@ -371,16 +378,18 @@ export const UnifiedFullScreenViewer = ({
       if (!mutedMediaRef.current.has(el)) {
         mutedMediaRef.current.set(el, { muted: el.muted, volume: el.volume });
       }
-      try {el.pause();} catch {}
+      try {el.pause();} catch (e) { console.error(e); }
       el.muted = true;
       el.volume = 0;
     }
 
+    const previousMutedMedia = new Map(mutedMediaRef.current);
     return () => {
-      mutedMediaRef.current.forEach((prev, el) => {
+      previousMutedMedia.forEach((prev, el) => {
         el.muted = prev.muted;
         el.volume = prev.volume;
       });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       mutedMediaRef.current.clear();
     };
   }, [activeTab]);
@@ -563,10 +572,10 @@ export const UnifiedFullScreenViewer = ({
       try {
         const lastId = localStorage.getItem('yt_shorts_last_id');
         if (lastId) {
-          const idx = shorts.findIndex((s) => s.id === lastId);
-          if (idx >= 0) nextIndex = idx;
-        }
-      } catch {}
+        const idx = shorts.findIndex((s) => s.id === lastId);
+        if (idx >= 0) nextIndex = idx;
+      }
+    } catch (e) { console.error(e); }
       setShortIndex(nextIndex);
     }
   };
@@ -866,28 +875,31 @@ export const UnifiedFullScreenViewer = ({
       const [viewsRes, likesRes] = await Promise.all([
       viewerId ?
       supabase.from('story_views').select('story_id').eq('viewer_id', viewerId).in('story_id', stories.map((s) => s.id)) :
-      Promise.resolve({ data: [] as any[] }),
+      Promise.resolve({ data: [] as Record<string, unknown>[] }),
       viewerId ?
       supabase.from('story_likes').select('story_id').eq('user_id', viewerId).in('story_id', stories.map((s) => s.id)) :
-      Promise.resolve({ data: [] as any[] })]
+      Promise.resolve({ data: [] as Record<string, unknown>[] })]
       );
 
-      const viewedStoryIds = new Set((viewsRes as any)?.data?.map((v: any) => v.story_id) || []);
-      const likedStoryIds = new Set((likesRes as any)?.data?.map((l: any) => l.story_id) || []);
+      const viewsResData = viewsRes && 'data' in viewsRes ? (viewsRes.data as { story_id: string }[]) : [];
+      const likesResData = likesRes && 'data' in likesRes ? (likesRes.data as { story_id: string }[]) : [];
 
-      const normalizedStories: Story[] = stories.map((s: any) => ({
+      const viewedStoryIds = new Set(viewsResData?.map(v => v.story_id) || []);
+      const likedStoryIds = new Set(likesResData?.map(l => l.story_id) || []);
+
+      const normalizedStories = stories.map((s: Record<string, unknown>) => ({
         ...s,
         media_type: s.media_type as 'image' | 'video',
-        ring_id: s.ring_id || 'default',
+        ring_id: (s.ring_id as string) || 'default',
         author: authorProfile ? {
           id: authorProfile.id,
-          name: authorProfile.name,
-          username: authorProfile.username,
-          avatar_url: authorProfile.avatar_url
+          name: authorProfile.name || '',
+          username: authorProfile.username || '',
+          avatar_url: authorProfile.avatar_url || ''
         } : undefined,
-        has_viewed: viewerId ? viewedStoryIds.has(s.id) : false,
-        has_liked: viewerId ? likedStoryIds.has(s.id) : false
-      }));
+        has_viewed: viewerId ? viewedStoryIds.has(s.id as string) : false,
+        has_liked: viewerId ? likedStoryIds.has(s.id as string) : false
+      } as unknown as Story));
 
       return {
         user_id: targetUserId,
@@ -1023,7 +1035,9 @@ export const UnifiedFullScreenViewer = ({
           <SamsungUltraVideoPlayer
             src={videoPlayerSrc}
             title={currentPost?.content?.slice(0, 50) || 'Video'}
-            onClose={() => setShowVideoPlayer(false)} />
+            onClose={() => setShowVideoPlayer(false)}
+            startInFullscreen={true}
+          />
 
         </div>,
         document.body

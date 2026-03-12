@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useMessages, Message } from '@/hooks/useMessages';
@@ -69,6 +69,7 @@ type InvitePreview = {
 const Chat = () => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { t } = useLanguage();
   const { getOrCreateConversation } = useConversations();
@@ -204,20 +205,20 @@ const Chat = () => {
     if (inviteLoadingRef.current.has(inviteLink)) return;
     inviteLoadingRef.current.add(inviteLink);
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await (supabase as unknown as { rpc: (name: string, args: Record<string, unknown>) => { maybeSingle: () => Promise<{ data: unknown, error: unknown }> } })
         .rpc('get_group_invite_preview', { invite: inviteLink })
         .maybeSingle();
       if (error) throw error;
-      setInviteCache((prev) => ({ ...prev, [inviteLink]: (data as any as InvitePreview) || null }));
+      setInviteCache((prev) => ({ ...prev, [inviteLink]: (data as unknown as InvitePreview) || null }));
 
-      if (data?.id && user?.id) {
-        if ((data as any).owner_id === user.id) {
+      if (data && typeof data === 'object' && 'id' in data && user?.id) {
+        if ('owner_id' in data && data.owner_id === user.id) {
           setInviteMemberCache((prev) => ({ ...prev, [inviteLink]: true }));
         } else {
           const { data: membership } = await supabase
             .from('group_members')
             .select('id')
-            .eq('group_id', (data as any).id)
+            .eq('group_id', data.id as string)
             .eq('user_id', user.id)
             .maybeSingle();
           setInviteMemberCache((prev) => ({ ...prev, [inviteLink]: !!membership }));
@@ -242,14 +243,14 @@ const Chat = () => {
           group_id: group.id,
           user_id: user.id,
           role: 'member',
-        } as any,
+        } as never,
         { onConflict: 'group_id,user_id' }
       );
       if (error) throw error;
       toast.success("Qo'shildingiz");
       navigate(`/group-chat/${group.id}`);
-    } catch (e: any) {
-      toast.error(e?.message || 'Xatolik yuz berdi');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Xatolik yuz berdi');
     }
   }, [navigate, user?.id]);
 
@@ -299,15 +300,15 @@ const Chat = () => {
     return found;
   }, []);
 
-  const enrichPostsWithAuthors = async (postsData: any[]): Promise<Post[]> => {
+  const enrichPostsWithAuthors = async (postsData: Record<string, unknown>[]): Promise<Post[]> => {
     if (!postsData || postsData.length === 0) return [];
-    const userIds = [...new Set(postsData.map(p => p.user_id))];
+    const userIds = [...new Set(postsData.map(p => p.user_id as string))];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('*')
       .in('id', userIds);
-    return postsData.map((post: any) => {
-      const profile: any = profiles?.find((p: any) => p.id === post.user_id);
+    return postsData.map((post: Record<string, unknown>) => {
+      const profile = profiles?.find((p: { id: string }) => p.id === post.user_id);
       return {
         ...post,
         media_urls: post.media_urls || [],
@@ -415,6 +416,14 @@ const Chat = () => {
       supabase.removeChannel(channel);
     };
   }, [userId]);
+
+  // Auto-start video call if ?startCall=true
+  useEffect(() => {
+    if (searchParams.get('startCall') === 'true' && otherUser && !isInCall && !isCreatingRoom) {
+      setSearchParams({}, { replace: true });
+      startCall();
+    }
+  }, [searchParams, otherUser, isInCall, isCreatingRoom, startCall, setSearchParams]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -556,7 +565,7 @@ const Chat = () => {
     }
   };
 
-  const renderMessageContent = (msg: Message, isMine: boolean) => {
+  const renderMessageContent = (msg: Message, isMine: boolean, uploadProgress?: number) => {
     const joinInvite = extractJoinInvite(msg.content);
     if (joinInvite) {
       void ensureInviteLoaded(joinInvite.inviteLink);
@@ -714,29 +723,20 @@ const Chat = () => {
     }
 
     // Voice message
-    if (msg.media_type === 'audio' && msg.media_url) {
-      return (
-        <VoiceMessage 
-          audioUrl={msg.media_url} 
-          isMine={isMine}
-        />
-      );
+    if (msg.media_type === 'audio') {
+      return <VoiceMessage audioUrl={msg.media_url || ''} isMine={isMine} uploadProgress={uploadProgress} />;
     }
 
     // Image or video message
-    if ((msg.media_type === 'image' || msg.media_type === 'video') && msg.media_url) {
+    if (msg.media_type === 'image' || msg.media_type === 'video') {
       return (
-        <div className="space-y-2">
-          <MediaMessage
-            mediaUrl={msg.media_url}
-            mediaType={msg.media_type}
-            isMine={isMine}
-            onFullscreen={() => setFullscreenMedia({ url: msg.media_url!, type: msg.media_type as 'image' | 'video' })}
-          />
-          {msg.content && msg.content !== '📎 Media' && (
-            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-          )}
-        </div>
+        <MediaMessage
+          mediaUrl={msg.media_url || ''}
+          mediaType={msg.media_type}
+          isMine={isMine}
+          onFullscreen={() => setFullscreenMedia({ url: msg.media_url!, type: msg.media_type as 'image' | 'video' })}
+          uploadProgress={uploadProgress}
+        />
       );
     }
 
@@ -963,7 +963,7 @@ const Chat = () => {
                         )}
                         style={isMine ? { background: 'linear-gradient(135deg, hsl(217 91% 60%), hsl(263 70% 50%))' } : undefined}
                         >
-                          {renderMessageContent(msg, isMine)}
+                          {renderMessageContent(msg, isMine, (msg as Message & { uploadProgress?: number }).uploadProgress)}
                           <div className={cn(
                             "flex items-center gap-1 mt-0.5",
                             hasMedia && "px-1.5",

@@ -7,7 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, X, Users, FileText, Megaphone, Eye, Heart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { StarUsername } from '@/components/user/StarUsername';
-
+import { PostCard } from '@/components/feed/PostCard';
+import { Post } from '@/types';
 interface SearchSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -23,16 +24,7 @@ interface UserResult {
   avatar_url: string | null;
 }
 
-interface PostResult {
-  id: string;
-  content: string | null;
-  media_urls: string[] | null;
-  created_at: string;
-  user_id: string;
-  likes_count?: number | null;
-  views_count?: number | null;
-  profile?: UserResult;
-}
+// We will use the standard Post type for posts.
 
 interface GroupResult {
   id: string;
@@ -48,7 +40,7 @@ export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, in
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<'users' | 'posts' | 'groups'>(initialTab || 'users');
   const [users, setUsers] = useState<UserResult[]>([]);
-  const [posts, setPosts] = useState<PostResult[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [groups, setGroups] = useState<GroupResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -62,6 +54,7 @@ export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, in
     setIsLoading(true);
     try {
       const searchTerm = `%${q.trim()}%`;
+      const pureTerm = q.trim();
 
       const usersQuery = supabase
         .from('profiles')
@@ -69,10 +62,42 @@ export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, in
         .or(`username.ilike.${searchTerm},name.ilike.${searchTerm}`)
         .limit(20);
 
+      const groupsQuery = supabase
+        .from('group_chats')
+        .select('id, name, description, avatar_url, type, visibility, invite_link')
+        .eq('visibility', 'public')
+        .or(`name.ilike.${searchTerm},description.ilike.${searchTerm},invite_link.ilike.${searchTerm}`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      const [usersRes, groupsRes] = await Promise.all([usersQuery, groupsQuery]);
+
+      setUsers(usersRes.data || []);
+      setGroups((groupsRes.data as unknown as GroupResult[]) || []);
+
+      // Improved Post Search: By content, author name/username, or comment content
+      const matchedUserIds = (usersRes.data || []).map(u => u.id);
+      
+      const { data: matchedComments } = await supabase
+        .from('comments')
+        .select('post_id')
+        .ilike('content', searchTerm)
+        .limit(50);
+        
+      const matchedPostIdsFromComments = (matchedComments || []).map(c => c.post_id);
+
+      const orClauses = [`content.ilike.${searchTerm}`];
+      if (matchedUserIds.length > 0) {
+        orClauses.push(`user_id.in.(${matchedUserIds.join(',')})`);
+      }
+      if (matchedPostIdsFromComments.length > 0) {
+        orClauses.push(`id.in.(${matchedPostIdsFromComments.join(',')})`);
+      }
+
       let postsQuery = supabase
         .from('posts')
-        .select('id, content, media_urls, created_at, user_id, likes_count, views_count')
-        .ilike('content', searchTerm)
+        .select('*')
+        .or(orClauses.join(','))
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -80,29 +105,41 @@ export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, in
         postsQuery = postsQuery.eq('user_id', userIdFilter);
       }
 
-      const groupsQuery = supabase
-        .from('group_chats')
-        .select('id, name, description, avatar_url, type, visibility')
-        .eq('visibility', 'public')
-        .or(`name.ilike.${searchTerm},description.ilike.${searchTerm}`)
-        .order('created_at', { ascending: false })
-        .limit(20);
+      const { data: postData } = await postsQuery;
 
-      const [usersRes, postsRes, groupsRes] = await Promise.all([usersQuery, postsQuery, groupsQuery]);
-
-      setUsers(usersRes.data || []);
-      setGroups((groupsRes as any).data || []);
-      
-      const postData = postsRes.data || [];
-      if (postData.length > 0) {
+      if (postData && postData.length > 0) {
         const userIds = [...new Set(postData.map(p => p.user_id))];
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, username, name, avatar_url')
+          .select('*')
           .in('id', userIds);
         
         const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-        setPosts(postData.map(p => ({ ...p, profile: profileMap.get(p.user_id) })));
+        
+        const postsWithAuthor = postData.map(post => {
+          const authorProfile = profileMap.get(post.user_id);
+          return {
+            ...post,
+            media_urls: post.media_urls || [],
+            author: authorProfile ? {
+              id: authorProfile.id,
+              email: authorProfile.email || '',
+              full_name: authorProfile.name || 'Foydalanuvchi',
+              username: authorProfile.username || 'user',
+              bio: authorProfile.bio || '',
+              avatar_url: authorProfile.avatar_url || '',
+              cover_url: '',
+              instagram: '',
+              telegram: '',
+              followers_count: 0,
+              following_count: 0,
+              relatives_count: 0,
+              created_at: post.created_at,
+            } : undefined
+          };
+        }) as Post[];
+        
+        setPosts(postsWithAuthor);
       } else {
         setPosts([]);
       }
@@ -217,35 +254,22 @@ export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, in
               ))}
             </TabsContent>
 
-            <TabsContent value="posts" className="mt-0">
+            <TabsContent value="posts" className="mt-0 pb-10">
               {isLoading && <p className="text-sm text-muted-foreground text-center py-8">Qidirilmoqda...</p>}
               {!isLoading && query && posts.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-8">Hech narsa topilmadi</p>
               )}
               {posts.length > 0 && (
-                <div className="flex p-1 gap-px">
-                  <div className="flex-1 flex flex-col gap-1">
-                    {posts.filter((_, i) => i % 2 === 0).map((p) => (
-                      <div
-                        key={p.id}
-                        onClick={() => { onOpenChange(false); }}
-                        className="cursor-pointer"
-                      >
-                        <SearchMasonryItem post={p} />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex-1 flex flex-col gap-1">
-                    {posts.filter((_, i) => i % 2 === 1).map((p) => (
-                      <div
-                        key={p.id}
-                        onClick={() => { onOpenChange(false); }}
-                        className="cursor-pointer"
-                      >
-                        <SearchMasonryItem post={p} />
-                      </div>
-                    ))}
-                  </div>
+                <div className="flex flex-col gap-4">
+                  {posts.map((p, index) => (
+                    <div
+                      key={p.id}
+                      onClick={() => { onOpenChange(false); }}
+                      className="cursor-pointer"
+                    >
+                      <PostCard post={p} index={index} />
+                    </div>
+                  ))}
                 </div>
               )}
             </TabsContent>
@@ -288,47 +312,4 @@ export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, in
   );
 };
 
-const SearchMasonryItem = ({ post }: { post: PostResult }) => {
-  const mediaUrl = post.media_urls?.[0];
-  const isVideo = !!mediaUrl && (mediaUrl.includes('.mp4') || mediaUrl.includes('.mov') || mediaUrl.includes('.webm'));
-  const likesCount = post.likes_count ?? 0;
-  const viewsCount = post.views_count ?? 0;
-
-  return (
-    <div className="relative overflow-hidden rounded-[20px] bg-muted/80 shadow-xl shadow-black/20 border border-white/10">
-      {mediaUrl ? (
-        <>
-          {isVideo ? (
-            <video
-              src={mediaUrl}
-              className="w-full h-auto block"
-              style={{ maxHeight: '80vh' }}
-              muted
-              playsInline
-              loop
-              preload="metadata"
-            />
-          ) : (
-            <img src={mediaUrl} alt="Post" className="w-full h-auto block" style={{ maxHeight: '80vh' }} />
-          )}
-          <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
-            <div className="text-white text-[11px] leading-tight">
-              <div className="flex items-center gap-1">
-                <Heart className="h-3.5 w-3.5" />
-                <span>{likesCount}</span>
-              </div>
-              <div className="flex items-center gap-1 mt-0.5">
-                <Eye className="h-3.5 w-3.5" />
-                <span>{viewsCount}</span>
-              </div>
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="w-full aspect-square flex items-center justify-center text-muted-foreground text-xs p-2 text-center">
-          {post.content?.substring(0, 50)}
-        </div>
-      )}
-    </div>
-  );
-};
+// SearchMasonryItem removed as requested

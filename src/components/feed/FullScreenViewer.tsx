@@ -116,7 +116,7 @@ export const FullScreenViewer = ({ posts, initialIndex, onClose }: FullScreenVie
       el.loop = true;
       el.preload = 'auto';
       el.crossOrigin = 'anonymous';
-      try { el.load(); } catch {}
+      try { el.load(); } catch (_e) { /* ignore load errors */ }
     } catch {
       // ignore
     }
@@ -154,7 +154,7 @@ export const FullScreenViewer = ({ posts, initialIndex, onClose }: FullScreenVie
     if (typeof window === 'undefined') return false;
     try {
       const isSmallScreen = window.matchMedia?.('(max-width: 768px)')?.matches ?? false;
-      const cores = typeof navigator !== 'undefined' ? (navigator as any).hardwareConcurrency : undefined;
+      const cores = typeof navigator !== 'undefined' ? (navigator as Navigator & { hardwareConcurrency?: number }).hardwareConcurrency : undefined;
       const lowCpu = typeof cores === 'number' ? cores <= 6 : false;
       return isSmallScreen || lowCpu;
     } catch {
@@ -602,7 +602,9 @@ export const FullScreenViewer = ({ posts, initialIndex, onClose }: FullScreenVie
             title={currentPost?.content?.slice(0, 50) || 'Video'}
             onClose={() => {
               setShowVideoPlayer(false);
-            }} />
+            }}
+            startInFullscreen={true}
+          />
         </div>,
         document.body
       )}

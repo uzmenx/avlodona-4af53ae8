@@ -1,20 +1,13 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 
 import {
-
   Play, Pause, Volume2, VolumeX, Settings, RotateCw,
-
   Maximize, Minimize, Rewind, FastForward, SkipBack, SkipForward,
-
   ChevronLeft, X, Sun, Moon, Lock, Unlock, PictureInPicture,
-
   Download, Share2, Bookmark, List, Smartphone, Monitor,
-
   Wifi, WifiOff, Battery, Signal, Clock, Info, AlertCircle,
-
-  Check, Repeat, Shuffle, Film, Zap, Droplet, Wind } from
-
-'lucide-react';
+  Check, Repeat, Shuffle, Film, Zap, Droplet, Wind } from 'lucide-react';
+import { ScreenOrientation } from '@capacitor/screen-orientation';
 
 
 
@@ -75,21 +68,14 @@ interface Subtitle {
 
 
 interface VideoPlayerProps {
-
   src: string;
-
   poster?: string;
-
   title?: string;
-
   description?: string;
-
   chapters?: Chapter[];
-
   subtitles?: Subtitle[];
-
   onClose?: () => void;
-
+  startInFullscreen?: boolean;
 }
 
 
@@ -199,21 +185,14 @@ const getTimeOfDay = (): string => {
 
 
 export const SamsungUltraVideoPlayer = ({
-
   src,
-
   poster,
-
-  title = 'Video Title',
-
+  title = 'Samsung Ultra Video',
   description,
-
   chapters = [],
-
   subtitles = [],
-
-  onClose
-
+  onClose,
+  startInFullscreen = false
 }: VideoPlayerProps) => {
 
   // ─────────────────────────────────────────────────────────────
@@ -265,6 +244,46 @@ export const SamsungUltraVideoPlayer = ({
   const [loading, setLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (!containerRef.current) return;
+
+    try {
+      if (!isFullscreen) {
+        if (containerRef.current.requestFullscreen) {
+          await containerRef.current.requestFullscreen();
+        } else if ((containerRef.current as unknown as { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen) {
+          await (containerRef.current as unknown as { webkitRequestFullscreen: () => Promise<void> }).webkitRequestFullscreen();
+        }
+        
+        try {
+          await ScreenOrientation.lock({ orientation: 'landscape' });
+        } catch (e) {
+          console.warn('Orientation lock failed:', e);
+        }
+        
+        setIsFullscreen(true);
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as Document & { webkitExitFullscreen?: () => Promise<void> }).webkitExitFullscreen) {
+          await (document as Document & { webkitExitFullscreen: () => Promise<void> }).webkitExitFullscreen();
+        }
+        
+        try {
+          await ScreenOrientation.lock({ orientation: 'portrait' });
+          // Optional: await ScreenOrientation.unlock();
+        } catch (e) {
+          console.warn('Orientation unlock failed:', e);
+        }
+        
+        setIsFullscreen(false);
+      }
+    } catch (err) {
+      console.error('Fullscreen error:', err);
+    }
+  }, [isFullscreen]);
 
   useEffect(() => {
 
@@ -301,12 +320,22 @@ export const SamsungUltraVideoPlayer = ({
     };
 
     window.addEventListener('avlodona:video:request-play', onRequestPlay);
-
     return () => window.removeEventListener('avlodona:video:request-play', onRequestPlay);
-
   }, []);
 
+  // Handle initial fullscreen
   useEffect(() => {
+    if (startInFullscreen && !isFullscreen) {
+      const timer = setTimeout(() => {
+        toggleFullscreen();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [startInFullscreen, toggleFullscreen, isFullscreen]);
+
+  useEffect(() => {
+
+    const videoEl = videoRef.current;
 
     window.dispatchEvent(
 
@@ -316,9 +345,7 @@ export const SamsungUltraVideoPlayer = ({
 
     return () => {
 
-      const v = videoRef.current;
-
-      if (v && !v.paused) v.pause();
+      if (videoEl && !videoEl.paused) videoEl.pause();
 
     };
 
@@ -339,8 +366,6 @@ export const SamsungUltraVideoPlayer = ({
   const [showChapters, setShowChapters] = useState(false);
 
   const [showInfo, setShowInfo] = useState(false);
-
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const [isPiP, setIsPiP] = useState(false);
 
@@ -806,35 +831,6 @@ export const SamsungUltraVideoPlayer = ({
 
 
 
-  const toggleFullscreen = useCallback(async () => {
-
-    if (!containerRef.current) return;
-
-
-
-    try {
-
-      if (!isFullscreen) {
-
-        await containerRef.current.requestFullscreen();
-
-        setIsFullscreen(true);
-
-      } else {
-
-        await document.exitFullscreen();
-
-        setIsFullscreen(false);
-
-      }
-
-    } catch (err) {
-
-      console.error('Fullscreen error:', err);
-
-    }
-
-  }, [isFullscreen]);
 
 
 
@@ -1367,7 +1363,7 @@ export const SamsungUltraVideoPlayer = ({
       switch (e.code) {
 
         case 'Space':
-
+          // falls through
         case 'KeyK':
 
           togglePlay();
@@ -1979,13 +1975,9 @@ export const SamsungUltraVideoPlayer = ({
 
 
               <div
-
-                className="absolute h-full bg-blue-500 rounded-full transition-all"
-
+                className="absolute h-full bg-[#34A853] rounded-full transition-all"
                 style={{ width: `${progress}%` }}>
-
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-lg border-2 border-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-lg border-2 border-[#34A853] opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
 
 
@@ -2730,7 +2722,7 @@ interface ControlButtonProps {
 
   children: React.ReactNode;
 
-  theme: any;
+  theme: Record<string, string>;
 
   active?: boolean;
 
@@ -2776,7 +2768,7 @@ interface InfoItemProps {
 
   icon: React.ReactNode;
 
-  theme: any;
+  theme: Record<string, string>;
 
 }
 

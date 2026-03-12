@@ -12,6 +12,7 @@ export const useLocalFamilyTree = () => {
   const [members, setMembers] = useState<Record<string, FamilyMember>>({});
   const [rootId, setRootId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [networkId, setNetworkId] = useState<string | null>(null);
   
   // Prevent updates while dragging
@@ -55,10 +56,15 @@ export const useLocalFamilyTree = () => {
   }, [user?.id]);
 
   // Load data based on family_network_id (to see merged trees)
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (isInitial = true) => {
     if (!user?.id) return;
     
-    setIsLoading(true);
+    if (isInitial) {
+      setIsLoading(true);
+    } else {
+      setIsRefreshing(true);
+    }
+    
     try {
       // First, get user's network ID
       const userNetworkId = await getOrCreateNetworkId();
@@ -66,6 +72,7 @@ export const useLocalFamilyTree = () => {
       
       if (!userNetworkId) {
         setIsLoading(false);
+        setIsRefreshing(false);
         return;
       }
       
@@ -495,6 +502,7 @@ export const useLocalFamilyTree = () => {
       console.error('Error loading family tree:', error);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [user?.id, getOrCreateNetworkId]);
 
@@ -505,7 +513,7 @@ export const useLocalFamilyTree = () => {
 
    // Listen for manual reload requests
    useEffect(() => {
-     const handleReload = () => loadData();
+     const handleReload = () => loadData(false);
      window.addEventListener('family-tree-reload', handleReload);
      return () => window.removeEventListener('family-tree-reload', handleReload);
    }, [loadData]);
@@ -521,7 +529,7 @@ export const useLocalFamilyTree = () => {
         { event: '*', schema: 'public', table: 'family_tree_members' },
         (payload) => {
           // Reload on any member change in network (will filter by network in loadData)
-          loadData();
+          loadData(false);
         }
       )
       .on(

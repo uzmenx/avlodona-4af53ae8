@@ -249,7 +249,7 @@ const CreatePost = () => {
 
         // Parse @mentions from caption text
         const captionMentionUsernames = (content.match(/@(\w+)/g) || []).map(m => m.slice(1));
-        let allMentionIds = [...mentionIds];
+        const allMentionIds = [...mentionIds];
         
         if (captionMentionUsernames.length > 0) {
           const { data: mentionedProfiles } = await supabase

@@ -57,14 +57,16 @@ const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const hideHighlights = (profile as any)?.hide_highlights === true;
-  const hideCollections = (profile as any)?.hide_collections === true;
-  const isPrivate = (profile as any)?.is_private === true;
-  const hideOnlineStatus = (profile as any)?.hide_online_status === true;
+  type ProfileData = { hide_highlights?: boolean; hide_collections?: boolean; is_private?: boolean; hide_online_status?: boolean; };
+  const profileData = profile as ProfileData | undefined;
+  const hideHighlights = profileData?.hide_highlights === true;
+  const hideCollections = profileData?.hide_collections === true;
+  const isPrivate = profileData?.is_private === true;
+  const hideOnlineStatus = profileData?.hide_online_status === true;
 
   const toggleVisibility = async (field: 'hide_highlights' | 'hide_collections' | 'is_private' | 'hide_online_status', current: boolean) => {
     if (!user) return;
-    await supabase.from('profiles').update({ [field]: !current } as any).eq('id', user.id);
+    await supabase.from('profiles').update({ [field]: !current } as never).eq('id', user.id);
     window.location.reload();
   };
 
@@ -73,7 +75,7 @@ const Settings = () => {
   const persistAppearance = async (updates: Partial<{ theme_mode: ThemeMode; bg_theme: BackgroundTheme }>) => {
     if (!user?.id) return;
     try {
-      await supabase.from('profiles').update(updates as any).eq('id', user.id);
+      await supabase.from('profiles').update(updates as never).eq('id', user.id);
       await refreshProfile();
     } catch {
       // ignore

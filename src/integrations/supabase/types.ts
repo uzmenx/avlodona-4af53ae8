@@ -973,20 +973,23 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          mentioned_user_id: string
+          mentioned_user_id: string | null
           post_id: string
+          family_member_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
-          mentioned_user_id: string
+          mentioned_user_id?: string | null
           post_id: string
+          family_member_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
-          mentioned_user_id?: string
+          mentioned_user_id?: string | null
           post_id?: string
+          family_member_id?: string | null
         }
         Relationships: [
           {
@@ -994,6 +997,13 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_mentions_family_member_id_fkey"
+            columns: ["family_member_id"]
+            isOneToOne: false
+            referencedRelation: "family_tree_members"
             referencedColumns: ["id"]
           },
         ]

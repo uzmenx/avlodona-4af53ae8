@@ -204,7 +204,7 @@ const Messages = () => {
     const hasPost = /\[\[POST:[^\]]+\]\]/.test(content);
     const hasShort = /\[\[SHORT:[^\]]+\]\]/.test(content);
 
-    let cleaned = content.
+    const cleaned = content.
     replace(/\[\[(POST|SHORT):[^\]]+\]\]/g, '').
     replace(/\n?📎\s*(Post|Shorts):\s*\S+/g, '').
     replace(/https?:\/\/\S+/g, '').
@@ -885,6 +885,20 @@ const Messages = () => {
                           </p>
                     }
                       </div>
+                      {/* Video call shortcut */}
+                      {!isEditMode && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/chat/${conv.otherUser.id}?startCall=true`);
+                          }}
+                          className="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors"
+                          aria-label="Video qo'ng'iroq"
+                        >
+                          <Icon icon="heroicons:video-camera-16-solid" className="h-5 w-5 text-foreground" />
+                        </button>
+                      )}
                     </div>
                 )}
 

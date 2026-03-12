@@ -64,7 +64,7 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
 
     const hasAttachments = attachments.length > 0;
     const userMsg: AIChatMessage = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       role: 'user',
       content: text.trim() || (hasAttachments ? '📎 Fayl yuborildi' : ''),
       timestamp: new Date(),
@@ -87,7 +87,7 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
         if (last?.role === 'assistant') {
           return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantContent } : m);
         }
-        return [...prev, { id: (Date.now() + 1).toString(), role: 'assistant', content: assistantContent, timestamp: new Date(), model: usedModel }];
+        return [...prev, { id: crypto.randomUUID(), role: 'assistant', content: assistantContent, timestamp: new Date(), model: usedModel }];
       });
     };
 

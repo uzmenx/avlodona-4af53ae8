@@ -9,6 +9,8 @@ import { TreeOverlay } from '@/hooks/useTreePosts';
 
 const STICKERS = ['🌳', '❤️', '👨‍👩‍👧‍👦', '🏠', '⭐', '🎂', '👶', '💍', '🌹', '📷', '🎉', '💝', '🌸', '🦋', '🕊️', '✨'];
 
+const NOOP_FN = () => {};
+
 interface TreePostEditorProps {
   isOpen: boolean;
   onClose: () => void;
@@ -124,11 +126,11 @@ export const TreePostEditor = ({
             <FamilyTreeCanvas
               members={members}
               positions={positions}
-              onOpenProfile={() => {}}
-              onPositionChange={() => {}}
+              onOpenProfile={NOOP_FN}
+              onPositionChange={NOOP_FN}
             />
             {overlays.length > 0 && (
-              <TreeOverlayLayer overlays={overlays} onChange={() => {}} editable={false} />
+              <TreeOverlayLayer overlays={overlays} onChange={NOOP_FN} editable={false} />
             )}
           </div>
           <Textarea
@@ -153,8 +155,8 @@ export const TreePostEditor = ({
                 <FamilyTreeCanvas
                   members={members}
                   positions={positions}
-                  onOpenProfile={() => {}}
-                  onPositionChange={() => {}}
+                  onOpenProfile={NOOP_FN}
+                  onPositionChange={NOOP_FN}
                 />
               </div>
               {/* Overlay layer on top — not affected by tree zoom */}

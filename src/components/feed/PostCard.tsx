@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 
 import { createPortal } from 'react-dom';
 
-import { motion } from 'framer-motion';
+
 
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -59,7 +59,7 @@ interface PostCardProps {
   index?: number;
 }
 
-export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProps) => {
+const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProps) => {
   const { user } = useAuth();
   const { getStoryInfo } = useActiveStories();
 
@@ -240,20 +240,20 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
               .select('story_id')
               .eq('viewer_id', viewerId)
               .in('story_id', stories.map(s => s.id))
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as { story_id: string }[] }),
         viewerId
           ? supabase
               .from('story_likes')
               .select('story_id')
               .eq('user_id', viewerId)
               .in('story_id', stories.map(s => s.id))
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as { story_id: string }[] }),
       ]);
 
-      const viewedStoryIds = new Set((viewsRes as any)?.data?.map((v: any) => v.story_id) || []);
-      const likedStoryIds = new Set((likesRes as any)?.data?.map((l: any) => l.story_id) || []);
+      const viewedStoryIds = new Set((viewsRes?.data as { story_id: string }[] | null)?.map((v) => v.story_id) || []);
+      const likedStoryIds = new Set((likesRes?.data as { story_id: string }[] | null)?.map((l) => l.story_id) || []);
 
-      const normalizedStories: Story[] = stories.map((s: any) => ({
+      const normalizedStories: Story[] = stories.map((s) => ({
         ...s,
         media_type: s.media_type as 'image' | 'video',
         ring_id: s.ring_id || 'default',
@@ -319,7 +319,7 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
   const firstVideoUrl = mediaUrls.find((url) => isVideo(url));
 
   const card = (
-    <Card className="overflow-hidden border-0 rounded-[20px] border border-white/20 bg-white/10 backdrop-blur-[10px] shadow-xl shadow-black/20">
+    <Card className="overflow-hidden rounded-[20px] border border-white/20 bg-white/10 backdrop-blur-[10px] shadow-xl shadow-black/20">
       <CardContent className="p-0">
         {/* Header */}
         <div className="flex items-center justify-between p-3">
@@ -530,21 +530,19 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
         src={videoPlayerSrc}
         title={post.content?.slice(0, 50) || 'Video'}
         onClose={() => setShowVideoPlayer(false)}
+        startInFullscreen={true}
       />
     </div>
   );
 
   return (
     <>
-      <motion.div
+      <div
         ref={cardRef}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: Math.min(index * 0.06, 0.4), ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="py-0 my-[5px]"
+        className="py-0 my-[5px] animate-fadeIn"
       >
         {card}
-      </motion.div>
+      </div>
 
       {typeof document !== 'undefined' && videoPlayerOverlay && createPortal(videoPlayerOverlay, document.body)}
 
@@ -559,4 +557,4 @@ export const PostCard = ({ post, onDelete, onMediaClick, index = 0 }: PostCardPr
   );
 };
 
-
+export const PostCard = memo(PostCardInner);

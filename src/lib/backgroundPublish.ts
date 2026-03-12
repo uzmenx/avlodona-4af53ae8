@@ -20,6 +20,7 @@ export type PublishTask = {
   collabIds: string[];
   postCollectionIds?: string[];
   storyHighlightId?: string | null;
+  memoryMemberId?: string | null;
 };
 
 const ensureYearHighlight = async (userId: string) => {
@@ -352,7 +353,7 @@ const runPublish = async (task: PublishTask) => {
       if (audioUrl) postUrls = [...postUrls, audioUrl];
     }
 
-    let storyUrls: { url: string; mediaType: 'image' | 'video' }[] = [];
+    const storyUrls: { url: string; mediaType: 'image' | 'video' }[] = [];
     if (task.shareStory) {
       for (const baseFile of storyInputFiles) {
         const isVideo = baseFile.type.startsWith('video/');
@@ -396,7 +397,7 @@ const runPublish = async (task: PublishTask) => {
 
       if (post) {
         const captionMentions = (task.caption.match(/@(\w+)/g) || []).map((m) => m.slice(1));
-        let allMentionIds = [...task.mentionIds];
+        const allMentionIds = [...task.mentionIds];
         if (captionMentions.length > 0) {
           const { data: mp } = await supabase.from('profiles').select('id, username').in('username', captionMentions);
           if (mp) {
@@ -410,6 +411,14 @@ const runPublish = async (task: PublishTask) => {
             .from('post_mentions')
             .insert(allMentionIds.map((uid) => ({ post_id: post.id, mentioned_user_id: uid })));
         }
+        
+        // Add memory post mention
+        if (task.memoryMemberId) {
+          await supabase
+            .from('post_mentions')
+            .insert({ post_id: post.id, family_member_id: task.memoryMemberId });
+        }
+
         if (task.collabIds.length > 0) {
           await supabase.from('post_collabs').insert(task.collabIds.map((uid) => ({ post_id: post.id, user_id: uid })));
         }

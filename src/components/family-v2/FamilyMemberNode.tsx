@@ -7,8 +7,9 @@ import { StoryViewer } from '@/components/stories/StoryViewer';
 import { useStories, StoryGroup } from '@/hooks/useStories';
 import { useAuth } from '@/contexts/AuthContext';
 import { getStoryRingGradient } from '@/components/stories/storyRings';
- import { MergedBadges } from './MergedBadges';
- import { Check } from 'lucide-react';
+import { MergedBadges } from './MergedBadges';
+import { Check, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface FamilyMemberNodeData {
   member: FamilyMember;
@@ -52,6 +53,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
     storyGroupIndex: -1 
   });
   const [showStoryViewer, setShowStoryViewer] = useState(false);
+  const navigate = useNavigate();
 
   // Long press detection
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -248,6 +250,19 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
               className="!bg-red-500 !w-2 !h-2 !border-2 !border-background"
             />
           )}
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/create-post?memberId=${member.id}`);
+            }}
+            className="absolute -top-1 -right-1 w-7 h-7 bg-background rounded-full flex items-center justify-center z-20 shadow-md border border-border group/btn"
+            title="Xotira qoldirish"
+          >
+            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover/btn:bg-primary transition-colors">
+              <Plus className="w-3.5 h-3.5 text-primary group-hover/btn:text-primary-foreground transition-colors" />
+            </div>
+          </button>
 
           {storyStatus.hasStory && storyStatus.hasUnviewed && storyStatus.ringGradient ? (
             <span

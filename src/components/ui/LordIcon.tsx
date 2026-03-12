@@ -103,7 +103,7 @@ export const LordIcon = ({
   useEffect(() => {
     if (trigger !== 'morph') return;
     playFromStart();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isMorphSecond, trigger]);
 
   return (

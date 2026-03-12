@@ -13,6 +13,7 @@ import {
   Unlink,
   UserPlus,
   Users,
+  BookHeart,
 } from 'lucide-react';
 import { FamilyMember } from '@/types/family';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -99,7 +100,8 @@ export const ProfileModal = ({
   const showAddSpouse = !hasSpouse && !!onAddSpouse;
   const showAddChild = canAddChild && !!onAddChild;
   const showInvite = !!(member.name && !member.linkedUserId && onSendInvitation);
-  const actionCount = [showAddParents, showAddSpouse, showAddChild, canMessage, showInvite].filter(Boolean).length;
+  const showProfileView = true;
+  const actionCount = [showAddParents, showAddSpouse, showAddChild, canMessage, showInvite, showProfileView].filter(Boolean).length;
 
   const effectivePhotoUrl = isCurrentUserProfile ? (profile?.avatar_url || photoUrl) : photoUrl;
 
@@ -460,12 +462,32 @@ export const ProfileModal = ({
                     size="sm"
                     onClick={() => handleAction(() => onSendInvitation(member))}
                     className={cn(
-                      "rounded-2xl h-10 text-sm font-medium border-muted/60 hover:bg-muted/50",
-                      actionCount % 2 === 1 ? "col-span-2" : undefined
+                      "rounded-2xl h-10 text-sm font-medium border-muted/60 hover:bg-muted/50"
                     )}
                   >
                     <Send className="w-3.5 h-3.5 mr-1" />
                     Taklif
+                  </Button>
+                )}
+
+                {showProfileView && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAction(() => {
+                      if (member.linkedUserId) {
+                        navigate(`/user/${member.linkedUserId}`);
+                      } else {
+                        navigate(`/user/${member.id}?memorial=true`);
+                      }
+                    })}
+                    className={cn(
+                      "rounded-2xl h-10 text-sm font-medium border-primary/20 bg-primary/5 text-primary hover:bg-primary/10",
+                      (actionCount - 1) % 2 === 0 ? "col-span-2" : undefined
+                    )}
+                  >
+                    <BookHeart className="w-3.5 h-3.5 mr-1" />
+                    {member.deathYear ? "Xotira sahifasi" : "Profilga o'tish"}
                   </Button>
                 )}
               </div>

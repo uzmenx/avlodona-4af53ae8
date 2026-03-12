@@ -12,6 +12,7 @@ import { TreePostHeader } from './TreePostHeader';
 import { TreeHistoryDrawer } from './TreeHistoryDrawer';
 import { TreeOverlayLayer } from './TreeOverlayLayer';
 import { TreePostEditor } from './TreePostEditor';
+import { SearchRelativesFlow } from './SearchRelativesFlow';
 import { useLocalFamilyTree } from '@/hooks/useLocalFamilyTree';
 import { useFamilyInvitations, MergeDialogData } from '@/hooks/useFamilyInvitations';
 import { useMergeMode } from '@/hooks/useMergeMode';
@@ -62,6 +63,7 @@ export const FamilyTreeV2 = () => {
   const [showGenderSelect, setShowGenderSelect] = useState(false);
   const [processingInvitation, setProcessingInvitation] = useState<string | null>(null);
   const [isSelectingGender, setIsSelectingGender] = useState(false);
+  const [showSearchRelatives, setShowSearchRelatives] = useState(false);
 
   // New UI states
   const [showHistory, setShowHistory] = useState(false);
@@ -77,7 +79,7 @@ export const FamilyTreeV2 = () => {
     } else {
       setOverlays([]);
     }
-  }, [currentPostId]);
+  }, [currentPostId, currentPost]);
 
   // Build positions map from members
   const positions = Object.fromEntries(
@@ -90,10 +92,11 @@ export const FamilyTreeV2 = () => {
       if (!profile.gender) {
         setShowGenderSelect(true);
       } else if (Object.keys(members).length === 0) {
-        createSelfNode(profile.gender as 'male' | 'female');
+        // Instead of automatically creating self node, show the search relatives flow
+        setShowSearchRelatives(true);
       }
     }
-  }, [isLoading, user?.id, profile?.gender, Object.keys(members).length]);
+  }, [isLoading, user?.id, profile, members]);
 
   const handleGenderSelect = async (gender: 'male' | 'female') => {
     if (!user?.id || isSelectingGender) return;
@@ -101,7 +104,7 @@ export const FamilyTreeV2 = () => {
     try {
       await supabase.from('profiles').update({ gender }).eq('id', user.id);
       await refreshProfile();
-      await createSelfNode(gender);
+      // Wait for the next render to show the search flow
       setShowGenderSelect(false);
     } catch (error) {
       console.error('Error setting gender:', error);
@@ -260,7 +263,23 @@ export const FamilyTreeV2 = () => {
     <section className="min-h-screen flex flex-col">
       <GenderSelectionModal isOpen={showGenderSelect} onSelect={handleGenderSelect} disabled={isSelectingGender} />
 
-      {/* Merge Mode Bar */}
+      {/* Show Search Relatives Flow if the tree is empty and user has a gender */}
+      {showSearchRelatives && !showGenderSelect && profile?.gender && Object.keys(members).length === 0 && (
+        <div className="flex-1 overflow-y-auto">
+          <SearchRelativesFlow 
+            onCancel={async () => {
+              // If they explicitly cancel and want to create a new tree
+              await createSelfNode(profile.gender as 'male' | 'female');
+              setShowSearchRelatives(false);
+            }} 
+          />
+        </div>
+      )}
+
+      {/* Main Tree View */}
+      {(!showSearchRelatives || Object.keys(members).length > 0) && (
+        <>
+          {/* Merge Mode Bar */}
       {isMergeMode && (
         <div className="fixed inset-x-0 top-0 z-50">
           <div className="bg-background/70 backdrop-blur-2xl border-b border-white/10">
@@ -406,6 +425,8 @@ export const FamilyTreeV2 = () => {
 
       {mergeData !== null && (
         <UnifiedMergeDialog isOpen={showMergeDialog} onClose={closeMergeDialog} data={mergeData} onConfirm={executeTreeMerge} isProcessing={isMerging} />
+      )}
+        </>
       )}
     </section>
   );

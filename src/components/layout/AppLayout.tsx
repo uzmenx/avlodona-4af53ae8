@@ -1,7 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { BottomNav } from './BottomNav';
 import { useTheme } from '@/contexts/ThemeContext';
-import { enableSmoothScrolling } from '@/utils/scrollBehavior';
 import { cn } from '@/lib/utils';
 import { onPublishProgress } from '@/lib/backgroundPublish';
 import { Cloud } from 'lucide-react';
@@ -71,10 +70,6 @@ export const AppLayout = ({ children, showNav = true }: AppLayoutProps) => {
     );
   };
 
-  // Enable smooth scrolling globally
-  useEffect(() => {
-    enableSmoothScrolling();
-  }, []);
 
   useEffect(() => {
     const handler = (e: Event) => {

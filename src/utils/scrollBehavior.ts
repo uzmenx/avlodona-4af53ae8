@@ -30,15 +30,8 @@ export const enableMomentumScrolling = (element: HTMLElement) => {
 export const createSmoothScrollContainer = () => {
   const styles = `
     .smooth-scroll-container {
-      scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: none;
-      scroll-snap-type: y mandatory;
-    }
-    
-    .smooth-scroll-item {
-      scroll-snap-align: start;
-      scroll-snap-stop: always;
     }
     
     /* Custom scrollbar for webkit browsers */
@@ -51,19 +44,6 @@ export const createSmoothScrollContainer = () => {
     .smooth-scroll-container {
       scrollbar-width: none;
       -ms-overflow-style: none;
-    }
-    
-    /* Momentum scrolling for mobile */
-    @media (pointer: coarse) {
-      .smooth-scroll-container {
-        -webkit-overflow-scrolling: touch;
-        scroll-behavior: smooth;
-      }
-    }
-    
-    /* Smooth transitions for scroll-based animations */
-    .scroll-transition {
-      transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     }
   `;
   

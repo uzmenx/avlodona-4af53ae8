@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -96,6 +96,8 @@ interface UserProfile {
 
 const UserProfilePage = () => {
   const { userId } = useParams<{ userId: string }>();
+  const [searchParams] = useSearchParams();
+  const isMemorial = searchParams.get('memorial') === 'true';
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const { setOverride } = useTheme();
@@ -132,7 +134,7 @@ const UserProfilePage = () => {
   
   const { highlights } = useStoryHighlights(userId);
   const { collections, selectedCollectionId, setSelectedCollectionId, collectionPosts } = usePostCollections(userId);
-  const { mentionedPosts: userMentionedPosts, collabPosts: userCollabPosts } = useMentionsCollabs(userId);
+  const { mentionedPosts: userMentionedPosts, collabPosts: userCollabPosts } = useMentionsCollabs(userId, isMemorial);
 
   const cyclePostsLayout = useCallback(() => {
     setPostsLayout((prev) => (prev === 'pinterest2' ? 'pinterest1' : prev === 'pinterest1' ? 'list' : 'pinterest2'));
@@ -182,27 +184,52 @@ const UserProfilePage = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+      if (isMemorial) {
+        const { data, error } = await supabase
+          .from('family_tree_members')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
 
-      if (error) throw error;
-      if (data) {
-        setProfile({
-          ...data,
-          theme_mode: (data.theme_mode as ThemeMode) || 'system',
-          bg_theme: (data.bg_theme as BackgroundTheme) || null,
-          social_links: (data.social_links as unknown as SocialLink[] | null) || null,
-        });
+        if (error) throw error;
+        if (data) {
+          setProfile({
+            id: data.id,
+            name: data.name,
+            username: `memorial_${data.id.substring(0, 8)}`,
+            avatar_url: data.photo_url,
+            bio: data.death_year 
+              ? `${data.birth_year ? data.birth_year + ' ' : ''}- ${data.death_year}\nXotirasiga bag'ishlanadi` 
+              : "Xotira sahifasi",
+            cover_url: null,
+            social_links: null,
+            theme_mode: 'dark',
+            bg_theme: 'none',
+          });
+        }
+      } else {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (error) throw error;
+        if (data) {
+          setProfile({
+            ...data,
+            theme_mode: (data.theme_mode as ThemeMode) || 'system',
+            bg_theme: (data.bg_theme as BackgroundTheme) || null,
+            social_links: (data.social_links as unknown as SocialLink[] | null) || null,
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, [userId, isMemorial]);
 
   const handleRefresh = useCallback(async () => {
     await Promise.all([refetch(), fetchProfile()]);
@@ -391,10 +418,10 @@ const UserProfilePage = () => {
           <ArrowLeft className="h-5 w-5 text-white" />
         </Button>
 
-        {/* Actions menu (top-right) */}
-        {userId && (
-          <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-            <form
+            {/* Actions menu (top-right) */}
+            {userId && !isMemorial && (
+              <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                <form
               onSubmit={(e) => {
                 e.preventDefault();
                 const trimmed = searchQuery.trim();
@@ -511,26 +538,30 @@ const UserProfilePage = () => {
           <div className="flex items-end justify-between gap-1 mb-1">
 
             {/* LEFT: Followers */}
-            <button
-              type="button"
-              onClick={() => {
-                setFollowHubTab('followers');
-                setFollowHubOpen(true);
-              }}
-              className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0"
-            >
-              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                Kuzatuvchilar
-              </span>
-              <span className="text-lg font-extrabold text-foreground leading-none">
-                {formatCount(followersCount)}
-              </span>
-            </button>
+            {!isMemorial ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setFollowHubTab('followers');
+                  setFollowHubOpen(true);
+                }}
+                className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0"
+              >
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                  Kuzatuvchilar
+                </span>
+                <span className="text-lg font-extrabold text-foreground leading-none">
+                  {formatCount(followersCount)}
+                </span>
+              </button>
+            ) : (
+              <div className="flex-1" /> /* Spacer */
+            )}
 
             {/* CENTER: Avatar (with story ring when user has active story) */}
             <div className="flex-shrink-0 flex flex-col items-center">
               {(() => {
-                const info = userId ? getStoryInfo(userId) : undefined;
+                const info = userId && !isMemorial ? getStoryInfo(userId) : undefined;
                 if (info) {
                   return (
                     <div
@@ -542,7 +573,7 @@ const UserProfilePage = () => {
                     >
                       <div className="w-full h-full rounded-full bg-background p-[2px]">
                         <Avatar className="h-full w-full">
-                          <AvatarImage src={profile.avatar_url || undefined} />
+                          <AvatarImage src={profile.avatar_url || undefined} className="object-cover" />
                           <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-accent text-white font-bold">
                             {getInitials(profile.name)}
                           </AvatarFallback>
@@ -554,7 +585,7 @@ const UserProfilePage = () => {
 
                 return (
                   <Avatar className="h-16 w-16 border-4 border-background shadow-2xl ring-2 ring-primary/30">
-                    <AvatarImage src={profile.avatar_url || undefined} />
+                    <AvatarImage src={profile.avatar_url || undefined} className="object-cover" />
                     <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-accent text-white font-bold">
                       {getInitials(profile.name)}
                     </AvatarFallback>
@@ -590,26 +621,36 @@ const UserProfilePage = () => {
 
           {/* ROW 2: Qarindoshim | Name & Username | Xabar */}
           <div className="flex items-center justify-between gap-2 mb-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-white/10 dark:bg-white/5 border-white/20 hover:bg-white/20 text-foreground h-8 text-xs px-2.5"
-              onClick={() => setRelativeSheetOpen(true)}
-            >
-              <Users className="h-3.5 w-3.5 mr-2" />
-              Qarindosh
-            </Button>
+            {!isMemorial ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-white/10 dark:bg-white/5 border-white/20 hover:bg-white/20 text-foreground h-8 text-xs px-2.5"
+                onClick={() => setRelativeSheetOpen(true)}
+              >
+                <Users className="h-3.5 w-3.5 mr-2" />
+                Qarindosh
+              </Button>
+            ) : (
+              <div className="w-20" /> /* Spacer for centering */
+            )}
 
             <div className="min-w-0 flex-1 text-center">
               <h1 className="text-lg font-extrabold text-foreground leading-tight truncate">
                 {profile.name || 'Foydalanuvchi'}
               </h1>
-              <div className="mt-0.5 truncate">
-                <StarUsername username={profile.username ? profile.username : 'username'} />
-              </div>
+              {!isMemorial && (
+                <div className="mt-0.5 truncate">
+                  <StarUsername username={profile.username ? profile.username : 'username'} />
+                </div>
+              )}
             </div>
 
-            {!isProfileBlocked && <MessageButton userId={userId} className="h-8 text-xs px-2.5" />}
+            {!isMemorial ? (
+              !isProfileBlocked && <MessageButton userId={userId} className="h-8 text-xs px-2.5" />
+            ) : (
+              <div className="w-20" /> /* Spacer for centering */
+            )}
           </div>
 
           {isProfileBlocked && (
@@ -628,25 +669,29 @@ const UserProfilePage = () => {
           {showPostsStats && (
             <div className="flex justify-center mb-1">
               <div className="flex items-end justify-center gap-1.5 w-full max-w-[480px]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFollowHubTab('following');
-                    setFollowHubOpen(true);
-                  }}
-                  className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0"
-                >
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                    Kuzatilmoqda
-                  </span>
-                  <span className="text-lg font-extrabold text-foreground leading-none">
-                    {formatCount(followingCount)}
-                  </span>
-                </button>
+                {!isMemorial && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFollowHubTab('following');
+                      setFollowHubOpen(true);
+                    }}
+                    className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0"
+                  >
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                      Kuzatilmoqda
+                    </span>
+                    <span className="text-lg font-extrabold text-foreground leading-none">
+                      {formatCount(followingCount)}
+                    </span>
+                  </button>
+                )}
 
-                <div className="flex-shrink-0">
-                  <FollowButton targetUserId={userId} size="sm" className="h-[44px] text-xs px-4" />
-                </div>
+                {!isMemorial && (
+                  <div className="flex-shrink-0">
+                    <FollowButton targetUserId={userId} size="sm" className="h-[44px] text-xs px-4" />
+                  </div>
+                )}
 
                 <button
                   type="button"
@@ -728,14 +773,14 @@ const UserProfilePage = () => {
         </div>
 
         {/* Story Highlights */}
-        {highlights.length > 0 && (
+        {highlights.length > 0 && !isMemorial && (
           <div className="flex justify-center">
             <HighlightsRow highlights={highlights} isOwner={false} />
           </div>
         )}
 
         {/* Collections filter */}
-        {collections.length > 0 && activeTab === 'posts' && (
+        {collections.length > 0 && activeTab === 'posts' && !isMemorial && (
           <CollectionsFilter
             collections={collections}
             selectedId={selectedCollectionId}
@@ -788,17 +833,19 @@ const UserProfilePage = () => {
             >
               <Sparkles className="h-5 w-5" />
             </button>
-            <button
-              onClick={() => setActiveTab('saved')}
-              className={cn(
-                'flex-1 py-2 flex items-center justify-center border-b-2 transition-colors',
-                activeTab === 'saved'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground'
-              )}
-            >
-              <Bookmark className="h-5 w-5" />
-            </button>
+            {!isMemorial && (
+              <button
+                onClick={() => setActiveTab('saved')}
+                className={cn(
+                  'flex-1 py-2 flex items-center justify-center border-b-2 transition-colors',
+                  activeTab === 'saved'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground'
+                )}
+              >
+                <Bookmark className="h-5 w-5" />
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('mentions')}
               className={cn(
@@ -808,7 +855,14 @@ const UserProfilePage = () => {
                   : 'border-transparent text-muted-foreground'
               )}
             >
-              <AtSign className="h-5 w-5" />
+              {isMemorial ? (
+                <div className="flex items-center gap-2">
+                  <Heart className="h-5 w-5" />
+                  <span className="text-sm font-medium">Xotira postlari</span>
+                </div>
+              ) : (
+                <AtSign className="h-5 w-5" />
+              )}
             </button>
 
             {activeTab === 'posts' && false && (

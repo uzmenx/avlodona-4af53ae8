@@ -27,7 +27,7 @@ export interface CollabRequest {
   };
 }
 
-export const useMentionsCollabs = (userId?: string) => {
+export const useMentionsCollabs = (userId?: string, isMemorial?: boolean) => {
   const { user } = useAuth();
   const targetId = userId || user?.id;
   const [mentionedPosts, setMentionedPosts] = useState<Post[]>([]);
@@ -38,10 +38,24 @@ export const useMentionsCollabs = (userId?: string) => {
   const fetchMentionedPosts = useCallback(async () => {
     if (!targetId) return;
     try {
+      let targetIds = [targetId];
+
+      if (isMemorial) {
+        // Also fetch any members merged into this one
+        const { data: merged } = await supabase
+          .from('family_tree_members')
+          .select('id')
+          .eq('merged_into', targetId);
+          
+        if (merged && merged.length > 0) {
+          targetIds = [...targetIds, ...merged.map(m => m.id)];
+        }
+      }
+
       const { data: mentions } = await supabase
         .from('post_mentions')
         .select('post_id, created_at')
-        .eq('mentioned_user_id', targetId)
+        .in(isMemorial ? 'family_member_id' : 'mentioned_user_id', targetIds)
         .order('created_at', { ascending: false });
 
       if (!mentions || mentions.length === 0) {

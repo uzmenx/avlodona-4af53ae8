@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Paperclip, Image, Video, X, Mic, Lock, Trash2 } from 'lucide-react';
+import { Send, Paperclip, X, Mic, Lock, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { uploadMedia, uploadToR2 } from '@/lib/r2Upload';
+import { MediaUploadProgress } from './MediaUploadProgress';
 
 interface MediaFile {
   file: File;
   preview: string;
   type: 'image' | 'video';
+  progress?: number;
 }
 
 interface ChatInputProps {
@@ -22,11 +24,10 @@ interface ChatInputProps {
 export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInputProps) => {
   const { user } = useAuth();
   const [inputValue, setInputValue] = useState('');
-  const [selectedMedia, setSelectedMedia] = useState<MediaFile | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<MediaFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
   const [showMediaMenu, setShowMediaMenu] = useState(false);
 
   // Voice recording - Telegram style
@@ -43,15 +44,24 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
 
   const [voiceLocked, setVoiceLocked] = useState(false);
   const [showConfirmSend, setShowConfirmSend] = useState(false);
+  const [voiceUploadProgress, setVoiceUploadProgress] = useState<number | undefined>();
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const isHoldingRef = useRef(false);
   const recordingStartedRef = useRef(false);
 
-  const uploadFile = async (file: File): Promise<string | null> => {
+  const uploadFile = async (file: File, index: number): Promise<string | null> => {
     if (!user?.id) return null;
     try {
-      return await uploadMedia(file, 'messages', user.id);
+      return await uploadMedia(file, 'messages', user.id, (progress) => {
+        setSelectedMedia(prev => {
+          const next = [...prev];
+          if (next[index]) {
+            next[index] = { ...next[index], progress };
+          }
+          return next;
+        });
+      });
     } catch (error) {
       console.error('Upload error:', error);
       toast.error('Fayl yuklashda xatolik');
@@ -63,12 +73,21 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
     if (!conversationId) return;
     setIsUploading(true);
     try {
-      if (selectedMedia) {
-        const mediaUrl = await uploadFile(selectedMedia.file);
-        if (mediaUrl) {
-          await onSendMessage(inputValue.trim() || '', mediaUrl, selectedMedia.type);
-          URL.revokeObjectURL(selectedMedia.preview);
-          setSelectedMedia(null);
+      if (selectedMedia.length > 0) {
+        // Send media files one by one
+        for (let i = 0; i < selectedMedia.length; i++) {
+          const media = selectedMedia[i];
+          const mediaUrl = await uploadFile(media.file, i);
+          if (mediaUrl) {
+            await onSendMessage('', mediaUrl, media.type);
+            URL.revokeObjectURL(media.preview);
+          }
+        }
+        setSelectedMedia([]);
+        
+        // If there's also text, send it separately
+        if (inputValue.trim()) {
+          await onSendMessage(inputValue.trim());
         }
       } else if (inputValue.trim()) {
         await onSendMessage(inputValue.trim());
@@ -86,9 +105,15 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
   const handleSendAudio = async () => {
     if (!audioBlob || !conversationId) return;
     setIsUploading(true);
+    setVoiceUploadProgress(0);
     try {
       const audioFile = new File([audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
-      const mediaUrl = await uploadToR2(audioFile, `messages/${user?.id}`);
+      const mediaUrl = await uploadToR2(
+        audioFile, 
+        `messages/${user?.id}`, 
+        undefined, 
+        (progress) => setVoiceUploadProgress(progress)
+      );
       if (mediaUrl) {
         await onSendMessage('🎤 Ovozli xabar', mediaUrl, 'audio');
       }
@@ -100,6 +125,7 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
       toast.error('Ovozli xabar yuborishda xatolik');
     } finally {
       setIsUploading(false);
+      setVoiceUploadProgress(undefined);
     }
   };
 
@@ -192,22 +218,32 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const preview = URL.createObjectURL(file);
-    setSelectedMedia({ file, preview, type });
-    setShowMediaMenu(false);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const newMediaItems: MediaFile[] = files.map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+      type: file.type.startsWith('video/') ? 'video' : 'image'
+    }));
+
+    setSelectedMedia(prev => [...prev, ...newMediaItems]);
     e.target.value = '';
   };
 
-  const handleRemoveMedia = () => {
-    if (selectedMedia?.preview) URL.revokeObjectURL(selectedMedia.preview);
-    setSelectedMedia(null);
+  const handleRemoveMedia = (index: number) => {
+    const itemToRemove = selectedMedia[index];
+    if (itemToRemove?.preview) URL.revokeObjectURL(itemToRemove.preview);
+    setSelectedMedia(prev => {
+      const next = [...prev];
+      next.splice(index, 1);
+      return next;
+    });
   };
 
   const hasText = inputValue.trim().length > 0;
-  const hasMedia = !!selectedMedia;
+  const hasMedia = selectedMedia.length > 0;
   const showSend = hasText || hasMedia;
 
   // Recording active UI (Telegram-style fullwidth recording bar)
@@ -297,23 +333,32 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
   return (
     <div className="safe-area-bottom">
       {/* Selected media preview */}
-      {selectedMedia && (
-        <div className="mx-2 mt-1 mb-1">
-          <div className="relative inline-block">
-            <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-border/30 bg-muted">
-              {selectedMedia.type === 'image' ? (
-                <img src={selectedMedia.preview} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <video src={selectedMedia.preview} className="w-full h-full object-cover" />
-              )}
-              <button
-                onClick={handleRemoveMedia}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-sm"
-              >
-                <X className="h-3 w-3" />
-              </button>
+      {selectedMedia.length > 0 && (
+        <div className="mx-2 mt-1 mb-1 flex flex-wrap gap-2">
+          {selectedMedia.map((media, index) => (
+            <div key={index} className="relative inline-block">
+              <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-border/30 bg-muted">
+                {media.type === 'image' ? (
+                  <img src={media.preview} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <video src={media.preview} className="w-full h-full object-cover" />
+                )}
+                
+                {media.progress !== undefined && media.progress < 100 && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <MediaUploadProgress progress={media.progress} size={24} />
+                  </div>
+                )}
+
+                <button
+                  onClick={() => handleRemoveMedia(index)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-sm"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
             </div>
-          </div>
+          ))}
         </div>
       )}
 
@@ -321,32 +366,22 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
       <div className="mx-2 mb-2 rounded-2xl bg-background/50 backdrop-blur-xl border border-border/30 p-1.5 flex items-center gap-1.5" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
         {/* Attach button */}
         <div className="relative">
-          <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e, 'image')} />
-          <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={(e) => handleFileSelect(e, 'video')} />
+          <input 
+            ref={mediaInputRef} 
+            type="file" 
+            multiple
+            accept="image/*,video/*" 
+            className="hidden" 
+            onChange={handleFileSelect} 
+          />
           
           <button 
-            onClick={() => setShowMediaMenu(!showMediaMenu)}
+            type="button"
+            onClick={() => mediaInputRef.current?.click()}
             className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors"
           >
             <Paperclip className="h-5 w-5 text-muted-foreground" />
           </button>
-
-          {showMediaMenu && (
-            <div className="absolute bottom-12 left-0 bg-popover/95 backdrop-blur-xl border border-border/30 rounded-xl shadow-lg p-1.5 flex gap-1 z-50">
-              <button 
-                onClick={() => { imageInputRef.current?.click(); }}
-                className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-muted/50 transition-colors"
-              >
-                <Image className="h-5 w-5 text-primary" />
-              </button>
-              <button 
-                onClick={() => { videoInputRef.current?.click(); }}
-                className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-muted/50 transition-colors"
-              >
-                <Video className="h-5 w-5 text-primary" />
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Text input */}
@@ -355,7 +390,6 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => setShowMediaMenu(false)}
           placeholder="Xabar yozing..."
           className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none py-2 px-1"
           disabled={isUploading}

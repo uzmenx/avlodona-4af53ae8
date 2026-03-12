@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Play, Pause, Mic } from 'lucide-react';
+import { Play, Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MediaUploadProgress } from './MediaUploadProgress';
 
 interface VoiceMessageProps {
   audioUrl: string;
   isMine: boolean;
+  uploadProgress?: number;
 }
 
-export const VoiceMessage = ({ audioUrl, isMine }: VoiceMessageProps) => {
+export const VoiceMessage = ({ audioUrl, isMine, uploadProgress }: VoiceMessageProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -79,22 +81,28 @@ export const VoiceMessage = ({ audioUrl, isMine }: VoiceMessageProps) => {
     <div className="flex items-center gap-2.5 min-w-[200px]">
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
       
-      {/* Play button */}
-      <button
-        onClick={togglePlay}
-        className={cn(
-          "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all",
-          isMine 
-            ? "bg-primary-foreground/20 hover:bg-primary-foreground/30" 
-            : "bg-primary/15 hover:bg-primary/25"
-        )}
-      >
-        {isPlaying ? (
-          <Pause className={cn("h-4 w-4", isMine ? "text-primary-foreground" : "text-foreground")} />
-        ) : (
-          <Play className={cn("h-4 w-4 ml-0.5", isMine ? "text-primary-foreground" : "text-foreground")} />
-        )}
-      </button>
+      {/* Play button or Upload progress */}
+      {uploadProgress !== undefined && uploadProgress < 100 ? (
+        <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-black/5">
+          <MediaUploadProgress progress={uploadProgress} size={28} showText />
+        </div>
+      ) : (
+        <button
+          onClick={togglePlay}
+          className={cn(
+            "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all",
+            isMine 
+              ? "bg-primary-foreground/20 hover:bg-primary-foreground/30" 
+              : "bg-primary/15 hover:bg-primary/25"
+          )}
+        >
+          {isPlaying ? (
+            <Pause className={cn("h-4 w-4", isMine ? "text-primary-foreground" : "text-foreground")} />
+          ) : (
+            <Play className={cn("h-4 w-4 ml-0.5", isMine ? "text-primary-foreground" : "text-foreground")} />
+          )}
+        </button>
+      )}
 
       <div className="flex-1 flex flex-col gap-1">
         {/* Waveform */}

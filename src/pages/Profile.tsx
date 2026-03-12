@@ -783,7 +783,7 @@ const Profile = () => {
               <div
                 key={post.id}
                 onClick={() => openViewer(index, filteredPosts)}
-                className="cursor-pointer smooth-scroll-item scroll-transition">
+                className="cursor-pointer">
                 
                     <PostCard post={post} onDelete={() => removePost(post.id)} />
                   </div>
@@ -829,7 +829,7 @@ const Profile = () => {
                 <div
                   key={post.id}
                   onClick={() => openViewer(idx, filteredPosts)}
-                  className="cursor-pointer smooth-scroll-item scroll-transition">
+                  className="cursor-pointer">
                   
                       <ProfileMasonryItem post={post} />
                     </div>
@@ -881,7 +881,7 @@ const Profile = () => {
                       <div
                         key={post.id}
                         onClick={() => openViewer(idx, filteredPosts)}
-                        className="cursor-pointer smooth-scroll-item scroll-transition">
+                        className="cursor-pointer">
                         
                             <ProfileMasonryItem post={post} />
                           </div>);
@@ -897,7 +897,7 @@ const Profile = () => {
                       <div
                         key={post.id}
                         onClick={() => openViewer(idx, filteredPosts)}
-                        className="cursor-pointer smooth-scroll-item scroll-transition">
+                        className="cursor-pointer">
                         
                             <ProfileMasonryItem post={post} />
                           </div>);
@@ -964,7 +964,7 @@ const Profile = () => {
               <div
                 key={post.id}
                 onClick={() => openViewer(index, savedPosts)}
-                className="cursor-pointer smooth-scroll-item scroll-transition">
+                className="cursor-pointer">
 
                     <PostCard post={post} />
                   </div>
@@ -994,7 +994,7 @@ const Profile = () => {
               <div
                 key={post.id}
                 onClick={() => openViewer(index, [...mentionedPosts, ...collabPosts])}
-                className="cursor-pointer smooth-scroll-item scroll-transition">
+                className="cursor-pointer">
 
                       <PostCard post={post} />
                     </div>
