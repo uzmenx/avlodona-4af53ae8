@@ -385,26 +385,35 @@ export const FamilyTreeV2 = () => {
 
       {/* Pending Invitations */}
       {pendingInvitations.length > 0 && (
-        <div className="mx-2 mt-2 rounded-xl border border-border overflow-hidden">
-          <div className="px-4 py-2 bg-muted/50 border-b border-border">
-            <p className="text-sm font-medium">{pendingInvitations.length} ta taklifnoma kutmoqda</p>
-          </div>
-          <div className="divide-y divide-border">
-            {pendingInvitations.map((inv) => (
-              <FamilyInvitationItem
-                key={inv.id}
-                invitation={inv}
-                onAccept={handleAcceptInvitation}
-                onReject={handleRejectInvitation}
-                isProcessing={processingInvitation === inv.id}
-              />
-            ))}
+        <div className="fixed left-1/2 -translate-x-1/2 z-40 w-[390px] max-w-[calc(100vw-16px)] top-[78px]">
+          <div className="mx-auto rounded-2xl border border-white/10 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md shadow-lg shadow-black/10 dark:shadow-black/40 overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-sky-500/10">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-bold text-foreground">
+                  {pendingInvitations.length} ta taklifnoma kutmoqda
+                </p>
+                <div className="min-w-6 h-5 px-2 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center justify-center">
+                  {pendingInvitations.length > 99 ? '99+' : pendingInvitations.length}
+                </div>
+              </div>
+            </div>
+            <div className="max-h-[220px] overflow-y-auto">
+              {pendingInvitations.map((inv) => (
+                <FamilyInvitationItem
+                  key={inv.id}
+                  invitation={inv}
+                  onAccept={handleAcceptInvitation}
+                  onReject={handleRejectInvitation}
+                  isProcessing={processingInvitation === inv.id}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {/* Canvas with overlays */}
-      <div className={cn("flex-1 relative", isMergeMode && "pt-16")}>
+      <div className={cn("flex-1 relative", isMergeMode && "pt-16", pendingInvitations.length > 0 && "pt-32")}>
         <div className="h-[calc(100vh-110px)] min-h-[500px]">
           <FamilyTreeCanvas
             members={members}
