@@ -58,16 +58,35 @@ export const useMentionsCollabs = (userId?: string, isMemorial?: boolean) => {
         .in(isMemorial ? 'family_member_id' : 'mentioned_user_id', targetIds)
         .order('created_at', { ascending: false });
 
-      if (!mentions || mentions.length === 0) {
+      const mentionPostIds = (mentions || []).map(m => m.post_id);
+      
+      // Also fetch tribute posts (posts this user created for family members)
+      // These should appear in the creator's @ tab
+      let tributePostIds: string[] = [];
+      if (!isMemorial) {
+        const { data: tributePosts } = await supabase
+          .from('posts')
+          .select('id')
+          .eq('user_id', targetId)
+          .eq('visibility', 'profile')
+          .not('target_member_id', 'is', null);
+        
+        if (tributePosts && tributePosts.length > 0) {
+          tributePostIds = tributePosts.map(p => p.id);
+        }
+      }
+
+      const allPostIds = [...new Set([...mentionPostIds, ...tributePostIds])];
+      
+      if (allPostIds.length === 0) {
         setMentionedPosts([]);
         return;
       }
 
-      const postIds = mentions.map(m => m.post_id);
       const { data: posts } = await supabase
         .from('posts')
         .select('*')
-        .in('id', postIds)
+        .in('id', allPostIds)
         .order('created_at', { ascending: false });
 
       if (!posts || posts.length === 0) {
@@ -107,7 +126,7 @@ export const useMentionsCollabs = (userId?: string, isMemorial?: boolean) => {
     } catch (e) {
       console.error('Error fetching mentioned posts:', e);
     }
-  }, [targetId]);
+  }, [targetId, isMemorial]);
 
   const fetchCollabPosts = useCallback(async () => {
     if (!targetId) return;

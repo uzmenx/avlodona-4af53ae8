@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, X, Plus, Check, AtSign, Users, MapPin, Loader2, Music, Navigation, ToggleLeft, ToggleRight } from 'lucide-react';
+import { ArrowLeft, X, Plus, Check, AtSign, Users, MapPin, Loader2, Music, Navigation, ToggleLeft, ToggleRight, Heart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import InstagramMediaCapture from '@/components/create/InstagramMediaCapture';
 import { uploadMedia } from '@/lib/r2Upload';
@@ -37,6 +37,8 @@ type Step = 'media' | 'caption';
 const CreatePost = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const targetMemberId = searchParams.get('memberId');
   const { toast } = useToast();
   const { collections, createCollection, addPostToCollection } = usePostCollections();
   
@@ -57,6 +59,20 @@ const CreatePost = () => {
 
   const [selectedMusic, setSelectedMusic] = useState<SelectedMusic | null>(null);
   const [showMusicPicker, setShowMusicPicker] = useState(false);
+  const [targetMemberName, setTargetMemberName] = useState<string | null>(null);
+
+  // Fetch target member name for tribute banner
+  useEffect(() => {
+    if (!targetMemberId) return;
+    supabase
+      .from('family_tree_members')
+      .select('name')
+      .eq('id', targetMemberId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.name) setTargetMemberName(data.name);
+      });
+  }, [targetMemberId]);
 
   const [showLocationSearch, setShowLocationSearch] = useState(false);
   const [locationQuery, setLocationQuery] = useState('');
@@ -235,6 +251,8 @@ const CreatePost = () => {
           audio_url: selectedMusic?.audio_url ?? null,
           audio_title: selectedMusic?.audio_title ?? null,
           audio_artist: selectedMusic?.audio_artist ?? null,
+          target_member_id: targetMemberId || null,
+          visibility: targetMemberId ? 'profile' : 'public',
         })
         .select()
         .single();
@@ -305,6 +323,16 @@ const CreatePost = () => {
             {isLoading ? "Yuklanmoqda..." : "Ulashish"}
           </Button>
         </header>
+
+        {/* Tribute banner */}
+        {targetMemberId && (
+          <div className="mx-4 mt-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 flex items-center gap-2">
+            <Heart className="h-4 w-4 text-primary flex-shrink-0" />
+            <p className="text-sm text-primary">
+              <span className="font-medium">{targetMemberName || 'A\'zo'}</span> uchun xotira post
+            </p>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 p-4">

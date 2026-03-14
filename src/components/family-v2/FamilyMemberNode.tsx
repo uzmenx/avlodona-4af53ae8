@@ -320,14 +320,16 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
           )}>
             {member.name || 'Ism kiriting'}
           </h3>
-          <span className={cn(
-            "text-xs mt-1 inline-block px-2 py-0.5 rounded-full",
-            isMale 
-              ? "bg-sky-800/60 text-sky-200" 
-              : "bg-pink-800/60 text-pink-200"
-          )}>
-            {yearDisplay || "Yil ma'lumoti"}
-          </span>
+          {yearDisplay && (
+            <span className={cn(
+              "text-xs mt-1 inline-block px-2 py-0.5 rounded-full",
+              isMale 
+                ? "bg-sky-800/60 text-sky-200" 
+                : "bg-pink-800/60 text-pink-200"
+            )}>
+              {yearDisplay}
+            </span>
+          )}
         </div>
         
         {/* Bottom handle for children connections */}

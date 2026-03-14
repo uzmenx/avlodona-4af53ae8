@@ -14,6 +14,7 @@ import {
   UserPlus,
   Users,
   BookHeart,
+  Plus,
 } from 'lucide-react';
 import { FamilyMember } from '@/types/family';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -278,14 +279,26 @@ export const ProfileModal = ({
 
           <div />
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsEditing(true)}
-            className="h-9 w-9 rounded-2xl bg-muted/40 hover:bg-muted/70 transition-all"
-          >
-            <Edit2 className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {!isEditing && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleAction(() => navigate(`/create?memberId=${member.id}`))}
+                className="h-9 w-9 rounded-2xl bg-primary/10 text-primary hover:bg-primary/20 transition-all"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsEditing(true)}
+              className="h-9 w-9 rounded-2xl bg-muted/40 hover:bg-muted/70 transition-all"
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="relative px-5 pb-3 pt-1 overflow-y-auto">

@@ -149,13 +149,25 @@ export const useConversations = () => {
     if (!user?.id) return null;
 
     try {
-      const { data: existing } = await supabase
+      // Check first combination
+      const { data: conv1 } = await supabase
         .from('conversations')
         .select('id')
-        .or(`and(participant1_id.eq.${user.id},participant2_id.eq.${otherUserId}),and(participant1_id.eq.${otherUserId},participant2_id.eq.${user.id})`)
+        .eq('participant1_id', user.id)
+        .eq('participant2_id', otherUserId)
         .maybeSingle();
 
-      if (existing) return existing.id;
+      if (conv1) return conv1.id;
+
+      // Check second combination
+      const { data: conv2 } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('participant1_id', otherUserId)
+        .eq('participant2_id', user.id)
+        .maybeSingle();
+
+      if (conv2) return conv2.id;
 
       const { data: newConv, error } = await supabase
         .from('conversations')

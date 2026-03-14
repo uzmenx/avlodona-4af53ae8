@@ -18,6 +18,7 @@ async function fetchPostsPage(from: number, pageSize: number): Promise<Post[]> {
   const { data: postsData, error } = await supabase
     .from('posts')
     .select('*')
+    .eq('visibility', 'public')
     .order('created_at', { ascending: false })
     .range(from, from + pageSize - 1);
 

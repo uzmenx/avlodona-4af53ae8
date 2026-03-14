@@ -106,7 +106,7 @@ const UserProfilePage = () => {
   const { getStoryInfo } = useActiveStories();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { posts, isLoading: postsLoading, postsCount, refetch } = useUserPosts(userId);
+  const { posts, isLoading: postsLoading, postsCount, refetch } = useUserPosts(userId, isMemorial);
   const { followersCount, followingCount } = useFollow(userId);
   const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'mentions'>('posts');
   const [postsLayout, setPostsLayout] = useState<'pinterest2' | 'pinterest1' | 'list'>('pinterest2');
@@ -1058,29 +1058,75 @@ const UserProfilePage = () => {
           </div>
         )}
 
-        {/* Mentions tab */}
+        {/* Mentions / Xotira postlari tab */}
         {activeTab === 'mentions' && (
           <div>
-            {userMentionedPosts.length === 0 && userCollabPosts.length === 0 ? (
-              <div className="text-center py-12 px-4">
-                <AtSign className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                <p className="text-muted-foreground">Belgilangan postlar yo'q</p>
-              </div>
-            ) : (
-              <div className="space-y-4 px-0 md:px-4">
-                {[...userMentionedPosts, ...userCollabPosts]
-                  .filter((v, i, a) => a.findIndex(p => p.id === v.id) === i)
-                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                  .map((post, index) => (
-                    <div key={post.id} onClick={() => openViewer(index)} className="cursor-pointer">
-                      <PostCard post={post} />
+            {isMemorial ? (
+              /* Memorial profile: show posts linked to this member */
+              postsLoading ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Yuklanmoqda...</p>
+                </div>
+              ) : posts.length === 0 ? (
+                <div className="text-center py-12 px-4">
+                  <Heart className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                  <p className="text-muted-foreground">Xotira postlar yo'q</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Oila daraxti profilidan "+" tugmasi orqali post qo'shing</p>
+                </div>
+              ) : (
+                <div className="pb-20 px-px">
+                  <div className="flex gap-1 p-1">
+                    <div className="flex-1 flex flex-col gap-1">
+                      {posts
+                        .filter((_, i) => i % 2 === 0)
+                        .map((post) => {
+                          const idx = posts.findIndex((p) => p.id === post.id);
+                          return (
+                            <div key={post.id} onClick={() => { setViewerInitialIndex(idx); setViewerOpen(true); }} className="cursor-pointer">
+                              <UserProfileMasonryItem post={post} />
+                            </div>
+                          );
+                        })}
                     </div>
-                  ))}
-                <EndOfFeed />
-              </div>
+                    <div className="flex-1 flex flex-col gap-1">
+                      {posts
+                        .filter((_, i) => i % 2 === 1)
+                        .map((post) => {
+                          const idx = posts.findIndex((p) => p.id === post.id);
+                          return (
+                            <div key={post.id} onClick={() => { setViewerInitialIndex(idx); setViewerOpen(true); }} className="cursor-pointer">
+                              <UserProfileMasonryItem post={post} />
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
+              )
+            ) : (
+              /* Normal profile: show mentions and collabs */
+              userMentionedPosts.length === 0 && userCollabPosts.length === 0 ? (
+                <div className="text-center py-12 px-4">
+                  <AtSign className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                  <p className="text-muted-foreground">Belgilangan postlar yo'q</p>
+                </div>
+              ) : (
+                <div className="space-y-4 px-0 md:px-4">
+                  {[...userMentionedPosts, ...userCollabPosts]
+                    .filter((v, i, a) => a.findIndex(p => p.id === v.id) === i)
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .map((post, index) => (
+                      <div key={post.id} onClick={() => openViewer(index)} className="cursor-pointer">
+                        <PostCard post={post} />
+                      </div>
+                    ))}
+                  <EndOfFeed />
+                </div>
+              )
             )}
           </div>
         )}
+
 
         {/* Full screen viewer */}
         {viewerOpen && (
