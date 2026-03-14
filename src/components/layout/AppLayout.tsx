@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { onPublishProgress } from '@/lib/backgroundPublish';
 import { Cloud } from 'lucide-react';
 import { LegalFooter } from '@/components/legal/LegalFooter';
+import { toast } from 'sonner';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -88,6 +89,10 @@ export const AppLayout = ({ children, showNav = true }: AppLayoutProps) => {
       }
       // success / error -> hide bar
       setGlobalUploadProgress(null);
+
+      if (evt.status === 'error') {
+        toast.error(evt.message || "Yuklashda xatolik yuz berdi");
+      }
     });
   }, []);
 

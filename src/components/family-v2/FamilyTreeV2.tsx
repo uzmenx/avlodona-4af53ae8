@@ -12,7 +12,8 @@ import { TreePostHeader } from './TreePostHeader';
 import { TreeHistoryDrawer } from './TreeHistoryDrawer';
 import { TreeOverlayLayer } from './TreeOverlayLayer';
 import { TreePostEditor } from './TreePostEditor';
-import { SearchRelativesFlow } from './SearchRelativesFlow';
+import { SearchRelativesFlow, RelativeSearchSheet } from './SearchRelativesFlow';
+import { RelativeConnectionSheet } from '@/components/family/RelativeConnectionSheet';
 import { useLocalFamilyTree } from '@/hooks/useLocalFamilyTree';
 import { useFamilyInvitations, MergeDialogData } from '@/hooks/useFamilyInvitations';
 import { useMergeMode } from '@/hooks/useMergeMode';
@@ -65,6 +66,11 @@ export const FamilyTreeV2 = () => {
   const [isSelectingGender, setIsSelectingGender] = useState(false);
   const [showSearchRelatives, setShowSearchRelatives] = useState(false);
 
+  const [isRelativeSearchOpen, setIsRelativeSearchOpen] = useState(false);
+  const [selectedRelativeUserId, setSelectedRelativeUserId] = useState<string | undefined>();
+  const [selectedRelativeUserName, setSelectedRelativeUserName] = useState<string>('');
+  const [isConnectionSheetOpen, setIsConnectionSheetOpen] = useState(false);
+
   // New UI states
   const [showHistory, setShowHistory] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
@@ -112,6 +118,13 @@ export const FamilyTreeV2 = () => {
       setIsSelectingGender(false);
     }
   };
+
+  const handleRelativeSelect = useCallback((userId: string, userName: string) => {
+    setIsRelativeSearchOpen(false);
+    setSelectedRelativeUserId(userId);
+    setSelectedRelativeUserName(userName);
+    setTimeout(() => setIsConnectionSheetOpen(true), 250);
+  }, []);
 
   // Modal handlers
   const handleAddParents = useCallback((id: string) => setModal({ type: 'addParentFather', targetId: id }), []);
@@ -212,8 +225,11 @@ export const FamilyTreeV2 = () => {
     }
 
     await saveOverlays(postId, publishOverlays);
-    await publishPost(postId, caption);
-    setOverlays([]); // Clear overlays from tree view after publish
+    const ok = await publishPost(postId, caption);
+    if (ok) {
+      setOverlays([]); // Clear overlays from tree view after publish
+      setCurrentPostId(null); // Return to normal tree view after publish (no Save icon)
+    }
     setIsPublishing(false);
     setShowPublish(false);
   };
@@ -345,8 +361,7 @@ export const FamilyTreeV2 = () => {
       {/* Tree Post Header */}
       {!isMergeMode && (
         <TreePostHeader
-          onOpenHistory={() => setShowHistory(true)}
-          onCreateNew={handleCreateNewTree}
+          onOpenRelativeSearch={() => setIsRelativeSearchOpen(true)}
           onSave={handleSaveTree}
           onPublish={handlePublish}
           memberCount={Object.keys(members || {}).length}
@@ -354,6 +369,19 @@ export const FamilyTreeV2 = () => {
           hasCurrentPost={!!currentPostId}
         />
       )}
+
+      <RelativeSearchSheet
+        open={isRelativeSearchOpen}
+        onOpenChange={setIsRelativeSearchOpen}
+        onSelect={handleRelativeSelect}
+      />
+
+      <RelativeConnectionSheet
+        open={isConnectionSheetOpen}
+        onOpenChange={setIsConnectionSheetOpen}
+        targetUserId={selectedRelativeUserId}
+        targetUserName={selectedRelativeUserName}
+      />
 
       {/* Pending Invitations */}
       {pendingInvitations.length > 0 && (

@@ -2,6 +2,44 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Post } from '@/types';
 
+const MEMBER_MENTION_COLUMNS = ['family_member_id', 'family_tree_member_id', 'member_id'] as const;
+
+const fetchMentionPostIdsForMember = async (memberId: string) => {
+  let lastErr: any = null;
+  const columnErrors: string[] = [];
+  for (const col of MEMBER_MENTION_COLUMNS) {
+    // Prevent excessively deep type instantiation when using dynamic column names
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb: any = supabase;
+    const { data, error } = await sb
+      .from('post_mentions')
+      .select('post_id')
+      .eq(col, memberId);
+
+    if (!error) {
+      const postIds = (data || []).map((r: any) => r.post_id).filter(Boolean);
+      return { postIds };
+    }
+
+    lastErr = error;
+    const msg = String((error as any)?.message || '');
+    if (msg.toLowerCase().includes('column')) {
+      columnErrors.push(msg);
+      continue;
+    }
+
+    break;
+  }
+
+  if (columnErrors.length === MEMBER_MENTION_COLUMNS.length) {
+    throw new Error(
+      "Supabase API schema cache yangilanmagan ko'rinadi: post_mentions jadvalida memorial ustun(lar)i topilmadi. " +
+        "Kerakli ustun: post_mentions.family_member_id. Supabase Settings → API → Reload schema qiling va dev serverni qayta ishga tushiring."
+    );
+  }
+  throw lastErr;
+};
+
 export const useUserPosts = (userId: string | undefined, isMemorial: boolean = false) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,51 +55,36 @@ export const useUserPosts = (userId: string | undefined, isMemorial: boolean = f
 
     setIsLoading(true);
     try {
-      // Get posts count
-      let fetchCount = 0;
-      if (isMemorial) {
-        const { count } = await supabase
-          .from('posts')
-          .select('*', { count: 'exact', head: true })
-          .eq('target_member_id', userId)
-          .eq('visibility', 'profile');
-        fetchCount = count || 0;
-      } else {
-        const { count } = await supabase
-          .from('posts')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', userId)
-          .eq('visibility', 'public');
-        fetchCount = count || 0;
-      }
+      let postsData: any[] | null = null;
 
-      setPostsCount(fetchCount);
-
-      // Get posts with profile
-      let postsData = null;
-      let error = null;
-      
       if (isMemorial) {
-        const result = await supabase
+        const { postIds } = await fetchMentionPostIdsForMember(userId);
+        setPostsCount(postIds.length);
+
+        if (postIds.length === 0) {
+          setPosts([]);
+          return;
+        }
+
+        const { data, error } = await supabase
           .from('posts')
           .select('*')
-          .eq('target_member_id', userId)
-          .eq('visibility', 'profile')
+          .in('id', postIds)
           .order('created_at', { ascending: false });
-        postsData = result.data;
-        error = result.error;
+
+        if (error) throw error;
+        postsData = data || [];
       } else {
-        const result = await supabase
+        const { data, error } = await supabase
           .from('posts')
           .select('*')
           .eq('user_id', userId)
-          .eq('visibility', 'public')
           .order('created_at', { ascending: false });
-        postsData = result.data;
-        error = result.error;
-      }
 
-      if (error) throw error;
+        if (error) throw error;
+        postsData = data || [];
+        setPostsCount(postsData.length);
+      }
 
       if (postsData && postsData.length > 0) {
         // Fetch profiles for the authors of these posts

@@ -148,38 +148,42 @@ export const useConversations = () => {
   const getOrCreateConversation = async (otherUserId: string): Promise<string | null> => {
     if (!user?.id) return null;
 
+    const me = user.id;
+    const other = otherUserId;
+
     try {
-      // Check first combination
-      const { data: conv1 } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('conversations')
         .select('id')
-        .eq('participant1_id', user.id)
-        .eq('participant2_id', otherUserId)
+        .or(
+          `and(participant1_id.eq.${me},participant2_id.eq.${other}),and(participant1_id.eq.${other},participant2_id.eq.${me})`
+        )
+        .limit(1)
         .maybeSingle();
 
-      if (conv1) return conv1.id;
+      if (existingError) throw existingError;
+      if (existing) return existing.id;
 
-      // Check second combination
-      const { data: conv2 } = await supabase
+      const { data: created, error: createError } = await supabase
         .from('conversations')
-        .select('id')
-        .eq('participant1_id', otherUserId)
-        .eq('participant2_id', user.id)
-        .maybeSingle();
-
-      if (conv2) return conv2.id;
-
-      const { data: newConv, error } = await supabase
-        .from('conversations')
-        .insert({
-          participant1_id: user.id,
-          participant2_id: otherUserId
-        })
+        .insert({ participant1_id: me, participant2_id: other })
         .select('id')
         .single();
 
-      if (error) throw error;
-      return newConv.id;
+      if (!createError && created) return created.id;
+
+      // Race condition fallback (someone else created it at the same time)
+      const { data: after, error: afterError } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(
+          `and(participant1_id.eq.${me},participant2_id.eq.${other}),and(participant1_id.eq.${other},participant2_id.eq.${me})`
+        )
+        .limit(1)
+        .maybeSingle();
+
+      if (afterError) throw afterError;
+      return after?.id ?? null;
     } catch (error) {
       console.error('Error getting/creating conversation:', error);
       return null;

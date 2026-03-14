@@ -70,7 +70,7 @@ export const SearchRelativesFlow = ({ onCancel }: SearchRelativesFlowProps) => {
         To avoid modifying SearchSheet heavily right now and breaking other things,
         we can pass a prop `onSelectUser` to SearchSheet if we modify it slightly.
       */}
-      <SearchRelativeSheet 
+      <RelativeSearchSheet 
         open={isSearchOpen} 
         onOpenChange={setIsSearchOpen}
         onSelect={(userId, userName) => {
@@ -114,7 +114,7 @@ interface SearchUser {
   avatar_url: string | null;
 }
 
-const SearchRelativeSheet = ({ open, onOpenChange, onSelect }: SearchRelativeSheetProps) => {
+export const RelativeSearchSheet = ({ open, onOpenChange, onSelect }: SearchRelativeSheetProps) => {
   const [query, setQuery] = useState('');
   const [users, setUsers] = useState<SearchUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);

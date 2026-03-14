@@ -87,6 +87,8 @@ export const ProfileModal = ({
   const [deathYear, setDeathYear] = useState(member.deathYear?.toString() || '');
   const [photoUrl, setPhotoUrl] = useState(member.photoUrl || '');
 
+  const effectiveMemberId = member.supabaseId || member.id;
+
   const [cropperState, setCropperState] = useState<{ isOpen: boolean; imageUrl: string }>({
     isOpen: false,
     imageUrl: '',
@@ -284,7 +286,7 @@ export const ProfileModal = ({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => handleAction(() => navigate(`/create?memberId=${member.id}`))}
+                onClick={() => handleAction(() => navigate(`/create?memberId=${effectiveMemberId}`))}
                 className="h-9 w-9 rounded-2xl bg-primary/10 text-primary hover:bg-primary/20 transition-all"
               >
                 <Plus className="h-4 w-4" />
@@ -491,7 +493,7 @@ export const ProfileModal = ({
                       if (member.linkedUserId) {
                         navigate(`/user/${member.linkedUserId}`);
                       } else {
-                        navigate(`/user/${member.id}?memorial=true`);
+                        navigate(`/user/${effectiveMemberId}?memorial=true`);
                       }
                     })}
                     className={cn(

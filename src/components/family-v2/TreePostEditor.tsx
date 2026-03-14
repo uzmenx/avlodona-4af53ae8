@@ -115,16 +115,23 @@ export const TreePostEditor = ({
   return (
     <div className="fixed inset-0 z-[100] bg-background flex flex-col pb-28">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-background/95 backdrop-blur-sm flex-shrink-0">
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-9 w-9">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-background/70 backdrop-blur-xl flex-shrink-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          className="h-9 w-9 rounded-2xl bg-muted/30 hover:bg-muted/50"
+        >
           <X className="h-5 w-5" />
         </Button>
-        <h3 className="text-sm font-bold">Daraxtni nashr qilish</h3>
+
+        <h3 className="text-[13px] font-semibold tracking-tight">Daraxtni nashr qilish</h3>
+
         <Button
           size="sm"
           onClick={handlePublish}
           disabled={isPublishing}
-          className="gap-1.5 rounded-full px-5 h-9"
+          className="gap-1.5 rounded-2xl px-4 h-9 text-white bg-gradient-to-b from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/25 hover:from-emerald-300 hover:to-emerald-600 disabled:opacity-60"
         >
           <Send className="h-4 w-4" />
           {isPublishing ? 'Nashr...' : 'Nashr'}
@@ -135,7 +142,7 @@ export const TreePostEditor = ({
         {/* Editor step — frame with tree + overlays (horizontal 4:3) */}
         <div className="p-3">
           <div
-            className="relative w-full rounded-2xl overflow-hidden border border-border bg-card/50 shadow-sm"
+            className="relative w-full rounded-[28px] overflow-hidden border border-border/50 bg-card/30 shadow-[0_18px_50px_rgba(0,0,0,0.18)]"
             style={{ aspectRatio: '4/3', maxHeight: '55vh' }}
           >
             {/* Tree canvas fills the frame */}
@@ -178,7 +185,7 @@ export const TreePostEditor = ({
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             placeholder="Izoh yozing..."
-            className="min-h-[80px] resize-none bg-muted/30 border-border rounded-xl focus-visible:ring-1 focus-visible:border-primary/50"
+            className="min-h-[80px] resize-none bg-muted/25 border-border/50 rounded-[22px] focus-visible:ring-1 focus-visible:border-primary/50"
             maxLength={2200}
           />
           <p className="text-xs text-muted-foreground text-right mt-1 font-medium">{caption.length}/2200</p>

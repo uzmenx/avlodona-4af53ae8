@@ -1,18 +1,11 @@
-import { Menu, Plus, Save, Search } from 'lucide-react';
+import { Save, Search } from 'lucide-react';
 import { Icon } from '@iconify/react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { TreeRatings } from '@/components/family-v2/TreeRatings';
 import { FamilyCalendarSheet } from '@/components/family-v2/FamilyCalendarSheet';
 
 interface TreePostHeaderProps {
-  onOpenHistory: () => void;
-  onCreateNew: () => void | Promise<void>;
+  onOpenRelativeSearch: () => void;
   onSave: () => void | Promise<void>;
   onPublish: () => void;
   memberCount?: number;
@@ -21,8 +14,7 @@ interface TreePostHeaderProps {
 }
 
 export const TreePostHeader = ({
-  onOpenHistory,
-  onCreateNew,
+  onOpenRelativeSearch,
   onSave,
   onPublish,
   memberCount,
@@ -40,48 +32,30 @@ export const TreePostHeader = ({
           'shadow-lg shadow-black/10 dark:shadow-black/30'
         }
       >
-        {/* 1) Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="h-9 w-9 rounded-full flex items-center justify-center text-slate-700 dark:text-slate-200 transition-all duration-150 active:scale-95 bg-slate-100/70 dark:bg-slate-800/60 border border-slate-200/70 dark:border-white/10 hover:bg-slate-100/90 dark:hover:bg-slate-800/80"
-              aria-label="Menu"
-            >
-              <Menu className="h-[22px] w-[22px]" strokeWidth={1.8} />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-52">
-            <DropdownMenuItem onClick={onOpenHistory}>
-              <Search className="h-4 w-4 mr-2" />
-              Qidirish
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onCreateNew}>
-              <Plus className="h-4 w-4 mr-2" />
-              Yangi
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* 2) Trophy */}
+        {/* 1) Trophy */}
         <div className="transition-all duration-150 active:scale-95">
           <TreeRatings />
         </div>
 
-        {/* 3) Calendar */}
+        {/* 2) Calendar */}
         <div className="transition-all duration-150 active:scale-95">
           <FamilyCalendarSheet />
         </div>
 
-        {/* 4) Search */}
-        <div className="flex-1 max-w-[140px] h-9 rounded-full bg-slate-100/80 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/70 px-3 flex items-center gap-2 focus-within:ring-2 focus-within:ring-indigo-300 dark:focus-within:ring-indigo-500/60 transition-all duration-150">
+        {/* 3) Search */}
+        <button
+          type="button"
+          onClick={onOpenRelativeSearch}
+          className="flex-1 max-w-[160px] h-9 rounded-full bg-slate-100/80 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/70 px-3 flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-indigo-300 dark:focus-visible:ring-indigo-500/60 transition-all duration-150 text-left"
+          aria-label="Qarindosh qidirish"
+        >
           <Search className="h-4 w-4 text-slate-400" strokeWidth={1.8} />
           <div className="flex-1 text-left text-sm text-slate-700 dark:text-slate-100">
             <span className="text-slate-400">Qidirish...</span>
           </div>
-        </div>
+        </button>
 
-        {/* 5) Badge */}
+        {/* 4) Badge */}
         {typeof memberCount === 'number' && (
           <div className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-semibold flex items-center justify-center">
             {memberCount > 99 ? '99+' : memberCount}
@@ -102,7 +76,7 @@ export const TreePostHeader = ({
           </Button>
         )}
 
-        {/* 6) Share */}
+        {/* 5) Share */}
         <button
           type="button"
           onClick={onPublish}

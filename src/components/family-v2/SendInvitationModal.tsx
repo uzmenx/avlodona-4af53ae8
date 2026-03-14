@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Send, User, Users, UserPlus, Phone, Link as LinkIcon, CheckCircle2 } from 'lucide-react';
+import { Search, Send, User, Users, UserPlus, Phone, Link as LinkIcon, CheckCircle2, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -334,10 +334,10 @@ export const SendInvitationModal = ({
             <div
               key={profileListMember.id}
               className={cn(
-                "flex items-center justify-between p-3 rounded-lg border transition-colors",
+                "flex items-center justify-between p-3 rounded-2xl border transition-colors bg-background/40 backdrop-blur-sm",
                 genderMismatch 
                   ? "border-border/50 opacity-50" 
-                  : "border-border hover:bg-muted/50"
+                  : "border-border/50 hover:bg-muted/30"
               )}
             >
               <div className="flex items-center gap-3">
@@ -381,7 +381,7 @@ export const SendInvitationModal = ({
                 className={cn(
                   genderMismatch 
                     ? "bg-muted text-muted-foreground" 
-                    : "bg-emerald-500 hover:bg-emerald-600 text-primary-foreground"
+                    : "text-white bg-gradient-to-b from-emerald-400 to-emerald-600 shadow-md shadow-emerald-500/20 hover:from-emerald-300 hover:to-emerald-600"
                 )}
               >
                 <Send className="w-4 h-4 mr-1" />
@@ -396,24 +396,34 @@ export const SendInvitationModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-center">
-            Taklifnoma yuborish
-          </DialogTitle>
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col p-0 rounded-[28px] border border-white/10 bg-background/80 backdrop-blur-2xl shadow-2xl">
+        <DialogHeader className="px-5 pt-4 pb-3 border-b border-border/40">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-[15px] font-semibold tracking-tight">Taklifnoma yuborish</DialogTitle>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleClose}
+              className="h-9 w-9 rounded-2xl bg-muted/30 hover:bg-muted/50"
+              aria-label="Yopish"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col space-y-4">
+        <div className="flex-1 overflow-hidden flex flex-col gap-4 px-5 py-4">
           {member && (
             <div className="text-center">
-              <p className="text-muted-foreground text-sm">
-                <span className="font-medium text-foreground">{member.name || "Noma'lum"}</span> uchun foydalanuvchi taklif qiling
+              <p className="text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">{member.name || "Noma'lum"}</span> uchun foydalanuvchi taklif qiling
               </p>
               {requiredGender && (
                 <Badge 
                   variant="outline" 
                   className={cn(
-                    "mt-2 mb-2",
+                    "mt-2 mb-0 rounded-full px-3 py-1 text-[11px] font-semibold",
                     requiredGender === 'male' 
                       ? "border-sky-500/50 text-sky-600 dark:text-sky-400" 
                       : "border-pink-500/50 text-pink-600 dark:text-pink-400"
@@ -426,27 +436,30 @@ export const SendInvitationModal = ({
           )}
 
           {/* New prominent action buttons */}
-          <div className="grid grid-cols-2 gap-3 mb-1">
+          <div className="grid grid-cols-2 gap-3">
             <Button 
               variant="outline" 
               onClick={handlePickContactAndSend}
               disabled={isGeneratingLink}
-              className="h-20 flex flex-col gap-2 rounded-2xl border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-all"
+              className="h-[92px] flex flex-col gap-2 rounded-[22px] border-white/10 bg-white/5 hover:bg-white/10 dark:bg-white/5 dark:hover:bg-white/10 shadow-sm"
             >
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Phone className="h-4 w-4 text-primary" />
+              <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                <Phone className="h-4 w-4 text-emerald-500" />
               </div>
-              <span className="text-sm font-semibold">Kontaktlardan tanlash</span>
+              <div className="text-center leading-tight">
+                <div className="text-[13px] font-semibold">Kontaktlar</div>
+                <div className="text-[11px] text-muted-foreground">SMS orqali yuborish</div>
+              </div>
             </Button>
             <Button
               variant="outline"
               onClick={handleCopyLink}
               disabled={isGeneratingLink}
-              className="h-20 flex flex-col gap-2 rounded-2xl border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-all"
+              className="h-[92px] flex flex-col gap-2 rounded-[22px] border-white/10 bg-white/5 hover:bg-white/10 dark:bg-white/5 dark:hover:bg-white/10 shadow-sm"
             >
               <div className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
-                copiedLink ? "bg-emerald-500/10" : "bg-primary/10"
+                "w-9 h-9 rounded-2xl flex items-center justify-center transition-colors border",
+                copiedLink ? "bg-emerald-500/10 border-emerald-500/20" : "bg-primary/10 border-primary/20"
               )}>
                 {copiedLink ? (
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
@@ -454,7 +467,10 @@ export const SendInvitationModal = ({
                   <LinkIcon className="h-4 w-4 text-primary" />
                 )}
               </div>
-              <span className="text-sm font-semibold">Havola nusxalash</span>
+              <div className="text-center leading-tight">
+                <div className="text-[13px] font-semibold">Havola</div>
+                <div className="text-[11px] text-muted-foreground">Nusxalash</div>
+              </div>
             </Button>
           </div>
 
@@ -474,7 +490,7 @@ export const SendInvitationModal = ({
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Ism yoki username bo'yicha qidirish..."
-              className="pl-10 h-11 rounded-xl bg-muted/40 border-muted/60"
+              className="pl-10 h-11 rounded-2xl bg-muted/30 border-border/50 focus-visible:ring-1 focus-visible:border-primary/40"
             />
           </div>
 
@@ -495,12 +511,12 @@ export const SendInvitationModal = ({
               </ScrollArea>
             ) : (
               <Tabs defaultValue="followers" className="flex-1 flex flex-col h-[250px] sm:h-[300px]">
-                <TabsList className="w-full">
-                  <TabsTrigger value="followers" className="flex-1">
+                <TabsList className="w-full rounded-2xl bg-muted/30 p-1 border border-border/50">
+                  <TabsTrigger value="followers" className="flex-1 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm">
                     <Users className="h-4 w-4 mr-2" />
                     Kuzatuvchilar
                   </TabsTrigger>
-                  <TabsTrigger value="following" className="flex-1">
+                  <TabsTrigger value="following" className="flex-1 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm">
                     <UserPlus className="h-4 w-4 mr-2" />
                     Kuzatilmoqda
                   </TabsTrigger>

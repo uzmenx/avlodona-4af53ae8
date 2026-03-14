@@ -257,7 +257,8 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                navigate(`/create-post?memberId=${member.id}`);
+                const effectiveMemberId = member.supabaseId || member.id;
+                navigate(`/create?memberId=${effectiveMemberId}`);
               }}
               className="absolute -top-1 -right-1 w-7 h-7 bg-background rounded-full flex items-center justify-center z-20 shadow-md border border-border group/btn"
               title="Xotira qoldirish"

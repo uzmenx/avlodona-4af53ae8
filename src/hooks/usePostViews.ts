@@ -48,9 +48,12 @@ export const usePostViews = (postId: string, initialCount?: number) => {
       if (!error) {
         setViewsCount(prev => prev + 1);
       }
-      // If unique constraint violation, user already viewed - that's fine
+      // If unique constraint violation / conflict, user already viewed - that's fine
     } catch (error) {
-      console.error('Error tracking view:', error);
+      const msg = String((error as any)?.message || '');
+      if (!msg.toLowerCase().includes('conflict') && !msg.toLowerCase().includes('duplicate')) {
+        console.error('Error tracking view:', error);
+      }
     } finally {
       setIsTracking(false);
     }

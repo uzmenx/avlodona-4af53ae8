@@ -6,21 +6,54 @@ export type PublishTask = {
   userId: string;
   files: File[];
   storyFiles?: File[];
-  audioFile?: File | null;
-  audioMeta?: {
-    audio_url: string;
-    audio_title: string;
-    audio_artist: string;
-  } | null;
   caption: string;
-  sharePost: boolean;
-  shareStory: boolean;
-  ringId: string;
   mentionIds: string[];
   collabIds: string[];
   postCollectionIds?: string[];
-  storyHighlightId?: string | null;
-  memoryMemberId?: string | null;
+  ringId?: string;
+  storyHighlightId?: string;
+  sharePost: boolean;
+  shareStory: boolean;
+  audioFile?: File;
+  audioMeta?: {
+    audio_url?: string | null;
+    audio_title?: string | null;
+    audio_artist?: string | null;
+  };
+  memoryMemberId?: string;
+};
+
+const MEMBER_MENTION_COLUMNS = ['family_member_id', 'family_tree_member_id', 'member_id'] as const;
+
+const insertMemoryMention = async (postId: string, memberId: string) => {
+  let lastErr: any = null;
+  const columnErrors: string[] = [];
+  for (const col of MEMBER_MENTION_COLUMNS) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb: any = supabase;
+    const { error } = await sb
+      .from('post_mentions')
+      .insert({ post_id: postId, [col]: memberId });
+
+    if (!error) return;
+
+    lastErr = error;
+    const msg = String((error as any)?.message || '');
+    if (msg.toLowerCase().includes('column')) {
+      columnErrors.push(msg);
+      continue;
+    }
+
+    break;
+  }
+
+  if (columnErrors.length === MEMBER_MENTION_COLUMNS.length) {
+    throw new Error(
+      "Supabase schema mos emas: post_mentions jadvalida memorial uchun ustun topilmadi. " +
+        "Kerakli ustun: post_mentions.family_member_id (uuid). So'ng Settings → API → Reload schema qiling."
+    );
+  }
+  throw lastErr;
 };
 
 const ensureYearHighlight = async (userId: string) => {
@@ -407,16 +440,16 @@ const runPublish = async (task: PublishTask) => {
           }
         }
         if (allMentionIds.length > 0) {
-          await supabase
+          const { error: mentionInsertError } = await supabase
             .from('post_mentions')
             .insert(allMentionIds.map((uid) => ({ post_id: post.id, mentioned_user_id: uid })));
+
+          if (mentionInsertError) throw mentionInsertError;
         }
         
         // Add memory post mention
         if (task.memoryMemberId) {
-          await supabase
-            .from('post_mentions')
-            .insert({ post_id: post.id, family_member_id: task.memoryMemberId });
+          await insertMemoryMention(post.id, task.memoryMemberId);
         }
 
         if (task.collabIds.length > 0) {

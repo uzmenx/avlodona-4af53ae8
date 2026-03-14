@@ -3,6 +3,44 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Post } from '@/types';
 
+const MEMBER_MENTION_COLUMNS = ['family_member_id', 'family_tree_member_id', 'member_id'] as const;
+
+const fetchMentionPostIdsForMembers = async (memberIds: string[]) => {
+  if (memberIds.length === 0) return [] as string[];
+  let lastErr: any = null;
+  const columnErrors: string[] = [];
+  for (const col of MEMBER_MENTION_COLUMNS) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb: any = supabase;
+    const { data, error } = await sb
+      .from('post_mentions')
+      .select('post_id, created_at')
+      .in(col, memberIds)
+      .order('created_at', { ascending: false });
+
+    if (!error) {
+      return (data || []).map((m: any) => m.post_id).filter(Boolean);
+    }
+
+    lastErr = error;
+    const msg = String((error as any)?.message || '');
+    if (msg.toLowerCase().includes('column')) {
+      columnErrors.push(msg);
+      continue;
+    }
+
+    break;
+  }
+
+  if (columnErrors.length === MEMBER_MENTION_COLUMNS.length) {
+    throw new Error(
+      "Supabase API schema cache yangilanmagan ko'rinadi: post_mentions jadvalida memorial ustun(lar)i topilmadi. " +
+        "Kerakli ustun: post_mentions.family_member_id. Supabase Settings → API → Reload schema qiling va dev serverni qayta ishga tushiring."
+    );
+  }
+  throw lastErr;
+};
+
 export interface MentionedPost extends Post {
   mentionedAt: string;
 }
@@ -52,31 +90,47 @@ export const useMentionsCollabs = (userId?: string, isMemorial?: boolean) => {
         }
       }
 
-      const { data: mentions } = await supabase
-        .from('post_mentions')
-        .select('post_id, created_at')
-        .in(isMemorial ? 'family_member_id' : 'mentioned_user_id', targetIds)
-        .order('created_at', { ascending: false });
-
-      const mentionPostIds = (mentions || []).map(m => m.post_id);
-      
-      // Also fetch tribute posts (posts this user created for family members)
-      // These should appear in the creator's @ tab
-      let tributePostIds: string[] = [];
+      // 1) Standard @mentions for living users
+      let mentionPostIds: string[] = [];
       if (!isMemorial) {
-        const { data: tributePosts } = await supabase
-          .from('posts')
+        const { data: mentions } = await supabase
+          .from('post_mentions')
+          .select('post_id, created_at')
+          .in('mentioned_user_id', targetIds)
+          .order('created_at', { ascending: false });
+
+        mentionPostIds = (mentions || []).map(m => m.post_id);
+      }
+
+      // 2) Memorial posts left for this user's linked family member node(s)
+      // If someone leaves a "xotira post" for a living user via their family tree node,
+      // it is stored as post_mentions.family_member_id.
+      let memoryTargetPostIds: string[] = [];
+      if (!isMemorial) {
+        const { data: myMemberRows, error: myMemberErr } = await supabase
+          .from('family_tree_members')
           .select('id')
-          .eq('user_id', targetId)
-          .eq('visibility', 'profile')
-          .not('target_member_id', 'is', null);
-        
-        if (tributePosts && tributePosts.length > 0) {
-          tributePostIds = tributePosts.map(p => p.id);
+          .eq('linked_user_id', targetId);
+
+        if (myMemberErr) throw myMemberErr;
+
+        const myMemberIds = (myMemberRows || []).map(r => r.id).filter(Boolean);
+        if (myMemberIds.length > 0) {
+          memoryTargetPostIds = await fetchMentionPostIdsForMembers(myMemberIds);
         }
       }
 
-      const allPostIds = [...new Set([...mentionPostIds, ...tributePostIds])];
+      // 3) Memorial profile mentions (xotira sahifasi ichida @ tab) - keep existing behavior
+      let memorialMentionPostIds: string[] = [];
+      if (isMemorial) {
+        memorialMentionPostIds = await fetchMentionPostIdsForMembers(targetIds);
+      }
+
+      const allPostIds = [...new Set([
+        ...mentionPostIds,
+        ...memoryTargetPostIds,
+        ...memorialMentionPostIds,
+      ])];
       
       if (allPostIds.length === 0) {
         setMentionedPosts([]);

@@ -106,7 +106,9 @@ const UserProfilePage = () => {
   const { getStoryInfo } = useActiveStories();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { posts, isLoading: postsLoading, postsCount, refetch } = useUserPosts(userId, isMemorial);
+  const [resolvedMemorialMemberId, setResolvedMemorialMemberId] = useState<string | undefined>(undefined);
+  const effectivePostsUserId = isMemorial ? (resolvedMemorialMemberId || userId) : userId;
+  const { posts, isLoading: postsLoading, postsCount, refetch } = useUserPosts(effectivePostsUserId, isMemorial);
   const { followersCount, followingCount } = useFollow(userId);
   const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'mentions'>('posts');
   const [postsLayout, setPostsLayout] = useState<'pinterest2' | 'pinterest1' | 'list'>('pinterest2');
@@ -114,6 +116,7 @@ const UserProfilePage = () => {
   const lastProfileTapTsRef = useRef<number>(0);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
+  const [viewerPosts, setViewerPosts] = useState<Post[]>([]);
   const [showPostsStats, setShowPostsStats] = useState(false);
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
   const [profileStoryGroups, setProfileStoryGroups] = useState<StoryGroup[]>([]);
@@ -134,7 +137,7 @@ const UserProfilePage = () => {
   
   const { highlights } = useStoryHighlights(userId);
   const { collections, selectedCollectionId, setSelectedCollectionId, collectionPosts } = usePostCollections(userId);
-  const { mentionedPosts: userMentionedPosts, collabPosts: userCollabPosts } = useMentionsCollabs(userId, isMemorial);
+  const { mentionedPosts: userMentionedPosts, collabPosts: userCollabPosts } = useMentionsCollabs(effectivePostsUserId, isMemorial);
 
   const cyclePostsLayout = useCallback(() => {
     setPostsLayout((prev) => (prev === 'pinterest2' ? 'pinterest1' : prev === 'pinterest1' ? 'list' : 'pinterest2'));
@@ -185,29 +188,60 @@ const UserProfilePage = () => {
     setIsLoading(true);
     try {
       if (isMemorial) {
-        const { data, error } = await supabase
-          .from('family_tree_members')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
+        setResolvedMemorialMemberId(undefined);
 
-        if (error) throw error;
-        if (data) {
+        // Primary: treat route param as family_tree_members.id
+        let memberRow: any | null = null;
+        {
+          const { data, error } = await supabase
+            .from('family_tree_members')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle();
+
+          if (error) throw error;
+          memberRow = data || null;
+        }
+
+        // Fallback: sometimes we might be routed with a linked user id
+        if (!memberRow) {
+          const { data, error } = await supabase
+            .from('family_tree_members')
+            .select('*')
+            .eq('linked_user_id', userId)
+            .limit(1)
+            .maybeSingle();
+
+          if (error) throw error;
+          memberRow = data || null;
+        }
+
+        if (memberRow) {
+          setResolvedMemorialMemberId(memberRow.id);
+
+          const memberName = memberRow.name ?? memberRow.member_name ?? null;
+          const memberAvatarUrl = memberRow.photo_url ?? memberRow.avatar_url ?? null;
+          const birthYear = memberRow.birth_year ?? null;
+          const deathYear = memberRow.death_year ?? null;
+
           setProfile({
-            id: data.id,
-            name: data.name,
-            username: `memorial_${data.id.substring(0, 8)}`,
-            avatar_url: data.photo_url,
-            bio: data.death_year 
-              ? `${data.birth_year ? data.birth_year + ' ' : ''}- ${data.death_year}\nXotirasiga bag'ishlanadi` 
+            id: memberRow.id,
+            name: memberName,
+            username: `memorial_${memberRow.id.substring(0, 8)}`,
+            avatar_url: memberAvatarUrl,
+            bio: deathYear
+              ? `${birthYear ? birthYear + ' ' : ''}- ${deathYear}\nXotirasiga bag'ishlanadi`
               : "Xotira sahifasi",
             cover_url: null,
             social_links: null,
             theme_mode: 'dark',
             bg_theme: 'none',
           });
+        } else {
+          setProfile(null);
         }
       } else {
+        setResolvedMemorialMemberId(undefined);
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -265,10 +299,11 @@ const UserProfilePage = () => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const openViewer = (index: number) => {
+  const openViewer = useCallback((postsToView: Post[], index: number) => {
+    setViewerPosts(postsToView);
     setViewerInitialIndex(index);
     setViewerOpen(true);
-  };
+  }, []);
 
   const displayPosts = selectedCollectionId ? collectionPosts : posts;
   const filteredPosts = useMemo(() => {
@@ -903,7 +938,7 @@ const UserProfilePage = () => {
             ) : postsLayout === 'list' ? (
               <div className="space-y-4 px-0 md:px-4">
                 {filteredPosts.map((post, index) => (
-                  <div key={post.id} onClick={() => openViewer(index)} className="cursor-pointer">
+                  <div key={post.id} onClick={() => openViewer(filteredPosts, index)} className="cursor-pointer">
                     <PostCard post={post} />
                   </div>
                 ))}
@@ -945,7 +980,7 @@ const UserProfilePage = () => {
               <div className="pb-20 px-px">
                 <div className="flex flex-col gap-1 p-1">
                   {filteredPosts.map((post, idx) => (
-                    <div key={post.id} onClick={() => openViewer(idx)} className="cursor-pointer">
+                    <div key={post.id} onClick={() => openViewer(filteredPosts, idx)} className="cursor-pointer">
                       <UserProfileMasonryItem post={post} />
                     </div>
                   ))}
@@ -993,7 +1028,7 @@ const UserProfilePage = () => {
                       .map((post) => {
                         const idx = filteredPosts.findIndex((p) => p.id === post.id);
                         return (
-                          <div key={post.id} onClick={() => openViewer(idx)} className="cursor-pointer">
+                          <div key={post.id} onClick={() => openViewer(filteredPosts, idx)} className="cursor-pointer">
                             <UserProfileMasonryItem post={post} />
                           </div>
                         );
@@ -1005,7 +1040,7 @@ const UserProfilePage = () => {
                       .map((post) => {
                         const idx = filteredPosts.findIndex((p) => p.id === post.id);
                         return (
-                          <div key={post.id} onClick={() => openViewer(idx)} className="cursor-pointer">
+                          <div key={post.id} onClick={() => openViewer(filteredPosts, idx)} className="cursor-pointer">
                             <UserProfileMasonryItem post={post} />
                           </div>
                         );
@@ -1063,46 +1098,28 @@ const UserProfilePage = () => {
           <div>
             {isMemorial ? (
               /* Memorial profile: show posts linked to this member */
-              postsLoading ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">Yuklanmoqda...</p>
-                </div>
-              ) : posts.length === 0 ? (
-                <div className="text-center py-12 px-4">
-                  <Heart className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-muted-foreground">Xotira postlar yo'q</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">Oila daraxti profilidan "+" tugmasi orqali post qo'shing</p>
-                </div>
-              ) : (
-                <div className="pb-20 px-px">
-                  <div className="flex gap-1 p-1">
-                    <div className="flex-1 flex flex-col gap-1">
-                      {posts
-                        .filter((_, i) => i % 2 === 0)
-                        .map((post) => {
-                          const idx = posts.findIndex((p) => p.id === post.id);
-                          return (
-                            <div key={post.id} onClick={() => { setViewerInitialIndex(idx); setViewerOpen(true); }} className="cursor-pointer">
-                              <UserProfileMasonryItem post={post} />
-                            </div>
-                          );
-                        })}
-                    </div>
-                    <div className="flex-1 flex flex-col gap-1">
-                      {posts
-                        .filter((_, i) => i % 2 === 1)
-                        .map((post) => {
-                          const idx = posts.findIndex((p) => p.id === post.id);
-                          return (
-                            <div key={post.id} onClick={() => { setViewerInitialIndex(idx); setViewerOpen(true); }} className="cursor-pointer">
-                              <UserProfileMasonryItem post={post} />
-                            </div>
-                          );
-                        })}
-                    </div>
+              <PullToRefresh onRefresh={refetch}>
+                {postsLoading ? (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">Yuklanmoqda...</p>
                   </div>
-                </div>
-              )
+                ) : posts.length === 0 ? (
+                  <div className="text-center py-12 px-4">
+                    <Heart className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                    <p className="text-muted-foreground">Xotira postlar yo'q</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Oila daraxti profilidan "+" tugmasi orqali post qo'shing</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 px-0 md:px-4 pb-20">
+                    {posts.map((post, index) => (
+                      <div key={post.id} onClick={() => openViewer(posts, index)} className="cursor-pointer">
+                        <PostCard post={post} />
+                      </div>
+                    ))}
+                    <EndOfFeed />
+                  </div>
+                )}
+              </PullToRefresh>
             ) : (
               /* Normal profile: show mentions and collabs */
               userMentionedPosts.length === 0 && userCollabPosts.length === 0 ? (
@@ -1116,7 +1133,9 @@ const UserProfilePage = () => {
                     .filter((v, i, a) => a.findIndex(p => p.id === v.id) === i)
                     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                     .map((post, index) => (
-                      <div key={post.id} onClick={() => openViewer(index)} className="cursor-pointer">
+                      <div key={post.id} onClick={() => openViewer([...userMentionedPosts, ...userCollabPosts]
+                        .filter((v, i, a) => a.findIndex(p => p.id === v.id) === i)
+                        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()), index)} className="cursor-pointer">
                         <PostCard post={post} />
                       </div>
                     ))}
@@ -1131,7 +1150,7 @@ const UserProfilePage = () => {
         {/* Full screen viewer */}
         {viewerOpen && (
           <FullScreenViewer
-            posts={filteredPosts}
+            posts={viewerPosts.length > 0 ? viewerPosts : filteredPosts}
             initialIndex={viewerInitialIndex}
             onClose={() => setViewerOpen(false)}
           />
