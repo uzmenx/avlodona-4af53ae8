@@ -1698,8 +1698,6 @@ export const SamsungUltraVideoPlayer = ({
 
         style={{
 
-          filter: videoFilters,
-
           transform: zoom > 1 ? `scale(${zoom}) translate(${zoomPan.x}%, ${zoomPan.y}%)` : undefined
 
         }}

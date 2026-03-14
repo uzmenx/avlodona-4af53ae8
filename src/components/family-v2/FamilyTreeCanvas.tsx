@@ -36,6 +36,8 @@ interface FamilyTreeCanvasProps {
    onToggleMergeSelect?: (memberId: string) => void;
    // Spouse lock props
    isPairLocked?: (id1: string, id2?: string) => boolean;
+   initialViewport?: { x: number; y: number; zoom: number };
+   onViewportChange?: (viewport: { x: number; y: number; zoom: number }) => void;
 }
 
 const nodeTypes: NodeTypes = {
@@ -65,6 +67,8 @@ export const FamilyTreeCanvas = ({
    onToggleMergeSelect,
    // Spouse lock props
    isPairLocked,
+   initialViewport,
+   onViewportChange,
 }: FamilyTreeCanvasProps) => {
   const flowInstanceRef = useRef<any>(null);
   const isDraggingRef = useRef(false);
@@ -235,22 +239,23 @@ export const FamilyTreeCanvas = ({
           id: member.id,
           type: 'familyMember',
           position,
-         data: { 
-           member, 
-           onOpenProfile,
-           isMergeMode,
-           isSelected: mergeSelectedIds.includes(member.id),
-           isPrimary: mergeSelectedIds[0] === member.id,
-           mergedNames,
-           onLongPress,
-           onToggleSelect: onToggleMergeSelect,
-         },
+          data: { 
+            member, 
+            onOpenProfile,
+            isMergeMode,
+            readOnly,
+            isSelected: mergeSelectedIds.includes(member.id),
+            isPrimary: mergeSelectedIds[0] === member.id,
+            mergedNames,
+            onLongPress,
+            onToggleSelect: onToggleMergeSelect,
+          },
         });
       }
 
       return nextNodes;
     });
- }, [members, positions, onOpenProfile, setNodes, isMergeMode, mergeSelectedIds, mergedProfiles, onLongPress, onToggleMergeSelect]);
+  }, [members, positions, onOpenProfile, setNodes, isMergeMode, mergeSelectedIds, mergedProfiles, onLongPress, onToggleMergeSelect, readOnly]);
 
   useEffect(() => {
     const onNavFamily = (e: Event) => {
@@ -282,15 +287,17 @@ export const FamilyTreeCanvas = ({
         nodesDraggable={!readOnly}
         nodesConnectable={!readOnly}
         elementsSelectable={!readOnly}
-        fitView={true}
+        fitView={!initialViewport}
+        defaultViewport={initialViewport}
         fitViewOptions={{ padding: 0.4, duration: 600 }}
         style={{ touchAction: 'none' }}
+        onMove={(_, viewport) => onViewportChange?.(viewport)}
         onInit={(instance) => {
           flowInstanceRef.current = instance;
         }}
         minZoom={0.2}
         maxZoom={2}
-        attributionPosition="bottom-left"
+        proOptions={{ hideAttribution: true }}
         className="!bg-transparent"
       >
         <Background 

@@ -57,66 +57,12 @@ export const createSmoothScrollContainer = () => {
 export const addScrollMomentum = (element: HTMLElement) => {
   if (!element) return;
   
-  let isScrolling = false;
-  let startY = 0;
-  let scrollTop = 0;
-  let velocity = 0;
-  let animationFrame: number;
-  
-  const handleTouchStart = (e: TouchEvent) => {
-    isScrolling = true;
-    startY = e.touches[0].clientY;
-    scrollTop = element.scrollTop;
-    velocity = 0;
-    
-    if (animationFrame) {
-      cancelAnimationFrame(animationFrame);
-    }
-  };
-  
-  const handleTouchMove = (e: TouchEvent) => {
-    if (!isScrolling) return;
-    
-    const currentY = e.touches[0].clientY;
-    const deltaY = startY - currentY;
-    const newScrollTop = scrollTop + deltaY;
-    
-    element.scrollTop = newScrollTop;
-    
-    // Calculate velocity for momentum
-    velocity = deltaY * 0.5;
-  };
-  
-  const handleTouchEnd = () => {
-    if (!isScrolling) return;
-    isScrolling = false;
-    
-    // Apply momentum scrolling
-    const applyMomentum = () => {
-      if (Math.abs(velocity) < 0.5) {
-        return;
-      }
-      
-      element.scrollTop += velocity;
-      velocity *= 0.95; // Friction
-      
-      animationFrame = requestAnimationFrame(applyMomentum);
-    };
-    
-    applyMomentum();
-  };
-  
-  element.addEventListener('touchstart', handleTouchStart, { passive: true });
-  element.addEventListener('touchmove', handleTouchMove, { passive: true });
-  element.addEventListener('touchend', handleTouchEnd, { passive: true });
+  // Use native smooth scrolling and moment scrolling on iOS instead of manual JS
+  element.style.scrollBehavior = 'smooth';
+  (element.style as any).webkitOverflowScrolling = 'touch';
   
   return () => {
-    element.removeEventListener('touchstart', handleTouchStart);
-    element.removeEventListener('touchmove', handleTouchMove);
-    element.removeEventListener('touchend', handleTouchEnd);
-    if (animationFrame) {
-      cancelAnimationFrame(animationFrame);
-    }
+    // cleanup not strictly needed for CSS styles
   };
 };
 

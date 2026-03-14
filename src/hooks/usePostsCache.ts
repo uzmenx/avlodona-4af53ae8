@@ -76,20 +76,21 @@ export const usePostsCache = () => {
   const fetchPosts = useCallback(async (forceRefresh = false) => {
     if (isFetchingRef.current) return;
 
-    if (!forceRefresh && isCacheValid()) {
-      setPosts(globalCache!.posts);
-      setHasMore(globalCache!.hasMore);
+    if (globalCache && !forceRefresh) {
+      // SWR: show stale instantly
+      setPosts(globalCache.posts);
+      setHasMore(globalCache.hasMore);
       setIsLoading(false);
-      return;
-    }
 
-    isFetchingRef.current = true;
-
-    if (forceRefresh) {
+      // If cache is still fully valid, don't even fetch in background
+      if (isCacheValid()) return;
+    } else if (forceRefresh) {
       setIsRefreshing(true);
     } else {
       setIsLoading(true);
     }
+
+    isFetchingRef.current = true;
 
     try {
       const postsWithAuthors = await fetchPostsPage(0, PAGE_SIZE);

@@ -191,16 +191,29 @@ export const FamilyTreeV2 = () => {
     setShowPublish(true);
   };
 
-  const handleConfirmPublish = async (publishOverlays: TreeOverlay[], caption: string) => {
+  const handleConfirmPublish = async (publishOverlays: TreeOverlay[], caption: string, viewport: { x: number; y: number; zoom: number }) => {
     setIsPublishing(true);
     let postId = currentPostId;
+
+    const positionsWithViewport = {
+      ...positions,
+      __viewport: viewport
+    };
+
     if (!postId) {
-      postId = await createTreePost(members, positions);
+      postId = await createTreePost(members, positionsWithViewport);
       if (postId) setCurrentPostId(postId);
     }
     if (!postId) { setIsPublishing(false); return; }
+    
+    // Also save viewport to existing positions if we already had a postId
+    if (postId === currentPostId) {
+      updatePosition('__viewport', viewport);
+    }
+
     await saveOverlays(postId, publishOverlays);
     await publishPost(postId, caption);
+    setOverlays([]); // Clear overlays from tree view after publish
     setIsPublishing(false);
     setShowPublish(false);
   };

@@ -461,7 +461,7 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
                   <audio
                     ref={audioRef}
                     src={post.audio_url}
-                    preload="none"
+                    preload="metadata"
                     onPlay={() => setIsAudioPlaying(true)}
                     onPause={() => setIsAudioPlaying(false)}
                     onEnded={() => setIsAudioPlaying(false)}

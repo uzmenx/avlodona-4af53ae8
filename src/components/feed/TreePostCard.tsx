@@ -1,17 +1,18 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, Maximize2, Users, MessageCircle, Share2, Eye } from 'lucide-react';
+import { Heart, Minimize2, Users, MessageCircle, Share2, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { TreeFullscreenView } from '@/components/family-v2/TreeFullscreenView';
+import { FamilyTreeCanvas } from '@/components/family-v2/FamilyTreeCanvas';
+import { TreeOverlayLayer } from '@/components/family-v2/TreeOverlayLayer';
 import { TreePostStaticPreview } from './TreePostStaticPreview';
 import { FamilyMember } from '@/types/family';
 import { TreeOverlay } from '@/hooks/useTreePosts';
 import { formatCount } from '@/lib/formatCount';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { StarUsername } from '@/components/user/StarUsername';
 
 interface TreePostCardProps {
@@ -34,14 +35,23 @@ interface TreePostCardProps {
   index?: number;
 }
 
+const NOOP_FN = () => {};
+
 export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => {
   const { user } = useAuth();
-  const [showFullscreen, setShowFullscreen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
 
   const memberCount = Object.keys(post.tree_data || {}).length;
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: true });
+
+  const initialViewport = useMemo(() => {
+    if (post.positions_data['__viewport'] as any) {
+      return post.positions_data['__viewport'] as any as { x: number; y: number; zoom: number };
+    }
+    return undefined;
+  }, [post.positions_data]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -63,100 +73,131 @@ export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => 
   }, [liked, post.id, user?.id]);
 
   return (
-    <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: Math.min(index * 0.06, 0.4) }}
-        className="py-0 my-[5px]"
-      >
-        <Card className="overflow-hidden border-0 rounded-[20px] border border-border/20 bg-card/80 backdrop-blur-[10px] shadow-xl shadow-black/10">
-          <CardContent className="p-0">
-            {/* Header */}
-            <div className="flex items-center justify-between p-3">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={author?.avatar_url || undefined} />
-                  <AvatarFallback className="text-xs bg-primary/20">{(author?.name || 'U')[0]}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{author?.name || 'Foydalanuvchi'}</p>
-                  <StarUsername username={author?.username || 'user'} />
-                </div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: Math.min(index * 0.06, 0.4) }}
+      className="py-0 my-[5px]"
+    >
+      <Card className="overflow-hidden rounded-[20px] border border-border/20 bg-card/80 backdrop-blur-[10px] shadow-xl shadow-black/10">
+        <CardContent className="p-0">
+          {/* Header */}
+          <div className="flex items-center justify-between p-3">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={author?.avatar_url || undefined} />
+                <AvatarFallback className="text-xs bg-primary/20">{(author?.name || 'U')[0]}</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm font-semibold text-foreground">{author?.name || 'Foydalanuvchi'}</p>
+                <StarUsername username={author?.username || 'user'} />
               </div>
             </div>
+          </div>
 
-            {/* Static tree preview — 3:4 aspect ratio */}
-            <div className="relative cursor-pointer" onClick={() => setShowFullscreen(true)}>
-              <TreePostStaticPreview
-                members={post.tree_data || {}}
-                positions={post.positions_data || {}}
-                overlays={post.overlays}
-                className="rounded-none"
-              />
-              
-              {/* Title overlay */}
-              {post.title && (
-                <div className="absolute top-3 left-3 right-12">
-                  <p className="text-sm font-bold text-white drop-shadow-lg">{post.title}</p>
-                </div>
+          {/* Tree content — static or interactive */}
+          <div
+            className="relative cursor-pointer"
+            onClick={() => !expanded && setExpanded(true)}
+          >
+            <AnimatePresence mode="wait">
+              {expanded ? (
+                <motion.div
+                  key="expanded"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="relative w-full overflow-hidden bg-card/50"
+                  style={{ height: 'calc(100vh - 240px)', minHeight: '300px' }}
+                >
+                  {/* Interactive tree canvas with zoom/pan */}
+                  <div className="absolute inset-0">
+                    <FamilyTreeCanvas
+                      members={post.tree_data || {}}
+                      positions={post.positions_data || {}}
+                      onOpenProfile={NOOP_FN}
+                      onPositionChange={NOOP_FN}
+                      readOnly={true}
+                      initialViewport={initialViewport}
+                    />
+                  </div>
+
+                  {/* Overlays */}
+                  {post.overlays && post.overlays.length > 0 && (
+                    <TreeOverlayLayer overlays={post.overlays} onChange={NOOP_FN} editable={false} />
+                  )}
+
+                  {/* Minimize button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8 bg-black/40 backdrop-blur-sm rounded-full text-white hover:bg-black/60 z-30"
+                    onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+                  >
+                    <Minimize2 className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="collapsed"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <TreePostStaticPreview
+                    members={post.tree_data || {}}
+                    positions={post.positions_data || {}}
+                    overlays={post.overlays}
+                    className="rounded-none"
+                  />
+                </motion.div>
               )}
+            </AnimatePresence>
 
-              {/* Fullscreen button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 h-8 w-8 bg-black/40 backdrop-blur-sm rounded-full text-white hover:bg-black/60"
-                onClick={(e) => { e.stopPropagation(); setShowFullscreen(true); }}
-              >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
+            {/* Title overlay */}
+            {post.title && (
+              <div className="absolute top-3 left-3 right-12 z-20">
+                <p className="text-sm font-bold text-white drop-shadow-lg">{post.title}</p>
+              </div>
+            )}
 
-              {/* Member count badge */}
-              <div className="absolute bottom-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm">
-                <Users className="h-3 w-3 text-white" />
-                <span className="text-xs font-medium text-white">{memberCount}</span>
+            {/* Member count badge */}
+            <div className="absolute bottom-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm z-20">
+              <Users className="h-3 w-3 text-white" />
+              <span className="text-xs font-medium text-white">{memberCount}</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="p-3 space-y-2">
+            <div className="flex items-center gap-4">
+              <button onClick={handleLike} className="flex items-center gap-1.5">
+                <Heart className={`h-5 w-5 transition-colors ${liked ? 'fill-destructive text-destructive' : 'text-foreground'}`} />
+                <span className="text-sm font-medium">{formatCount(likesCount)}</span>
+              </button>
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <MessageCircle className="h-5 w-5" />
+                <span className="text-sm">0</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Eye className="h-5 w-5" />
+                <span className="text-sm">{memberCount}</span>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="p-3 space-y-2">
-              <div className="flex items-center gap-4">
-                <button onClick={handleLike} className="flex items-center gap-1.5">
-                  <Heart className={`h-5 w-5 transition-colors ${liked ? 'fill-destructive text-destructive' : 'text-foreground'}`} />
-                  <span className="text-sm font-medium">{formatCount(likesCount)}</span>
-                </button>
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <MessageCircle className="h-5 w-5" />
-                  <span className="text-sm">0</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Eye className="h-5 w-5" />
-                  <span className="text-sm">{memberCount}</span>
-                </div>
-              </div>
+            {post.caption && (
+              <p className="text-sm text-foreground">
+                <span className="font-semibold mr-1">{author?.username || 'user'}</span>
+                {post.caption}
+              </p>
+            )}
 
-              {post.caption && (
-                <p className="text-sm text-foreground">
-                  <span className="font-semibold mr-1">{author?.username || 'user'}</span>
-                  {post.caption}
-                </p>
-              )}
-
-              <p className="text-xs text-muted-foreground uppercase">{timeAgo}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      <TreeFullscreenView
-        isOpen={showFullscreen}
-        onClose={() => setShowFullscreen(false)}
-        members={post.tree_data}
-        positions={post.positions_data}
-        overlays={post.overlays}
-        caption={post.caption}
-      />
-    </>
+            <p className="text-xs text-muted-foreground uppercase">{timeAgo}</p>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 };

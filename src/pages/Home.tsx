@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PullToRefresh } from "@/components/feed/PullToRefresh";
 import { StoriesRow } from "@/components/stories/StoriesRow";
@@ -46,8 +46,8 @@ const Home = () => {
   const topAnchorRef = useRef<HTMLDivElement>(null);
 
   const blockedSet = anyBlockedIds();
-  const visiblePosts = posts.filter((p) => !blockedSet.has(p.user_id));
-  const visibleTreePosts = treePosts.filter((tp) => !blockedSet.has(tp.user_id));
+  const visiblePosts = useMemo(() => posts.filter((p) => !blockedSet.has(p.user_id)), [posts, blockedSet]);
+  const visibleTreePosts = useMemo(() => treePosts.filter((tp) => !blockedSet.has(tp.user_id)), [treePosts, blockedSet]);
 
   const openPostViewer = (index: number) => {
     setViewerTab('posts');
@@ -139,7 +139,7 @@ const Home = () => {
         />
         
         <PullToRefresh onRefresh={handleRefresh}>
-          {isLoading ? (
+          {isLoading && visiblePosts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">{t('loading')}</p>
             </div>
