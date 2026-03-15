@@ -145,7 +145,9 @@ export const ProfileModal = ({
 
   const handleAction = (action: () => void) => {
     onClose();
-    action();
+    setTimeout(() => {
+      action();
+    }, 150);
   };
 
   const handleMessage = () => {

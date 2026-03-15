@@ -209,6 +209,7 @@ All colors MUST be HSL.
   body,
   #root {
     background-color: hsl(var(--background));
+    overflow-x: hidden;
   }
 }
 

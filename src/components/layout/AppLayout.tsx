@@ -110,7 +110,7 @@ export const AppLayout = ({ children, showNav = true }: AppLayoutProps) => {
   const effectiveShowNav = showNav && !forceHideNav;
 
   return (
-    <div className={cn('min-h-screen relative overflow-hidden')}>
+    <div className={cn('min-h-screen relative w-full')}>
       <div
         className={cn(
           'fixed inset-0 z-0 pointer-events-none transition-colors duration-500',

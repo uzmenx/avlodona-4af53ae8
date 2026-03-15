@@ -276,7 +276,7 @@ export const FamilyTreeCanvas = ({
   }, []);
 
   return (
-    <div className="w-full h-full overflow-hidden bg-card/50 touch-none">
+    <div className="w-full h-full overflow-hidden bg-card/50">
       <ReactFlow
         nodes={nodes}
         edges={edges}
