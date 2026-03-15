@@ -147,7 +147,7 @@ const Profile = () => {
   const [lastProfileTapTsRef] = useState({ current: 0 });
   const [bioExpanded, setBioExpanded] = useState(false);
   const [needsMoreButton, setNeedsMoreButton] = useState(false);
-  const [showPostsStats, setShowPostsStats] = useState(true);
+  const [showPostsStats, setShowPostsStats] = useState(false);
   const [followHubOpen, setFollowHubOpen] = useState(false);
   const [followHubTab, setFollowHubTab] = useState<'followers' | 'following' | 'unfollow'>('followers');
   const [viewerOpen, setViewerOpen] = useState(false);

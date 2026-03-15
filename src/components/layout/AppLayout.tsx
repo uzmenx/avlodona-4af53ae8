@@ -133,7 +133,6 @@ export const AppLayout = ({ children, showNav = true }: AppLayoutProps) => {
         )}
       >
         {children}
-        <LegalFooter />
       </main>
       {effectiveShowNav && <BottomNav />}
     </div>
