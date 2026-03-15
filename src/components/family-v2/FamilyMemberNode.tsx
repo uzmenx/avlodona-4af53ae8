@@ -260,7 +260,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
               const effectiveMemberId = member.supabaseId || member.id;
               navigate(`/create?memberId=${effectiveMemberId}`);
             }}
-            className="absolute -top-1 -right-1 w-7 h-7 bg-background rounded-full z-20 shadow-md border border-border group/btn flex-col flex items-center justify-center mx-0 my-[55px]"
+            className="absolute -top-1 -right-1 w-7 h-7 bg-background rounded-full z-20 shadow-md border border-border group/btn flex-col flex items-center justify-center mx-0 my-[55px] opacity-80"
             title="Xotira qoldirish">
             
               <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover/btn:bg-primary transition-colors">
