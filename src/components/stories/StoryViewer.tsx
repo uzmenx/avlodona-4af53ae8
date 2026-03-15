@@ -626,7 +626,15 @@ export const StoryViewer = ({
 
         {/* Header — safe-area */}
         <div className="absolute top-[max(24px,calc(8px+env(safe-area-inset-top)))] left-0 right-0 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div 
+            className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => {
+              if (author.id) {
+                onClose();
+                navigate(`/user/${author.id}`);
+              }
+            }}
+          >
             <div className="relative w-10 h-10 overflow-visible">
               <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white">
                 {author.avatar_url ? (
@@ -955,7 +963,14 @@ export const StoryViewer = ({
                   {viewers.map((viewer) => (
                     <div
                       key={viewer.viewer_id}
-                      className="flex items-center gap-3 p-3 rounded-2xl border border-border/60 bg-background/60 shadow-sm hover:shadow-md transition-shadow"
+                      className="flex items-center gap-3 p-3 rounded-2xl border border-border/60 bg-background/60 shadow-sm hover:shadow-md transition-shadow cursor-pointer active:scale-95"
+                      onClick={() => {
+                        if (viewer.viewer_id) {
+                          setShowViewers(false);
+                          onClose();
+                          navigate(`/user/${viewer.viewer_id}`);
+                        }
+                      }}
                     >
                       <div className="w-11 h-11 rounded-2xl overflow-hidden bg-muted shrink-0">
                         {viewer.profile?.avatar_url ? (
@@ -995,7 +1010,14 @@ export const StoryViewer = ({
                   {likers.map((like) => (
                     <div
                       key={like.user_id}
-                      className="flex items-center gap-3 p-3 rounded-2xl border border-border/60 bg-background/60 shadow-sm hover:shadow-md transition-shadow"
+                      className="flex items-center gap-3 p-3 rounded-2xl border border-border/60 bg-background/60 shadow-sm hover:shadow-md transition-shadow cursor-pointer active:scale-95"
+                      onClick={() => {
+                        if (like.user_id) {
+                          setShowViewers(false);
+                          onClose();
+                          navigate(`/user/${like.user_id}`);
+                        }
+                      }}
                     >
                       <div className="w-11 h-11 rounded-2xl overflow-hidden bg-muted shrink-0">
                         {like.profile?.avatar_url ? (

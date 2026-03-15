@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { TreeDeciduous, X, GitMerge } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { TreeDeciduous, X, GitMerge, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { FamilyTreeCanvas } from './FamilyTreeCanvas';
@@ -23,7 +24,16 @@ import { FamilyMember, AddMemberData } from '@/types/family';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { FamilyInvitationItem } from './FamilyInvitationItem';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { StarUsername } from '@/components/user/StarUsername';
 import { toast } from 'sonner';
+
+interface SearchUser {
+  id: string;
+  username: string | null;
+  name: string | null;
+  avatar_url: string | null;
+}
 
 type ModalState = {
   type: 'none' | 'addParentFather' | 'addParentMother' | 'addSpouse' | 'addChild' | 'profile' | 'invitation' | 'genderSelect';
@@ -33,6 +43,7 @@ type ModalState = {
 };
 
 export const FamilyTreeV2 = () => {
+  const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
   const {
     members, rootId, isLoading,
@@ -78,6 +89,11 @@ export const FamilyTreeV2 = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
+  // Unified Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   // Load overlays when current post changes
   useEffect(() => {
     if (currentPost) {
@@ -121,10 +137,33 @@ export const FamilyTreeV2 = () => {
 
   const handleRelativeSelect = useCallback((userId: string, userName: string) => {
     setIsRelativeSearchOpen(false);
+    setSearchQuery('');
+    setSearchResults([]);
     setSelectedRelativeUserId(userId);
     setSelectedRelativeUserName(userName);
     setTimeout(() => setIsConnectionSheetOpen(true), 250);
   }, []);
+
+  const handleSearch = async (q: string) => {
+    setSearchQuery(q);
+    if (!q.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, name, avatar_url')
+        .or(`username.ilike.%${q.trim()}%,name.ilike.%${q.trim()}%`)
+        .limit(10);
+      setSearchResults(data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   // Modal handlers
   const handleAddParents = useCallback((id: string) => setModal({ type: 'addParentFather', targetId: id }), []);
@@ -167,14 +206,14 @@ export const FamilyTreeV2 = () => {
     if (data) { setMergeData(data); setShowMergeDialog(true); }
   }, [computeMergeData, setMergeData, setShowMergeDialog]);
 
-  const handleAcceptInvitation = async (invitation: any) => {
+  const handleAcceptInvitation = async (invitation: { id: string; [key: string]: any }) => {
     setProcessingInvitation(invitation.id);
-    await acceptInvitation(invitation);
+    await acceptInvitation(invitation as any);
     setProcessingInvitation(null);
   };
-  const handleRejectInvitation = async (invitation: any) => {
+  const handleRejectInvitation = async (invitation: { id: string; [key: string]: any }) => {
     setProcessingInvitation(invitation.id);
-    await rejectInvitation(invitation);
+    await rejectInvitation(invitation as any);
     setProcessingInvitation(null);
   };
 
@@ -364,17 +403,64 @@ export const FamilyTreeV2 = () => {
           onOpenRelativeSearch={() => setIsRelativeSearchOpen(true)}
           onSave={handleSaveTree}
           onPublish={handlePublish}
-          memberCount={Object.keys(members || {}).length}
+          memberCount={Object.values(members || {}).reduce((count, m) => count + (m.linkedUserId ? 1 : 0) + (m.mergedProfiles?.filter(mp => !!mp.linkedUserId).length || 0), 0)}
           isSaving={isSaving}
           hasCurrentPost={!!currentPostId}
+          searchQuery={searchQuery}
+          onSearchChange={handleSearch}
+          onClearSearch={() => handleSearch('')}
         />
       )}
 
-      <RelativeSearchSheet
-        open={isRelativeSearchOpen}
-        onOpenChange={setIsRelativeSearchOpen}
-        onSelect={handleRelativeSelect}
-      />
+      {/* Unified Search Results Overlay */}
+      {searchQuery.trim() !== '' && (
+        <div className="fixed top-[74px] left-1/2 -translate-x-1/2 z-[60] w-[390px] max-w-[calc(100vw-24px)]">
+          <div className="mx-auto rounded-2xl border border-white/20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl shadow-2xl shadow-black/20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="p-3 border-b border-white/10 flex items-center justify-between">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Qidiruv natijalari</span>
+              {isSearching && <div className="h-3 w-3 rounded-full border-2 border-primary border-t-transparent animate-spin" />}
+            </div>
+            
+            <div className="max-h-[350px] overflow-y-auto p-2 space-y-2">
+              {searchResults.length === 0 && !isSearching ? (
+                <div className="py-8 text-center">
+                  <p className="text-sm font-medium text-slate-500">Hech narsa topilmadi</p>
+                </div>
+              ) : (
+                searchResults.map((u) => (
+                  <div
+                    key={u.id}
+                    className="w-full flex items-center justify-between gap-3 p-2.5 rounded-xl border border-white/5 bg-white/40 dark:bg-white/5 transition-all text-left"
+                  >
+                    <div 
+                      className="flex items-center gap-3 min-w-0 cursor-pointer hover:opacity-70 transition-opacity"
+                      onClick={() => navigate(`/user/${u.id}`)}
+                    >
+                      <Avatar className="h-10 w-10 shrink-0 border border-white/10">
+                        <AvatarImage src={u.avatar_url || undefined} />
+                        <AvatarFallback className="bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-bold">
+                          {(u.name || u.username || 'U')[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-foreground truncate">{u.name || u.username}</p>
+                        {u.username && <StarUsername username={u.username} className="text-[10px]" />}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleRelativeSelect(u.id, u.name || u.username || 'Foydalanuvchi')}
+                      className="rounded-xl px-4 h-11 font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-[12px] uppercase tracking-wider shadow-lg shadow-emerald-500/20 border-0 transition-all active:scale-95 shrink-0"
+                    >
+                      Qarindosh
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <RelativeConnectionSheet
         open={isConnectionSheetOpen}

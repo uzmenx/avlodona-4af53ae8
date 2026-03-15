@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -38,6 +39,7 @@ interface TreePostCardProps {
 const NOOP_FN = () => {};
 
 export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -83,7 +85,10 @@ export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => 
         <CardContent className="p-0">
           {/* Header */}
           <div className="flex items-center justify-between p-3">
-            <div className="flex items-center gap-3">
+            <div 
+              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => post.user_id && navigate(`/user/${post.user_id}`)}
+            >
               <Avatar className="h-9 w-9">
                 <AvatarImage src={author?.avatar_url || undefined} />
                 <AvatarFallback className="text-xs bg-primary/20">{(author?.name || 'U')[0]}</AvatarFallback>

@@ -23,6 +23,15 @@ export interface Notification {
     media_urls: string[] | null;
     content: string | null;
   };
+  story?: {
+    id: string;
+    media_url: string | null;
+    media_type: 'image' | 'video';
+  };
+  comment?: {
+    id: string;
+    content: string;
+  };
 }
 
 export const useNotifications = () => {
@@ -53,8 +62,8 @@ export const useNotifications = () => {
           .in('id', actorIds);
 
         // Fetch posts for like/comment notifications
-        const postIds = [...new Set(data.filter(n => n.post_id).map(n => n.post_id!))];
-        let posts: any[] = [];
+        const postIds = [...new Set(data.filter(n => n.post_id && n.type !== 'story_like').map(n => n.post_id!))];
+        let posts: { id: string; media_urls: string[] | null; content: string | null }[] = [];
         if (postIds.length > 0) {
           const { data: postsData } = await supabase
             .from('posts')
@@ -63,11 +72,35 @@ export const useNotifications = () => {
           posts = postsData || [];
         }
 
+        // Fetch stories for story_like notifications
+        const storyIds = [...new Set(data.filter(n => n.post_id && n.type === 'story_like').map(n => n.post_id!))];
+        let stories: { id: string; media_url: string | null; media_type: 'image' | 'video' }[] = [];
+        if (storyIds.length > 0) {
+          const { data: storiesData } = await supabase
+            .from('stories')
+            .select('id, media_url, media_type')
+            .in('id', storyIds);
+          stories = (storiesData || []) as { id: string; media_url: string | null; media_type: 'image' | 'video' }[];
+        }
+
+        // Fetch comments for comment notifications
+        const commentIds = [...new Set(data.filter(n => n.comment_id).map(n => n.comment_id!))];
+        let comments: { id: string; content: string }[] = [];
+        if (commentIds.length > 0) {
+          const { data: commentsData } = await supabase
+            .from('comments')
+            .select('id, content')
+            .in('id', commentIds);
+          comments = commentsData || [];
+        }
+
         const enrichedNotifications = data.map(notification => ({
           ...notification,
           type: notification.type as Notification['type'],
           actor: actors?.find(a => a.id === notification.actor_id),
-          post: posts.find(p => p.id === notification.post_id),
+          post: notification.type !== 'story_like' ? posts.find(p => p.id === notification.post_id) : undefined,
+          story: notification.type === 'story_like' ? stories.find(s => s.id === notification.post_id) : undefined,
+          comment: comments.find(c => c.id === notification.comment_id),
         }));
 
         setNotifications(enrichedNotifications);

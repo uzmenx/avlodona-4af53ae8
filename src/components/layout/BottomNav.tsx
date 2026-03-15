@@ -94,7 +94,7 @@ export const BottomNav = () => {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-[70]">
       <div className="h-16 px-3 pb-[env(safe-area-inset-bottom,0px)]">
-        <div className="h-14 max-w-lg mx-auto rounded-full border border-white/10 bg-background/60 text-foreground shadow-[0_10px_35px_rgba(0,0,0,0.25)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/40 flex items-center justify-around px-2">
+        <div className="h-14 max-w-lg mx-auto rounded-full border border-white/20 bg-background/20 text-foreground shadow-[0_15px_45px_rgba(0,0,0,0.15)] backdrop-blur-2xl supports-[backdrop-filter]:bg-background/10 flex items-center justify-around px-2">
           {navItems.map((item) => {
             const badgeCount = item.kind === 'profile' ? 0 : getBadgeCount(item.badgeType);
 

@@ -72,6 +72,17 @@ export const AppLayout = ({ children, showNav = true }: AppLayoutProps) => {
   };
 
 
+  const [transparentBars, setTransparentBars] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ transparent?: boolean } | undefined>;
+      setTransparentBars(!!ce.detail?.transparent);
+    };
+    window.addEventListener('app:transparentBars', handler);
+    return () => window.removeEventListener('app:transparentBars', handler);
+  }, []);
+
   useEffect(() => {
     const handler = (e: Event) => {
       const ce = e as CustomEvent<{ hide?: boolean } | undefined>;
@@ -99,11 +110,11 @@ export const AppLayout = ({ children, showNav = true }: AppLayoutProps) => {
   const effectiveShowNav = showNav && !forceHideNav;
 
   return (
-    <div className={cn('min-h-screen relative')}>
+    <div className={cn('min-h-screen relative overflow-hidden')}>
       <div
         className={cn(
-          'fixed inset-0 z-0 pointer-events-none',
-          bgClass || 'bg-background'
+          'fixed inset-0 z-0 pointer-events-none transition-colors duration-500',
+          transparentBars ? 'bg-transparent' : (bgClass || 'bg-background')
         )}
       />
       {globalUploadProgress !== null && globalUploadProgress > 0 && globalUploadProgress < 100 && (
@@ -111,8 +122,8 @@ export const AppLayout = ({ children, showNav = true }: AppLayoutProps) => {
       )}
       <div
         className={cn(
-          'fixed top-0 left-0 right-0 z-[20] pointer-events-none h-[env(safe-area-inset-top,0px)]',
-          bgClass || 'bg-background'
+          'fixed top-0 left-0 right-0 z-[20] pointer-events-none h-[env(safe-area-inset-top,0px)] transition-colors duration-500',
+          transparentBars ? 'bg-transparent' : (bgClass || 'bg-background')
         )}
       />
       <main

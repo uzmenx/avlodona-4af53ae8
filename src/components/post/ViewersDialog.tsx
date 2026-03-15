@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,6 +21,7 @@ interface ViewersDialogProps {
 }
 
 export const ViewersDialog = ({ open, onOpenChange, users, viewsCount, likedUserIds = [] }: ViewersDialogProps) => {
+  const navigate = useNavigate();
   const likedSet = new Set(likedUserIds);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -41,7 +43,11 @@ export const ViewersDialog = ({ open, onOpenChange, users, viewsCount, likedUser
               {users.map((user) => (
                 <div
                   key={user.id}
-                  className="group flex items-center gap-3 p-3 rounded-2xl border border-border/60 bg-gradient-to-br from-background/70 to-background/40 backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+                  className="group flex items-center gap-3 p-3 rounded-2xl border border-border/60 bg-gradient-to-br from-background/70 to-background/40 backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer active:scale-95"
+                  onClick={() => {
+                    onOpenChange(false);
+                    navigate(`/user/${user.id}`);
+                  }}
                 >
                   <div className="relative p-[2px] rounded-2xl bg-gradient-to-br from-primary/35 via-transparent to-primary/20">
                     <Avatar className="h-10 w-10 shrink-0 rounded-2xl">

@@ -4,6 +4,7 @@ export interface MergedProfileInfo {
   photoUrl?: string;
   gender: 'male' | 'female';
   ownerName?: string;
+  linkedUserId?: string;
 }
 
 export interface FamilyMember {

@@ -188,52 +188,8 @@ export const useStories = () => {
           console.error('Error liking story:', likeError);
           return;
         }
-
-        // Create notification for story owner - look up from DB to handle all contexts
-        const { data: storyData, error: storyFetchError } = await supabase
-          .from('stories')
-          .select('user_id')
-          .eq('id', storyId)
-          .maybeSingle();
-
-        if (storyFetchError) {
-          console.error('Error fetching story owner:', storyFetchError);
-        }
-        
-        if (storyData && storyData.user_id !== user.id) {
-          // Only block if a story_like notification was sent in the last 12 hours
-          const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
-          const { data: existing, error: existingErr } = await supabase
-            .from('notifications')
-            .select('id')
-            .eq('user_id', storyData.user_id)
-            .eq('actor_id', user.id)
-            .eq('type', 'story_like')
-            .gte('created_at', twelveHoursAgo)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (existingErr) {
-            console.error('Error checking existing story_like notification:', existingErr);
-          }
-
-          if (!existing) {
-            const { error: notifError } = await supabase.from('notifications').insert({
-              user_id: storyData.user_id,
-              actor_id: user.id,
-              type: 'story_like',
-              post_id: null,
-              comment_id: null,
-              message_id: null,
-              is_read: false,
-            });
-
-            if (notifError) {
-              console.error('Error creating story_like notification:', notifError);
-            }
-          }
-        }
+        // Notification is automatically created by the database trigger
+        // handle_story_like_notification on story_likes table
       }
     } catch (error) {
       console.error('Error toggling like:', error);

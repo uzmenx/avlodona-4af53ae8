@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ interface CommentsSheetProps {
 }
 
 export const CommentsSheet = ({ open, onOpenChange, postId }: CommentsSheetProps) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { comments, commentsCount, isLoading, fetchComments, addComment, deleteComment, toggleCommentLike } = useComments(postId);
   const [newComment, setNewComment] = useState('');
@@ -39,6 +41,27 @@ export const CommentsSheet = ({ open, onOpenChange, postId }: CommentsSheetProps
     if (!user?.id) return;
     fetchComments();
   }, [open, user?.id, fetchComments]);
+
+  useEffect(() => {
+    if (open && comments.length > 0) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const targetCommentId = searchParams.get('commentId');
+      
+      if (targetCommentId) {
+        // SMALL DELAY to ensure DOM is ready inside the ScrollArea
+        setTimeout(() => {
+          const element = document.getElementById(`comment-${targetCommentId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.classList.add('bg-primary/10', 'rounded-lg');
+            setTimeout(() => {
+              element.classList.remove('bg-primary/10');
+            }, 2500);
+          }
+        }, 300);
+      }
+    }
+  }, [open, comments]);
 
   // ALWAYS fetch fresh comments when sheet opens
   const handleOpenChange = (isOpen: boolean) => {
@@ -84,8 +107,16 @@ export const CommentsSheet = ({ open, onOpenChange, postId }: CommentsSheetProps
     const timeAgo = formatDistanceToNow(new Date(comment.created_at), { addSuffix: false });
 
     return (
-      <div className={cn("flex gap-3", isReply && "ml-10")}>
-        <Avatar className="h-8 w-8 flex-shrink-0">
+      <div id={`comment-${comment.id}`} className={cn("flex gap-3 p-2 transition-colors", isReply && "ml-10")}>
+        <Avatar 
+          className="h-8 w-8 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => {
+            if (comment.user_id) {
+              onOpenChange(false);
+              navigate(`/user/${comment.user_id}`);
+            }
+          }}
+        >
           <AvatarImage src={comment.author?.avatar_url || undefined} />
           <AvatarFallback className="bg-primary/10 text-primary text-xs">
             {comment.author?.name?.charAt(0) || 'U'}
@@ -96,7 +127,17 @@ export const CommentsSheet = ({ open, onOpenChange, postId }: CommentsSheetProps
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
               <p className="text-sm">
-                <span className="font-semibold">{comment.author?.name || 'Foydalanuvchi'}</span>
+                <span 
+                  className="font-semibold cursor-pointer hover:underline"
+                  onClick={() => {
+                    if (comment.user_id) {
+                      onOpenChange(false);
+                      navigate(`/user/${comment.user_id}`);
+                    }
+                  }}
+                >
+                  {comment.author?.name || 'Foydalanuvchi'}
+                </span>
                 {' • '}
                 <span className="text-muted-foreground text-xs">{timeAgo}</span>
               </p>

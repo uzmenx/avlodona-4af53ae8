@@ -1,6 +1,8 @@
-import { Save, Search } from 'lucide-react';
+import { Save, Search, X } from 'lucide-react';
 import { Icon } from '@iconify/react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { TreeRatings } from '@/components/family-v2/TreeRatings';
 import { FamilyCalendarSheet } from '@/components/family-v2/FamilyCalendarSheet';
 
@@ -11,6 +13,9 @@ interface TreePostHeaderProps {
   memberCount?: number;
   isSaving?: boolean;
   hasCurrentPost?: boolean;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  onClearSearch: () => void;
 }
 
 export const TreePostHeader = ({
@@ -20,6 +25,9 @@ export const TreePostHeader = ({
   memberCount,
   isSaving,
   hasCurrentPost,
+  searchQuery,
+  onSearchChange,
+  onClearSearch,
 }: TreePostHeaderProps) => {
   return (
     <div className="sticky top-2 z-50 px-3">
@@ -27,9 +35,9 @@ export const TreePostHeader = ({
         className={
           'mx-auto w-[390px] max-w-full h-14 px-4 py-2.5 ' +
           'flex items-center gap-2.5 rounded-2xl ' +
-          'backdrop-blur-md bg-white/70 dark:bg-slate-900/80 ' +
-          'border border-white/60 dark:border-white/10 ' +
-          'shadow-lg shadow-black/10 dark:shadow-black/30'
+          'backdrop-blur-2xl bg-white/30 dark:bg-slate-900/30 ' +
+          'border border-white/20 dark:border-white/10 ' +
+          'shadow-2xl shadow-black/5 dark:shadow-black/20'
         }
       >
         {/* 1) Trophy */}
@@ -42,18 +50,32 @@ export const TreePostHeader = ({
           <FamilyCalendarSheet />
         </div>
 
-        {/* 3) Search */}
-        <button
-          type="button"
-          onClick={onOpenRelativeSearch}
-          className="flex-1 max-w-[160px] h-9 rounded-full bg-slate-100/80 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/70 px-3 flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-indigo-300 dark:focus-visible:ring-indigo-500/60 transition-all duration-150 text-left"
-          aria-label="Qarindosh qidirish"
-        >
-          <Search className="h-4 w-4 text-slate-400" strokeWidth={1.8} />
-          <div className="flex-1 text-left text-sm text-slate-700 dark:text-slate-100">
-            <span className="text-slate-400">Qidirish...</span>
-          </div>
-        </button>
+        {/* 3) Search Input */}
+        <div className="flex-1 max-w-[180px] relative group">
+          <Search 
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10" 
+            strokeWidth={2} 
+          />
+          <Input
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Qidirish..."
+            className={cn(
+              "pl-9 pr-9 h-9 rounded-full bg-slate-100/80 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/70",
+              "text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400",
+              "focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500/50 transition-all"
+            )}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={onClearSearch}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
 
         {/* 4) Badge */}
         {typeof memberCount === 'number' && (

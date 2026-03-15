@@ -42,6 +42,36 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Post } from '@/types';
 import { useAutoPreviewVideo } from '@/hooks/useAutoPreviewVideo';
+import { Icon } from '@iconify/react';
+
+const PremiumStarsIcon = ({ className, active, size = 'default' }: { className?: string; active?: boolean; size?: 'default' | 'sm' }) => (
+  <div className={cn("relative flex items-center justify-center transition-all duration-300", className)}>
+    <Icon 
+      icon="mdi:stars" 
+      className={cn(
+        size === 'sm' ? "w-5 h-5" : "w-6 h-6",
+        "transition-all duration-300", 
+        active ? "text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]" : "text-muted-foreground opacity-60"
+      )}
+    />
+    <Icon 
+      icon="pepicons-pop:stars" 
+      className={cn(
+        "absolute transition-all duration-300 delay-75", 
+        size === 'sm' ? "-top-1 -right-1 w-2.5 h-2.5" : "-top-1.5 -right-1.5 w-3.5 h-3.5",
+        active ? "text-emerald-400 opacity-90 scale-110" : "text-muted-foreground opacity-40 scale-75"
+      )}
+    />
+    <Icon 
+      icon="mdi:stars" 
+      className={cn(
+        "absolute transition-all duration-500 delay-150", 
+        size === 'sm' ? "-bottom-0.5 -left-0.5 w-2 h-2" : "-bottom-1 -left-1 w-2.5 h-2.5",
+        active ? "text-emerald-300 opacity-80 scale-125" : "text-muted-foreground opacity-30 scale-50"
+      )}
+    />
+  </div>
+);
 
 const ProfileMasonryItem = ({ post }: {post: Post;}) => {
   const mediaUrl = ((post.media_urls && post.media_urls.length > 0 ? post.media_urls[0] : post.image_url || '') || '') as string;
@@ -113,38 +143,37 @@ const Profile = () => {
   const { mentionedPosts, collabPosts, pendingCollabs, respondToCollab } = useMentionsCollabs();
   const { getStoryInfo } = useActiveStories();
   const { storyGroups } = useStories();
-  const [profileStoryGroups, setProfileStoryGroups] = useState<typeof storyGroups>([]);
-  const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'mentions'>('posts');
-  const [familyMemberCount, setFamilyMemberCount] = useState(0);
-  const [postsLayout, setPostsLayout] = useState<'pinterest2' | 'pinterest1' | 'list'>('pinterest2');
 
-  const lastPostsTabTapTsRef = useRef<number>(0);
-  const lastProfileTapTsRef = useRef<number>(0);
-
-  const [viewerOpen, setViewerOpen] = useState(false);
-  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
-  const [viewerPosts, setViewerPosts] = useState<typeof posts>([]);
-  const [showNewHighlight, setShowNewHighlight] = useState(false);
-  const [showCollabRequests, setShowCollabRequests] = useState(false);
-  const [showPostsStats, setShowPostsStats] = useState(false);
+  const [lastProfileTapTsRef] = useState({ current: 0 });
   const [bioExpanded, setBioExpanded] = useState(false);
   const [needsMoreButton, setNeedsMoreButton] = useState(false);
+  const [showPostsStats, setShowPostsStats] = useState(true);
+  const [followHubOpen, setFollowHubOpen] = useState(false);
+  const [followHubTab, setFollowHubTab] = useState<'followers' | 'following' | 'unfollow'>('followers');
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
+  const [viewerPosts, setViewerPosts] = useState<Post[]>([]);
+  const [showNewHighlight, setShowNewHighlight] = useState(false);
+  const [postsLayout, setPostsLayout] = useState<'list' | 'pinterest1' | 'pinterest2'>('pinterest2');
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [appliedSearchQuery, setAppliedSearchQuery] = useState('');
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const [storyViewerOpen, setStoryViewerOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'mentions'>('posts');
+  const [showCollabRequests, setShowCollabRequests] = useState(false);
   const [collectionEditorOpen, setCollectionEditorOpen] = useState(false);
-  const [collectionEditorMode, setCollectionEditorMode] = useState<'create' | 'edit'>('edit');
   const [editingCollection, setEditingCollection] = useState<PostCollection | null>(null);
   const [editingName, setEditingName] = useState('');
   const [editingTheme, setEditingTheme] = useState(0);
-  const [collectionTab, setCollectionTab] = useState<'selected' | 'all'>('selected');
-  const [selectedPostIds, setSelectedPostIds] = useState<Set<string>>(new Set());
   const [isSavingCollection, setIsSavingCollection] = useState(false);
+  const [selectedPostIds, setSelectedPostIds] = useState<Set<string>>(new Set());
+  const [collectionTab, setCollectionTab] = useState<'all' | 'selected'>('all');
+  const [storyViewerOpen, setStoryViewerOpen] = useState(false);
+  const [profileStoryGroups, setProfileStoryGroups] = useState<any[]>([]);
+  const [lastPostsTabTapTsRef] = useState({ current: 0 });
 
-  const [followHubOpen, setFollowHubOpen] = useState(false);
-  const [followHubTab, setFollowHubTab] = useState<'followers' | 'following' | 'unfollow'>('followers');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const familyMemberCountRef = useRef(0);
+  const [familyMemberCount, setFamilyMemberCount] = useState(0);
 
   useEffect(() => {
     if (showPostsStats) return;
@@ -152,11 +181,11 @@ const Profile = () => {
   }, [showPostsStats]);
 
   const cyclePostsLayout = useCallback(() => {
-    setPostsLayout((prev) => prev === 'pinterest2' ? 'pinterest1' : prev === 'pinterest1' ? 'list' : 'pinterest2');
+    setPostsLayout((prev) => (prev === 'list' ? 'pinterest2' : 'list'));
   }, []);
 
   const togglePostsLayoutHidden = useCallback(() => {
-    setPostsLayout((prev) => prev === 'list' ? 'pinterest2' : 'list');
+    setPostsLayout((prev) => (prev === 'list' ? 'pinterest2' : 'list'));
   }, []);
 
   const collectionThemes = useMemo(
@@ -192,6 +221,8 @@ const Profile = () => {
 
     setCollectionEditorOpen(true);
   }, []);
+
+  const [collectionEditorMode, setCollectionEditorMode] = useState<'create' | 'edit'>('edit');
 
   const togglePostInEditor = useCallback((postId: string) => {
     setSelectedPostIds((prev) => {
@@ -622,8 +653,8 @@ const Profile = () => {
           </div>
 
           {/* ═══════════════════════════════════════
-                                                                      STORY HIGHLIGHTS
-                                                                   ═══════════════════════════════════════ */}
+                                                                       STORY HIGHLIGHTS
+                                                                    ═══════════════════════════════════════ */}
           {!hideHighlights &&
           <div className="flex justify-center">
               <HighlightsRow
@@ -636,8 +667,8 @@ const Profile = () => {
           }
 
           {/* ═══════════════════════════════════════
-                                                                      COLLECTIONS FILTER
-                                                                   ═══════════════════════════════════════ */}
+                                                                       COLLECTIONS FILTER
+                                                                    ═══════════════════════════════════════ */}
           {!hideCollections && activeTab === 'posts' &&
           <div className="flex items-start justify-start">
               <CollectionsFilter
@@ -657,38 +688,62 @@ const Profile = () => {
           }
 
           {/* ═══════════════════════════════════════
-                                                                      TABS
-                                                                   ═══════════════════════════════════════ */}
+                                                                       TABS
+                                                                    ═══════════════════════════════════════ */}
           <div className="px-4">
             <div className="flex border-b border-border mb-1">
               <button
                 onClick={() => {
-                  const now = Date.now();
-                  if (activeTab === 'posts') {
-                    togglePostsLayoutHidden();
-                    return;
-                  }
-
-                  // Not selected: 1st tap selects, double-tap toggles layout
-                  if (now - lastPostsTabTapTsRef.current < 350) {
+                  if (activeTab !== 'posts') {
                     setActiveTab('posts');
                     setSelectedCollectionId(null);
-                    togglePostsLayoutHidden();
                   } else {
-                    setActiveTab('posts');
-                    setSelectedCollectionId(null);
+                    cyclePostsLayout();
                   }
-
-                  lastPostsTabTapTsRef.current = now;
                 }}
                 className={cn(
-                  'flex-1 py-1.5 flex items-center justify-center border-b-2 transition-colors',
+                  'flex-1 py-1.5 flex items-center justify-center border-b-2 transition-all duration-300',
                   activeTab === 'posts' ?
-                  'border-primary text-primary' :
-                  'border-transparent text-muted-foreground'
+                  'border-primary' :
+                  'border-transparent'
                 )}>
 
-                <Sparkles className="h-5 w-5" />
+                <div 
+                  className={cn(
+                    "relative w-16 h-8 bg-slate-100/90 dark:bg-slate-800/80 rounded-full border border-slate-200/60 dark:border-white/10 p-1 flex items-center shadow-md transition-all duration-500 overflow-hidden",
+                    activeTab !== 'posts' && "opacity-60 scale-90 grayscale-[0.5]"
+                  )}
+                >
+                  {/* Sliding Handle */}
+                  <div 
+                    className={cn(
+                      "absolute inset-y-1 w-7 rounded-full bg-white dark:bg-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.15)] flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform z-20",
+                      postsLayout === 'list' ? "left-1" : "left-8"
+                    )}
+                  >
+                    <Icon 
+                      icon={postsLayout === 'list' ? "weui:transfer2-filled" : "mdi:stars"} 
+                      className={cn(
+                        "h-4 w-4 transition-colors duration-300",
+                        postsLayout === 'list' ? "text-emerald-600" : "text-amber-500"
+                      )} 
+                    />
+                  </div>
+
+                  {/* Background Icons */}
+                  <div className="flex w-full justify-between items-center px-1.5 opacity-30">
+                    <LayoutList className="h-4 w-4" />
+                    <PremiumStarsIcon active={activeTab === 'posts'} size="sm" />
+                  </div>
+                  
+                  {/* Subtle Glow Trail */}
+                  <div 
+                    className={cn(
+                      "absolute inset-y-0 w-8 bg-gradient-to-r from-emerald-400/20 to-teal-400/20 blur-md transition-all duration-500",
+                      postsLayout === 'list' ? "left-0" : "left-8"
+                    )}
+                  />
+                </div>
               </button>
               <button
                 onClick={() => setActiveTab('saved')}
@@ -726,26 +781,6 @@ const Profile = () => {
                   </Badge>
                 </button>
               }
-
-              {activeTab === 'posts' && false &&
-              <button
-                type="button"
-                onClick={cyclePostsLayout}
-                className={cn(
-                  'py-2 px-3 flex items-center justify-center border-b-2 transition-colors',
-                  'border-transparent text-muted-foreground hover:text-foreground'
-                )}
-                aria-label="Toggle posts layout">
-                  
-                  {postsLayout === 'list' ?
-                <LayoutList className="h-5 w-5" /> :
-                postsLayout === 'pinterest1' ?
-                <Columns2 className="h-5 w-5" /> :
-
-                <Grid2X2 className="h-5 w-5" />
-                }
-                </button>
-              }
             </div>
           </div>
 
@@ -757,11 +792,10 @@ const Profile = () => {
           
 
           {/* ═══════════════════════════════════════
-            {/* ═══════════════════════════════════════
-                                                                      POSTS TAB
-                                                                   ═══════════════════════════════════════ */}
+                                                                       POSTS TAB
+                                                                    ═══════════════════════════════════════ */}
         {activeTab === 'posts' &&
-          <PullToRefresh onRefresh={refetch}>
+          <PullToRefresh onRefresh={refetch} useWindowScroll={true}>
             {isLoading ?
             <div className="text-center py-12">
                 <p className="text-muted-foreground">{t('loading')}</p>
@@ -947,7 +981,7 @@ const Profile = () => {
                                                                         SAVED TAB
                                                                      ═══════════════════════════════════════ */}
         {activeTab === 'saved' &&
-          <PullToRefresh onRefresh={fetchSavedPosts}>
+          <PullToRefresh onRefresh={fetchSavedPosts} useWindowScroll={true}>
             {savedLoading ?
             <div className="text-center py-12">
                 <p className="text-muted-foreground">{t('loading')}</p>
@@ -956,16 +990,15 @@ const Profile = () => {
             <div className="text-center py-12 px-4">
                 <Bookmark className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
                 <p className="text-muted-foreground">{t('noSaved')}</p>
-                <p className="text-sm text-muted-foreground mt-1">{t('savedHint')}</p>
               </div> :
 
-            <div className="smooth-scroll-container space-y-4 px-0 md:px-4">
+            <div ref={scrollContainerRef} className="smooth-scroll-container space-y-4 px-0 md:px-4">
                 {savedPosts.map((post, index) =>
               <div
                 key={post.id}
                 onClick={() => openViewer(index, savedPosts)}
                 className="cursor-pointer">
-
+                
                     <PostCard post={post} />
                   </div>
               )}
@@ -979,189 +1012,166 @@ const Profile = () => {
                                                                         MENTIONS TAB
                                                                      ═══════════════════════════════════════ */}
         {activeTab === 'mentions' &&
-          <div>
-            {mentionedPosts.length === 0 && collabPosts.length === 0 ?
+          <PullToRefresh onRefresh={async () => {}} useWindowScroll={true}>
+            {isLoading ?
+            <div className="text-center py-12">
+                <p className="text-muted-foreground">{t('loading')}</p>
+              </div> :
+            mentionedPosts.length === 0 && collabPosts.length === 0 ?
             <div className="text-center py-12 px-4">
                 <AtSign className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                <p className="text-muted-foreground">Hozircha belgilanmagan</p>
+                <p className="text-muted-foreground">Siz belgilangan postlar yo'q</p>
               </div> :
 
-            <div className="smooth-scroll-container space-y-4 px-0 md:px-4">
-                {[...mentionedPosts, ...collabPosts].
-              filter((v, i, a) => a.findIndex((p) => p.id === v.id) === i).
-              sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).
-              map((post, index) =>
+            <div ref={scrollContainerRef} className="smooth-scroll-container space-y-4 px-0 md:px-4">
+                {[...collabPosts, ...mentionedPosts].map((post, index) =>
               <div
                 key={post.id}
-                onClick={() => openViewer(index, [...mentionedPosts, ...collabPosts])}
+                onClick={() => openViewer(index, [...collabPosts, ...mentionedPosts])}
                 className="cursor-pointer">
-
-                      <PostCard post={post} />
-                    </div>
+                
+                        <PostCard post={post} />
+                      </div>
               )}
                 <EndOfFeed />
               </div>
             }
-          </div>
+          </PullToRefresh>
           }
+        </div>
+      </div>
 
-        {/* ═══════════════════════════════════════
-                                                                        MODALS
-                                                                     ═══════════════════════════════════════ */}
-        {viewerOpen && viewerPosts.length > 0 &&
-          <FullScreenViewer
-            posts={viewerPosts}
-            initialIndex={viewerInitialIndex}
-            onClose={() => setViewerOpen(false)} />
+      <FullScreenViewer
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+        posts={viewerPosts}
+        initialIndex={viewerInitialIndex} />
 
-          }
+      <HighlightEditor
+        open={showNewHighlight}
+        onOpenChange={setShowNewHighlight}
+        onSuccess={fetchHighlights} />
 
-        {showNewHighlight &&
-          <HighlightEditor
-            open={showNewHighlight}
-            onClose={() => {setShowNewHighlight(false);fetchHighlights();}}
-            isNew />
+      <CollabRequestsSheet
+        open={showCollabRequests}
+        onOpenChange={setShowCollabRequests}
+        requests={pendingCollabs}
+        onRespond={respondToCollab} />
 
-          }
+      <StoryViewer
+        open={storyViewerOpen}
+        onOpenChange={setStoryViewerOpen}
+        storyGroups={profileStoryGroups} />
 
-        <CollabRequestsSheet
-            open={showCollabRequests}
-            onOpenChange={setShowCollabRequests}
-            requests={pendingCollabs}
-            onRespond={respondToCollab} />
-
-        {/* Story Viewer for own stories */}
-        {storyViewerOpen && profileStoryGroups.length > 0 &&
-          <StoryViewer
-            storyGroups={profileStoryGroups}
-            initialGroupIndex={0}
-            persistKey={`profile:${user?.id || 'me'}`}
-            onClose={() => setStoryViewerOpen(false)} />
-
-          }
-
-        <Dialog open={collectionEditorOpen} onOpenChange={(v) => {
-            setCollectionEditorOpen(v);
-            if (!v) setEditingCollection(null);
-          }}>
-          <DialogContent className="max-w-lg p-0 overflow-hidden">
-            <div className="flex items-center justify-between px-5 pt-4">
-              <DialogHeader className="p-0">
-                <DialogTitle>{collectionEditorMode === 'create' ? "Yangi ro'yxat" : 'Tahrirlash'}</DialogTitle>
-              </DialogHeader>
-              <div className="flex items-center gap-2">
-                {collectionEditorMode === 'edit' &&
-                  <Button variant="ghost" size="icon" onClick={handleDeleteCollection} disabled={!editingCollection || isSavingCollection}>
-                    <Trash2 className="h-4 w-4" />
+        {/* Collection Editor Dialog */}
+        <Dialog open={collectionEditorOpen} onOpenChange={setCollectionEditorOpen}>
+          <DialogContent className="max-w-md p-0 overflow-hidden bg-background border-none shadow-2xl rounded-3xl">
+            <div className="p-6 space-y-6">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold flex items-center justify-between">
+                  {collectionEditorMode === 'create' ? "Yangi ro'yxat" : "Ro'yxatni tahrirlash"}
+                  {collectionEditorMode === 'edit' &&
+                  <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleDeleteCollection}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                    <Trash2 className="h-5 w-5" />
                   </Button>
                   }
-                <Button onClick={saveCollectionEditor} disabled={!editingCollection || isSavingCollection || !editingName.trim()}>
-                  {collectionEditorMode === 'create' ? 'Tayyor' : 'Saqlash'}
-                </Button>
-              </div>
-            </div>
+                </DialogTitle>
+              </DialogHeader>
 
-            <div className="px-5 pb-5 pt-3 space-y-3">
-              <Input value={editingName} onChange={(e) => setEditingName(e.target.value)} placeholder="Nomi" />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground ml-1">Nom bering</label>
+                  <Input
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    placeholder="Masalan: Sevimli postlar"
+                    className="h-12 px-4 bg-muted/50 border-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl text-lg" />
+                </div>
 
-              <div className="flex items-center gap-2">
-                {collectionThemes.map((th, idx) => {
-                    const isActive = editingTheme === idx;
-                    return (
-                      <button
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-muted-foreground ml-1">Mavzu tanlang</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {collectionThemes.map((theme, idx) =>
+                    <button
                         key={idx}
-                        type="button"
                         onClick={() => setEditingTheme(idx)}
                         className={cn(
-                          'h-7 w-7 rounded-full bg-gradient-to-br ring-2 transition-all',
-                          th.bg,
-                          isActive ? cn('scale-105', th.ring) : 'ring-white/10 hover:scale-105'
-                        )}
-                        aria-label={`Theme ${idx + 1}`} />);
-
-
-                  })}
+                          'h-14 rounded-2xl bg-gradient-to-br transition-all duration-300 relative group overflow-hidden ring-offset-2 ring-offset-background',
+                          theme.bg,
+                          editingTheme === idx ? `ring-2 ${theme.ring} scale-[1.02]` : 'opacity-80 hover:opacity-100 hover:scale-[1.02]'
+                        )}>
+                      {editingTheme === idx &&
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                        <Check className="h-6 w-6 text-white drop-shadow-md" />
+                      </div>
+                      }
+                    </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <div className="flex gap-1 bg-muted/50 rounded-xl p-1">
-                <button
-                    type="button"
-                    onClick={() => setCollectionTab('selected')}
-                    className={cn(
-                      'flex-1 py-2 rounded-lg text-sm font-semibold transition-colors',
-                      collectionTab === 'selected' ? 'bg-background shadow-sm' : 'text-muted-foreground'
-                    )}>
-                    
-                  Tanlangan ({selectedPostIds.size})
-                </button>
-                <button
-                    type="button"
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2 p-1 bg-muted/50 rounded-2xl">
+                  <button
                     onClick={() => setCollectionTab('all')}
                     className={cn(
-                      'flex-1 py-2 rounded-lg text-sm font-semibold transition-colors',
-                      collectionTab === 'all' ? 'bg-background shadow-sm' : 'text-muted-foreground'
+                      'flex-1 py-2 text-sm font-medium rounded-xl transition-all',
+                      collectionTab === 'all' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
                     )}>
-                    
-                  Postlar
-                </button>
+                    Barcha postlar
+                  </button>
+                  <button
+                    onClick={() => setCollectionTab('selected')}
+                    className={cn(
+                      'flex-1 py-2 text-sm font-medium rounded-xl transition-all',
+                      collectionTab === 'selected' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                    )}>
+                    Tanlanganlar ({selectedPostIds.size})
+                  </button>
+                </div>
+
+                <ScrollArea className="h-[300px] rounded-2xl bg-muted/30">
+                  <div className="p-3 grid grid-cols-3 gap-2">
+                    {(collectionTab === 'all' ? posts : posts.filter((p) => selectedPostIds.has(p.id))).map((post) =>
+                    <button
+                        key={post.id}
+                        onClick={() => togglePostInEditor(post.id)}
+                        className={cn(
+                          'relative aspect-square rounded-xl overflow-hidden group transition-all duration-300',
+                          selectedPostIds.has(post.id) ? 'ring-2 ring-primary scale-[0.98]' : 'hover:scale-[1.02]'
+                        )}>
+                      <img
+                          src={(post.media_urls && post.media_urls.length > 0 ? post.media_urls[0] : post.image_url) || ''}
+                          className={cn('w-full h-full object-cover transition-opacity', selectedPostIds.has(post.id) ? 'opacity-70' : 'group-hover:opacity-90')} />
+                      {selectedPostIds.has(post.id) &&
+                      <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
+                        <div className="bg-primary text-white p-1 rounded-full shadow-lg">
+                          <Check className="h-4 w-4" />
+                        </div>
+                      </div>
+                      }
+                    </button>
+                    )}
+                  </div>
+                </ScrollArea>
               </div>
 
-              <ScrollArea className="h-[52vh] pr-2">
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(collectionTab === 'selected' ?
-                    posts.filter((p) => selectedPostIds.has(p.id)) :
-                    posts).
-                    map((p) => {
-                      const thumb = (p.media_urls && p.media_urls.length > 0 ? p.media_urls[0] : p.image_url || '') as string;
-                      const isVideo = !!thumb && (thumb.includes('.mp4') || thumb.includes('.mov') || thumb.includes('.webm'));
-                      const isSelected = selectedPostIds.has(p.id);
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => togglePostInEditor(p.id)}
-                          className={cn(
-                            'relative aspect-[3/4] rounded-xl overflow-hidden bg-muted',
-                            'ring-1 ring-white/10',
-                            isSelected && 'ring-2 ring-primary'
-                          )}>
-                          
-                        {isVideo ?
-                          <video
-                            src={thumb}
-                            className="w-full h-full object-cover"
-                            muted
-                            playsInline
-                            preload="metadata" /> :
-
-
-                          <img
-                            src={thumb || '/placeholder.svg'}
-                            alt=""
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).src = '/placeholder.svg';
-                            }} />
-
-                          }
-                        <div className={cn(
-                            'absolute top-2 right-2 h-5 w-5 rounded-full border flex items-center justify-center',
-                            isSelected ? 'bg-primary border-primary' : 'bg-black/30 border-white/30'
-                          )}>
-                          {isSelected && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
-                        </div>
-                      </button>);
-
-                    })}
-                </div>
-              </ScrollArea>
+              <Button
+                onClick={saveCollectionEditor}
+                disabled={isSavingCollection || !editingName.trim()}
+                className="w-full h-14 text-lg font-bold rounded-2xl bg-primary hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl active:scale-[0.98]">
+                {isSavingCollection ? 'Saqlanmoqda...' : collectionEditorMode === 'create' ? "Ro'yxatni yaratish" : 'Saqlash'}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
-
-        </div>
-      </div>
-    </AppLayout>);
+    </AppLayout>
+  );
 };
 
 export default Profile;

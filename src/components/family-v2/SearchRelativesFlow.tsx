@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Search, Users, UserPlus, X } from 'lucide-react';
 import { SearchSheet } from '@/components/search/SearchSheet';
@@ -6,11 +6,8 @@ import { RelativeConnectionSheet } from '@/components/family/RelativeConnectionS
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
-const WELCOME_BG =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 2400'%3E%3Cdefs%3E%3CradialGradient id='g1' cx='30%25' cy='20%25' r='70%25'%3E%3Cstop offset='0' stop-color='%2310B981' stop-opacity='.35'/%3E%3Cstop offset='1' stop-color='%230B1220' stop-opacity='1'/%3E%3C/radialGradient%3E%3CradialGradient id='g2' cx='80%25' cy='45%25' r='60%25'%3E%3Cstop offset='0' stop-color='%230EA5E9' stop-opacity='.28'/%3E%3Cstop offset='1' stop-color='%230B1220' stop-opacity='0'/%3E%3C/radialGradient%3E%3ClinearGradient id='g3' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23171A2B'/%3E%3Cstop offset='1' stop-color='%23060A14'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='2400' fill='url(%23g3)'/%3E%3Crect width='1200' height='2400' fill='url(%23g1)'/%3E%3Crect width='1200' height='2400' fill='url(%23g2)'/%3E%3Ccircle cx='980' cy='260' r='210' fill='%23ffffff' opacity='.06'/%3E%3Ccircle cx='230' cy='780' r='260' fill='%23ffffff' opacity='.05'/%3E%3Ccircle cx='1020' cy='1250' r='320' fill='%23ffffff' opacity='.04'/%3E%3Cpath d='M90 1540 C 360 1420, 540 1700, 900 1540 S 1180 1660, 1200 1780' fill='none' stroke='%23ffffff' stroke-opacity='.06' stroke-width='20'/%3E%3C/svg%3E";
-
-const WELCOME_THUMB =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2310B981'/%3E%3Cstop offset='1' stop-color='%230EA5E9'/%3E%3C/linearGradient%3E%3Cfilter id='s' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeDropShadow dx='0' dy='10' stdDeviation='14' flood-color='%23000000' flood-opacity='.25'/%3E%3C/filter%3E%3C/defs%3E%3Crect rx='56' ry='56' x='18' y='18' width='220' height='220' fill='url(%23a)' filter='url(%23s)'/%3E%3Cpath d='M128 76c18 0 32 14 32 32s-14 32-32 32-32-14-32-32 14-32 32-32zm0 88c34 0 62 18 62 40v10H66v-10c0-22 28-40 62-40z' fill='%23ffffff' opacity='.9'/%3E%3C/svg%3E";
+const WELCOME_BG = "https://pub-5420856c3db34a86ae04153a95eadee4.r2.dev/messages/1fbd4e15-3762-4a4e-a032-5043a907c7ea/e335e74f00c920e02190647fcdc181db.jpg";
+const WELCOME_THUMB = "https://pub-5420856c3db34a86ae04153a95eadee4.r2.dev/messages/1fbd4e15-3762-4a4e-a032-5043a907c7ea/ee41c4499d27a81a81036f22c4c6eede.jpg";
 
 interface SearchRelativesFlowProps {
   onCancel?: () => void;
@@ -23,28 +20,31 @@ export const SearchRelativesFlow = ({ onCancel }: SearchRelativesFlowProps) => {
   const [selectedUserName, setSelectedUserName] = useState<string>('');
   const [isConnectionSheetOpen, setIsConnectionSheetOpen] = useState(false);
 
-  // When a user is selected from the search sheet
-  // We actually need a custom search handler, or we can use SearchSheet and intercept clicks.
-  // Wait, SearchSheet navigates to `/user/:id` on click. We might need a slightly modified 
-  // version or just let them go to the profile and click "Qarindosh" there.
-  // BUT the requirement says: "qidiruv oynasi ochilsin, foydalanuvchi uz qarindoshini qidiradi, ustiga bosadi uning oila daraxti paydo buladi".
-  // So we need a custom search list here, or a modified SearchSheet that accepts an `onSelectUser` prop.
+  useEffect(() => {
+    // Hide AppLayout's safe area bars to show full-screen background
+    window.dispatchEvent(new CustomEvent('app:transparentBars', { detail: { transparent: true } }));
+    return () => {
+      // Restore bars when leaving this screen
+      window.dispatchEvent(new CustomEvent('app:transparentBars', { detail: { transparent: false } }));
+    };
+  }, []);
 
   return (
     <div className="relative flex flex-col items-center justify-center w-full min-h-[calc(100dvh-110px)] px-4 py-10 animate-in fade-in duration-500">
-      <div className="absolute inset-0 -z-10">
+      <div className="fixed inset-0 -z-10 pointer-events-none">
         <img
           src={WELCOME_BG}
           alt=""
-          className="h-full w-full object-cover opacity-70"
+          className="h-full w-full object-cover opacity-100"
           draggable={false}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/60 to-background" />
+        {/* Lighter, 50% transparent overlay as requested */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-background/20 to-background/50" />
       </div>
 
       <div className="w-full max-w-sm">
-        <div className="relative rounded-3xl border border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl shadow-xl shadow-black/10 dark:shadow-black/40 overflow-hidden">
-          <div className="p-5 bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-sky-500/15">
+        <div className="relative rounded-3xl border border-white/20 bg-white/20 dark:bg-slate-900/20 backdrop-blur-3xl shadow-2xl shadow-black/10 overflow-hidden">
+          <div className="p-5 bg-gradient-to-br from-emerald-500/5 via-teal-500/5 to-sky-500/5">
             <div className="flex items-center justify-center">
               <div className="h-20 w-20 rounded-3xl bg-white/70 dark:bg-white/5 border border-white/10 shadow-md shadow-black/5 overflow-hidden">
                 <img
@@ -94,11 +94,6 @@ export const SearchRelativesFlow = ({ onCancel }: SearchRelativesFlowProps) => {
         </div>
       </div>
 
-      {/* 
-        We use the existing SearchSheet. However, SearchSheet currently navigates on click.
-        To avoid modifying SearchSheet heavily right now and breaking other things,
-        we can pass a prop `onSelectUser` to SearchSheet if we modify it slightly.
-      */}
       <RelativeSearchSheet 
         open={isSearchOpen} 
         onOpenChange={setIsSearchOpen}

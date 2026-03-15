@@ -134,6 +134,13 @@ const CreateContent = () => {
   }, []);
 
   useEffect(() => {
+    if (memoryMemberId) {
+      setSharePost(true);
+      setShareStory(false);
+    }
+  }, [memoryMemberId]);
+
+  useEffect(() => {
     if (!shareStory) {
       setStorySelected(new Set());
       return;
@@ -291,69 +298,114 @@ const CreateContent = () => {
           </div>
 
           {/* Tag & Collab - clean rows */}
-          <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/50 my-[3px]">
-            <button
-              onClick={() => setShowMentionPicker(true)}
-              className="w-full flex items-center px-3 py-2.5 bg-background hover:bg-muted/30 transition-colors gap-[10px]">
-              
-              <AtSign className="h-4 w-4 text-muted-foreground" />
-              <span className="flex-1 text-left text-xs font-medium">Belgilash</span>
-              {mentionIds.length > 0 &&
-              <span className="text-[10px] text-primary font-semibold bg-primary/10 px-1.5 py-0.5 rounded-full">{mentionIds.length}</span>
-              }
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-            </button>
-            <button
-              onClick={() => setShowCollabPicker(true)}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background hover:bg-muted/30 transition-colors">
-              
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="flex-1 text-left text-xs font-medium">Hamkorlik</span>
-              {collabIds.length > 0 &&
-              <span className="text-[10px] text-primary font-semibold bg-primary/10 px-1.5 py-0.5 rounded-full">{collabIds.length}</span>
-              }
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-            </button>
+          {!memoryMemberId && (
+            <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/50 my-[3px]">
+              <button
+                onClick={() => setShowMentionPicker(true)}
+                className="w-full flex items-center px-3 py-2.5 bg-background hover:bg-muted/30 transition-colors gap-[10px]">
+                
+                <AtSign className="h-4 w-4 text-muted-foreground" />
+                <span className="flex-1 text-left text-xs font-medium">Belgilash</span>
+                {mentionIds.length > 0 &&
+                <span className="text-[10px] text-primary font-semibold bg-primary/10 px-1.5 py-0.5 rounded-full">{mentionIds.length}</span>
+                }
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+              </button>
+              <button
+                onClick={() => setShowCollabPicker(true)}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background hover:bg-muted/30 transition-colors">
+                
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="flex-1 text-left text-xs font-medium">Hamkorlik</span>
+                {collabIds.length > 0 &&
+                <span className="text-[10px] text-primary font-semibold bg-primary/10 px-1.5 py-0.5 rounded-full">{collabIds.length}</span>
+                }
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+              </button>
 
-            {!selectedLocation ?
-            <button
-              onClick={() => {
-                setShowLocationSearch((prev) => {
-                  const next = !prev;
-                  if (!next) {
+              {!selectedLocation ?
+              <button
+                onClick={() => {
+                  setShowLocationSearch((prev) => {
+                    const next = !prev;
+                    if (!next) {
+                      setLocationQuery('');
+                      setLocationResults([]);
+                      setLocationError(null);
+                      setLocationLoading(false);
+                    }
+                    return next;
+                  });
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background hover:bg-muted/30 transition-colors">
+                
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="flex-1 text-left text-xs font-medium">Joylashuv qo'shish</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+                </button> :
+
+              <div className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="flex-1 text-left text-xs font-medium truncate">{selectedLocation.display_name}</span>
+                  <button
+                  onClick={() => {
+                    setSelectedLocation(null);
                     setLocationQuery('');
                     setLocationResults([]);
                     setLocationError(null);
-                    setLocationLoading(false);
-                  }
-                  return next;
-                });
-              }}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background hover:bg-muted/30 transition-colors">
-              
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span className="flex-1 text-left text-xs font-medium">Joylashuv qo'shish</span>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-              </button> :
+                    setShowLocationSearch(false);
+                  }}
+                  aria-label="Joylashuvni o'chirish">
+                  
+                    <X className="h-3.5 w-3.5 text-muted-foreground/70" />
+                  </button>
+                </div>
+              }
+            </div>
+          )}
 
-            <div className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span className="flex-1 text-left text-xs font-medium truncate">{selectedLocation.display_name}</span>
-                <button
+          {memoryMemberId && (
+            <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/50 my-[3px]">
+              {!selectedLocation ?
+              <button
                 onClick={() => {
-                  setSelectedLocation(null);
-                  setLocationQuery('');
-                  setLocationResults([]);
-                  setLocationError(null);
-                  setShowLocationSearch(false);
+                  setShowLocationSearch((prev) => {
+                    const next = !prev;
+                    if (!next) {
+                      setLocationQuery('');
+                      setLocationResults([]);
+                      setLocationError(null);
+                      setLocationLoading(false);
+                    }
+                    return next;
+                  });
                 }}
-                aria-label="Joylashuvni o'chirish">
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background hover:bg-muted/30 transition-colors">
                 
-                  <X className="h-3.5 w-3.5 text-muted-foreground/70" />
-                </button>
-              </div>
-            }
-          </div>
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="flex-1 text-left text-xs font-medium">Joylashuv qo'shish</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+                </button> :
+
+              <div className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="flex-1 text-left text-xs font-medium truncate">{selectedLocation.display_name}</span>
+                  <button
+                  onClick={() => {
+                    setSelectedLocation(null);
+                    setLocationQuery('');
+                    setLocationResults([]);
+                    setLocationError(null);
+                    setShowLocationSearch(false);
+                  }}
+                  aria-label="Joylashuvni o'chirish">
+                  
+                    <X className="h-3.5 w-3.5 text-muted-foreground/70" />
+                  </button>
+                </div>
+              }
+            </div>
+          )}
 
           {showLocationSearch && !selectedLocation &&
           <div className="rounded-xl border border-border/50 p-3 space-y-2">
@@ -419,7 +471,7 @@ const CreateContent = () => {
           </div>
 
           {/* Selected chips */}
-          {(mentionProfiles.length > 0 || collabProfiles.length > 0) &&
+          {!memoryMemberId && (mentionProfiles.length > 0 || collabProfiles.length > 0) &&
           <div className="flex flex-wrap gap-1.5">
               {mentionProfiles.map((u) =>
             <div key={u.id} className="flex items-center gap-1 px-2 py-0.5 bg-primary/8 rounded-full">
@@ -453,38 +505,40 @@ const CreateContent = () => {
           }
 
           {/* Share destination */}
-          <div className="rounded-xl border border-border/50 p-3 space-y-2">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Qayerga</p>
-            <label className="flex items-center gap-2.5 cursor-pointer py-1.5">
-              <Checkbox checked={sharePost} onCheckedChange={(v) => setSharePost(!!v)} className="h-4 w-4" />
-              <div className="flex-1">
-                <p className="text-xs font-medium">📸 Post</p>
-              </div>
-            </label>
-            <label className="flex items-center gap-2.5 cursor-pointer py-1.5">
-              <Checkbox
-                checked={shareStory}
-                onCheckedChange={(v) => {
-                  const next = !!v;
-                  setShareStory(next);
-                  if (next) setStorySelected(new Set(editedFiles.map((_, idx) => idx)));else
-                  setStorySelected(new Set());
-                }}
-                className="h-4 w-4" />
-              
-              <div className="flex-1">
-                <p className="text-xs font-medium">⏳ Story</p>
-                {shareStory &&
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {storySelected.size}/{editedFiles.length} tanlandi
-                  </p>
-                }
-              </div>
-            </label>
-          </div>
+          {!memoryMemberId && (
+            <div className="rounded-xl border border-border/50 p-3 space-y-2">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Qayerga</p>
+              <label className="flex items-center gap-2.5 cursor-pointer py-1.5">
+                <Checkbox checked={sharePost} onCheckedChange={(v) => setSharePost(!!v)} className="h-4 w-4" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium">📸 Post</p>
+                </div>
+              </label>
+              <label className="flex items-center gap-2.5 cursor-pointer py-1.5">
+                <Checkbox
+                  checked={shareStory}
+                  onCheckedChange={(v) => {
+                    const next = !!v;
+                    setShareStory(next);
+                    if (next) setStorySelected(new Set(editedFiles.map((_, idx) => idx)));else
+                    setStorySelected(new Set());
+                  }}
+                  className="h-4 w-4" />
+                
+                <div className="flex-1">
+                  <p className="text-xs font-medium">⏳ Story</p>
+                  {shareStory &&
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {storySelected.size}/{editedFiles.length} tanlandi
+                    </p>
+                  }
+                </div>
+              </label>
+            </div>
+          )}
 
           {/* Post collections */}
-          {sharePost &&
+          {!memoryMemberId && sharePost &&
           <div className="rounded-xl border border-border/50 p-3 space-y-2">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Post ro'yxati</p>
               <div className="space-y-2">
@@ -576,7 +630,7 @@ const CreateContent = () => {
           }
 
           {/* Story ring selector */}
-          {shareStory &&
+          {!memoryMemberId && shareStory &&
           <div className="rounded-xl border border-border/50 p-3 space-y-2">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Halqa</p>
               <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
@@ -596,7 +650,7 @@ const CreateContent = () => {
           }
 
           {/* Story collections (highlights) */}
-          {shareStory &&
+          {!memoryMemberId && shareStory &&
           <div className="rounded-xl border border-border/50 p-3 space-y-2">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Story kolleksiya</p>
               <div className="space-y-2">

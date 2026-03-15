@@ -5,9 +5,10 @@ import { cn } from '@/lib/utils';
 interface PullToRefreshProps {
   onRefresh: () => Promise<void>;
   children: React.ReactNode;
+  useWindowScroll?: boolean;
 }
 
-export const PullToRefresh = ({ onRefresh, children }: PullToRefreshProps) => {
+export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: PullToRefreshProps) => {
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -29,7 +30,11 @@ export const PullToRefresh = ({ onRefresh, children }: PullToRefreshProps) => {
       return;
     }
 
-    if (el.scrollTop <= 0) {
+    const isAtTop = useWindowScroll 
+      ? window.scrollY <= 0 && el.scrollTop <= 0
+      : el.scrollTop <= 0;
+
+    if (isAtTop) {
       startY.current = e.touches[0].clientY;
       canPull.current = true;
       isPulling.current = false;
@@ -37,7 +42,7 @@ export const PullToRefresh = ({ onRefresh, children }: PullToRefreshProps) => {
       canPull.current = false;
       isPulling.current = false;
     }
-  }, []);
+  }, [useWindowScroll]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (isRefreshing) return;
@@ -58,6 +63,7 @@ export const PullToRefresh = ({ onRefresh, children }: PullToRefreshProps) => {
     }
 
     if (el.scrollTop > 0) return;
+    if (useWindowScroll && window.scrollY > 0) return;
 
     if (!isPulling.current) {
       if (diff <= 10) return;
@@ -68,7 +74,7 @@ export const PullToRefresh = ({ onRefresh, children }: PullToRefreshProps) => {
     const resistance = 0.4;
     const distance = Math.min(diff * resistance, maxPull);
     setPullDistance(distance);
-  }, [isRefreshing]);
+  }, [isRefreshing, pullDistance, useWindowScroll]);
 
   const handleTouchEnd = useCallback(async () => {
     if (!canPull.current && !isPulling.current) return;

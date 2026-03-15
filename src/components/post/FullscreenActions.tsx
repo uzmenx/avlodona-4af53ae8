@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, MessageCircle, Send, Bookmark, Film, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -39,9 +40,16 @@ export const FullscreenActions = ({
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [searchParams] = useSearchParams();
+
   useEffect(() => {
     trackView();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- track view once when fullscreen opens for this post
+    
+    // Auto-open comments if targeted by notification
+    if (searchParams.get('commentId') && searchParams.get('postId') === postId) {
+      setShowComments(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
 
   useEffect(() => {

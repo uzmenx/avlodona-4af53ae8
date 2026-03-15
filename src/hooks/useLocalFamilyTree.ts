@@ -121,6 +121,7 @@ export const useLocalFamilyTree = () => {
             photoUrl: m.avatar_url || undefined,
             gender: (m.gender as 'male' | 'female') || 'male',
             ownerName: undefined, // will fill from profiles
+            linkedUserId: m.linked_user_id || undefined,
           });
           mergedProfilesMap.set(targetId, existing);
         }
@@ -136,6 +137,7 @@ export const useLocalFamilyTree = () => {
               name: m.member_name || '',
               photoUrl: m.avatar_url || undefined,
               gender: (m.gender as 'male' | 'female') || 'male',
+              linkedUserId: m.linked_user_id || undefined,
             });
             mergedProfilesMap.set(targetId, existing);
           }

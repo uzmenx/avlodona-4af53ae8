@@ -138,7 +138,7 @@ const Home = () => {
           onSearchClick={() => setSearchOpen(true)} 
         />
         
-        <PullToRefresh onRefresh={handleRefresh}>
+        <PullToRefresh onRefresh={handleRefresh} useWindowScroll={true}>
           {isLoading && visiblePosts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">{t('loading')}</p>

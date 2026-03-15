@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Sparkles, Grid3X3, Bookmark, Users, AtSign, ChevronDown, ChevronUp, Grid2X2, LayoutList, Columns2, ShieldBan, ShieldCheck, MoreVertical, Link2, Search, Heart, Eye } from 'lucide-react';
+import { ArrowLeft, Sparkles, Grid3X3, Bookmark, Users, AtSign, ChevronDown, ChevronUp, Grid2X2, LayoutList, Columns2, ShieldBan, ShieldCheck, MoreVertical, Link2, Search, Heart, Eye, ArrowLeftRight, Plus } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import { FamilyMembersSheet, FollowHubDrawer, SocialLinksList } from '@/components/profile';
 import { SocialLink } from '@/components/profile/SocialLinksEditor';
 import { useStoryHighlights } from '@/hooks/useStoryHighlights';
@@ -94,7 +95,36 @@ interface UserProfile {
   bg_theme?: BackgroundTheme | null;
 }
 
-const UserProfilePage = () => {
+const PremiumStarsIcon = ({ className, active, size = 'default' }: { className?: string; active?: boolean; size?: 'default' | 'sm' }) => (
+  <div className={cn("relative flex items-center justify-center transition-all duration-300", className)}>
+    <Icon 
+      icon="mdi:stars" 
+      className={cn(
+        size === 'sm' ? "w-5 h-5" : "w-6 h-6",
+        "transition-all duration-300", 
+        active ? "text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]" : "text-muted-foreground opacity-60"
+      )}
+    />
+    <Icon 
+      icon="pepicons-pop:stars" 
+      className={cn(
+        "absolute transition-all duration-300 delay-75", 
+        size === 'sm' ? "-top-1 -right-1 w-2.5 h-2.5" : "-top-1.5 -right-1.5 w-3.5 h-3.5",
+        active ? "text-emerald-400 opacity-90 scale-110" : "text-muted-foreground opacity-40 scale-75"
+      )}
+    />
+    <Icon 
+      icon="mdi:stars" 
+      className={cn(
+        "absolute transition-all duration-500 delay-150", 
+        size === 'sm' ? "-bottom-0.5 -left-0.5 w-2 h-2" : "-bottom-1 -left-1 w-2.5 h-2.5",
+        active ? "text-emerald-300 opacity-80 scale-125" : "text-muted-foreground opacity-30 scale-50"
+      )}
+    />
+  </div>
+);
+
+export const UserProfilePage = () => {
   const { userId } = useParams<{ userId: string }>();
   const [searchParams] = useSearchParams();
   const isMemorial = searchParams.get('memorial') === 'true';
@@ -110,12 +140,12 @@ const UserProfilePage = () => {
   const effectivePostsUserId = isMemorial ? (resolvedMemorialMemberId || userId) : userId;
   const { posts, isLoading: postsLoading, postsCount, refetch } = useUserPosts(effectivePostsUserId, isMemorial);
   const { followersCount, followingCount } = useFollow(userId);
-  const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'mentions'>('posts');
-  const [postsLayout, setPostsLayout] = useState<'pinterest2' | 'pinterest1' | 'list'>('pinterest2');
+  const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'mentions'>(isMemorial ? 'mentions' : 'posts');
+  const [postsLayout, setPostsLayout] = useState<'pinterest1' | 'list'>('pinterest1');
   const lastPostsTabTapTsRef = useRef<number>(0);
   const lastProfileTapTsRef = useRef<number>(0);
-  const [viewerOpen, setViewerOpen] = useState(false);
-  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerStartIndex, setViewerStartIndex] = useState(0);
   const [viewerPosts, setViewerPosts] = useState<Post[]>([]);
   const [showPostsStats, setShowPostsStats] = useState(false);
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
@@ -139,12 +169,131 @@ const UserProfilePage = () => {
   const { collections, selectedCollectionId, setSelectedCollectionId, collectionPosts } = usePostCollections(userId);
   const { mentionedPosts: userMentionedPosts, collabPosts: userCollabPosts } = useMentionsCollabs(effectivePostsUserId, isMemorial);
 
+  // Define openViewer locally if needed or just use the one below
+  const openViewer = useCallback((allPosts: Post[], startIndex: number) => {
+    setViewerPosts(allPosts);
+    setViewerStartIndex(startIndex);
+    setIsViewerOpen(true);
+  }, []);
+
+  const fetchStoryGroupForUser = useCallback(async (targetUserId: string): Promise<StoryGroup | null> => {
+    const { data: userData } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', targetUserId)
+      .single();
+
+    if (!userData) return null;
+
+    const { data: stories, error } = await supabase
+      .from('stories')
+      .select('*')
+      .eq('user_id', targetUserId)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    if (!stories || stories.length === 0) return null;
+
+    const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name, username, avatar_url')
+        .in('id', [targetUserId]);
+
+      const authorProfile = profiles?.find(p => p.id === targetUserId);
+      const viewerId = currentUser?.id;
+
+      const [viewsRes, likesRes] = await Promise.all([
+        viewerId
+          ? supabase
+              .from('story_views')
+              .select('story_id')
+              .eq('viewer_id', viewerId)
+              .in('story_id', stories.map(s => s.id))
+          : Promise.resolve({ data: [] as any[] }),
+        viewerId
+          ? supabase
+              .from('story_likes')
+              .select('story_id')
+              .eq('user_id', viewerId)
+              .in('story_id', stories.map(s => s.id))
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const viewedStoryIds = new Set((viewsRes.data as { story_id: string }[] | null)?.map((v) => v.story_id) || []);
+      const likedStoryIds = new Set((likesRes.data as { story_id: string }[] | null)?.map((l) => l.story_id) || []);
+
+      const normalizedStories: Story[] = stories.map((s: any) => ({
+        ...s,
+        media_type: s.media_type as 'image' | 'video',
+        ring_id: s.ring_id || 'default',
+        author: authorProfile
+          ? {
+              id: authorProfile.id,
+              name: authorProfile.name,
+              username: authorProfile.username,
+              avatar_url: authorProfile.avatar_url,
+            }
+          : undefined,
+        has_viewed: viewerId ? viewedStoryIds.has(s.id) : false,
+        has_liked: viewerId ? likedStoryIds.has(s.id) : false,
+      }));
+
+      const hasUnviewed = normalizedStories.some(s => !s.has_viewed);
+
+      return {
+        user_id: targetUserId,
+        user: authorProfile || { id: targetUserId, name: null, username: null, avatar_url: null },
+        stories: normalizedStories,
+        has_unviewed: hasUnviewed,
+      };
+  }, [currentUser?.id]);
+
+  const [initialStoryIndex, setInitialStoryIndex] = useState(0);
+
+  const openProfileStories = useCallback(async (storyId?: string) => {
+    if (!userId) return;
+    const g = await fetchStoryGroupForUser(userId);
+    if (!g) {
+      if (storyId) toast({ title: 'Hikoya topilmadi' });
+      return;
+    }
+    
+    let storyIdx = 0;
+    if (storyId) {
+      storyIdx = g.stories.findIndex(s => s.id === storyId);
+      if (storyIdx === -1) storyIdx = 0;
+    }
+    
+    setInitialStoryIndex(storyIdx);
+    setProfileStoryGroups([g]);
+    setStoryViewerOpen(true);
+  }, [fetchStoryGroupForUser, toast, userId]);
+
+  // Handle URL parameters for highlighting posts or stories
+  useEffect(() => {
+    if (isLoading || postsLoading) return;
+
+    const postId = searchParams.get('postId');
+    const view = searchParams.get('view');
+    const storyId = searchParams.get('storyId');
+
+    if (view === 'stories' && !storyViewerOpen) {
+      openProfileStories(storyId || undefined);
+    } else if (postId && posts.length > 0 && !isViewerOpen) {
+      const index = posts.findIndex(p => p.id === postId);
+      if (index !== -1) {
+        openViewer(posts, index);
+      }
+    }
+  }, [searchParams, posts, isViewerOpen, storyViewerOpen, openProfileStories, openViewer, isLoading, postsLoading]);
+
   const cyclePostsLayout = useCallback(() => {
-    setPostsLayout((prev) => (prev === 'pinterest2' ? 'pinterest1' : prev === 'pinterest1' ? 'list' : 'pinterest2'));
+    setPostsLayout((prev) => (prev === 'list' ? 'pinterest1' : 'list'));
   }, []);
 
   const togglePostsLayoutHidden = useCallback(() => {
-    setPostsLayout((prev) => (prev === 'list' ? 'pinterest2' : 'list'));
+    setPostsLayout((prev) => (prev === 'list' ? 'pinterest1' : 'list'));
   }, []);
 
   // Family tree connection states
@@ -191,7 +340,15 @@ const UserProfilePage = () => {
         setResolvedMemorialMemberId(undefined);
 
         // Primary: treat route param as family_tree_members.id
-        let memberRow: any | null = null;
+        let memberRow: {
+          id: string;
+          name?: string | null;
+          member_name?: string | null;
+          photo_url?: string | null;
+          avatar_url?: string | null;
+          birth_year?: string | null;
+          death_year?: string | null;
+        } | null = null;
         {
           const { data, error } = await supabase
             .from('family_tree_members')
@@ -299,11 +456,6 @@ const UserProfilePage = () => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const openViewer = useCallback((postsToView: Post[], index: number) => {
-    setViewerPosts(postsToView);
-    setViewerInitialIndex(index);
-    setViewerOpen(true);
-  }, []);
 
   const displayPosts = selectedCollectionId ? collectionPosts : posts;
   const filteredPosts = useMemo(() => {
@@ -314,87 +466,7 @@ const UserProfilePage = () => {
 
   const hasMore = false;
 
-  const fetchStoryGroupForUser = useCallback(async (targetUserId: string): Promise<StoryGroup | null> => {
-    try {
-      const { data: stories, error } = await supabase
-        .from('stories')
-        .select('*')
-        .eq('user_id', targetUserId)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: true });
 
-      if (error) throw error;
-      if (!stories || stories.length === 0) return null;
-
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, name, username, avatar_url')
-        .in('id', [targetUserId]);
-
-      const authorProfile = profiles?.find(p => p.id === targetUserId);
-
-      const viewerId = currentUser?.id;
-
-      const [viewsRes, likesRes] = await Promise.all([
-        viewerId
-          ? supabase
-              .from('story_views')
-              .select('story_id')
-              .eq('viewer_id', viewerId)
-              .in('story_id', stories.map(s => s.id))
-          : Promise.resolve({ data: [] as any[] }),
-        viewerId
-          ? supabase
-              .from('story_likes')
-              .select('story_id')
-              .eq('user_id', viewerId)
-              .in('story_id', stories.map(s => s.id))
-          : Promise.resolve({ data: [] as any[] }),
-      ]);
-
-      const viewedStoryIds = new Set((viewsRes as any)?.data?.map((v: any) => v.story_id) || []);
-      const likedStoryIds = new Set((likesRes as any)?.data?.map((l: any) => l.story_id) || []);
-
-      const normalizedStories: Story[] = stories.map((s: any) => ({
-        ...s,
-        media_type: s.media_type as 'image' | 'video',
-        ring_id: s.ring_id || 'default',
-        author: authorProfile
-          ? {
-              id: authorProfile.id,
-              name: authorProfile.name,
-              username: authorProfile.username,
-              avatar_url: authorProfile.avatar_url,
-            }
-          : undefined,
-        has_viewed: viewerId ? viewedStoryIds.has(s.id) : false,
-        has_liked: viewerId ? likedStoryIds.has(s.id) : false,
-      }));
-
-      const hasUnviewed = normalizedStories.some(s => !s.has_viewed);
-
-      return {
-        user_id: targetUserId,
-        user: authorProfile || { id: targetUserId, name: null, username: null, avatar_url: null },
-        stories: normalizedStories,
-        has_unviewed: hasUnviewed,
-      };
-    } catch (err) {
-      console.error('Error fetching profile stories:', err);
-      return null;
-    }
-  }, [currentUser?.id]);
-
-  const openProfileStories = useCallback(async () => {
-    if (!userId) return;
-    const g = await fetchStoryGroupForUser(userId);
-    if (!g) {
-      toast({ title: 'Hikoya topilmadi' });
-      return;
-    }
-    setProfileStoryGroups([g]);
-    setStoryViewerOpen(true);
-  }, [fetchStoryGroupForUser, toast, userId]);
 
   if (isLoading) {
     return (
@@ -556,6 +628,25 @@ const UserProfilePage = () => {
           </div>
         )}
 
+        {/* Memorial "add post" button (top-right) */}
+        {isMemorial && profile && (
+          <div className="absolute top-4 right-4 z-10">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/create?memberId=${profile.id}`)}
+              className="h-10 w-10 rounded-full text-white"
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(8px)',
+              }}
+              aria-label="Xotira post qoldirish"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
+          </div>
+        )}
+
         {/* Cover Image */}
         <div className="relative h-28 overflow-hidden rounded-b-2xl">
           {profile.cover_url ? (
@@ -604,7 +695,7 @@ const UserProfilePage = () => {
                       style={{
                         background: info.has_unviewed ? getStoryRingGradient(info.ring_id as any) : 'var(--muted-foreground)',
                       }}
-                      onClick={openProfileStories}
+                      onClick={() => openProfileStories()}
                     >
                       <div className="w-full h-full rounded-full bg-background p-[2px]">
                         <Avatar className="h-full w-full">
@@ -844,29 +935,55 @@ const UserProfilePage = () => {
           <div className="flex border-b border-border mb-2">
             <button
               onClick={() => {
-                const now = Date.now();
-                if (activeTab === 'posts') {
-                  togglePostsLayoutHidden();
-                  return;
-                }
-
-                if (now - lastPostsTabTapTsRef.current < 350) {
+                if (activeTab !== 'posts') {
                   setActiveTab('posts');
-                  togglePostsLayoutHidden();
                 } else {
-                  setActiveTab('posts');
+                  cyclePostsLayout();
                 }
-
-                lastPostsTabTapTsRef.current = now;
               }}
               className={cn(
-                'flex-1 py-2 flex items-center justify-center border-b-2 transition-colors',
+                'flex-1 py-2 flex items-center justify-center border-b-2 transition-all duration-300',
                 activeTab === 'posts'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground'
+                  ? 'border-primary'
+                  : 'border-transparent'
               )}
             >
-              <Sparkles className="h-5 w-5" />
+              <div 
+                className={cn(
+                  "relative w-16 h-8 bg-slate-100/90 dark:bg-slate-800/80 rounded-full border border-slate-200/60 dark:border-white/10 p-1 flex items-center shadow-md transition-all duration-500 overflow-hidden",
+                  activeTab !== 'posts' && "opacity-60 scale-90 grayscale-[0.5]"
+                )}
+              >
+                {/* Sliding Handle */}
+                <div 
+                  className={cn(
+                    "absolute inset-y-1 w-7 rounded-full bg-white dark:bg-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.15)] flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform z-20",
+                    postsLayout === 'list' ? "left-1" : "left-8"
+                  )}
+                >
+                  <Icon 
+                    icon={postsLayout === 'list' ? "weui:transfer2-filled" : "mdi:stars"} 
+                    className={cn(
+                      "h-4 w-4 transition-colors duration-300",
+                      postsLayout === 'list' ? "text-emerald-600" : "text-amber-500"
+                    )} 
+                  />
+                </div>
+
+                {/* Background Icons */}
+                <div className="flex w-full justify-between items-center px-1.5 opacity-30">
+                  <LayoutList className="h-4 w-4" />
+                  <PremiumStarsIcon active={activeTab === 'posts' && postsLayout !== 'list'} size="sm" />
+                </div>
+                
+                {/* Subtle Glow Trail */}
+                <div 
+                  className={cn(
+                    "absolute inset-y-0 w-8 bg-gradient-to-r from-emerald-400/20 to-teal-400/20 blur-md transition-all duration-500",
+                    postsLayout === 'list' ? "left-0" : "left-8"
+                  )}
+                />
+              </div>
             </button>
             {!isMemorial && (
               <button
@@ -900,32 +1017,13 @@ const UserProfilePage = () => {
               )}
             </button>
 
-            {activeTab === 'posts' && false && (
-              <button
-                type="button"
-                onClick={cyclePostsLayout}
-                className={cn(
-                  'py-2 px-3 flex items-center justify-center border-b-2 transition-colors',
-                  'border-transparent text-muted-foreground hover:text-foreground'
-                )}
-                aria-label="Toggle posts layout"
-              >
-                {postsLayout === 'list' ? (
-                  <LayoutList className="h-5 w-5" />
-                ) : postsLayout === 'pinterest1' ? (
-                  <Columns2 className="h-5 w-5" />
-                ) : (
-                  <Grid2X2 className="h-5 w-5" />
-                )}
-              </button>
-            )}
           </div>
         </div>
 
         {/* Posts Grid / List */}
         {activeTab === 'posts' && (() => {
           return (
-          <PullToRefresh onRefresh={refetch}>
+          <PullToRefresh onRefresh={refetch} useWindowScroll={true}>
             {postsLoading ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">Yuklanmoqda...</p>
@@ -978,7 +1076,7 @@ const UserProfilePage = () => {
               </div>
             ) : postsLayout === 'pinterest1' ? (
               <div className="pb-20 px-px">
-                <div className="flex flex-col gap-1 p-1">
+                <div className="grid grid-cols-2 gap-1 p-1">
                   {filteredPosts.map((post, idx) => (
                     <div key={post.id} onClick={() => openViewer(filteredPosts, idx)} className="cursor-pointer">
                       <UserProfileMasonryItem post={post} />
@@ -1098,7 +1196,7 @@ const UserProfilePage = () => {
           <div>
             {isMemorial ? (
               /* Memorial profile: show posts linked to this member */
-              <PullToRefresh onRefresh={refetch}>
+              <PullToRefresh onRefresh={refetch} useWindowScroll={true}>
                 {postsLoading ? (
                   <div className="text-center py-12">
                     <p className="text-muted-foreground">Yuklanmoqda...</p>
@@ -1107,7 +1205,7 @@ const UserProfilePage = () => {
                   <div className="text-center py-12 px-4">
                     <Heart className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
                     <p className="text-muted-foreground">Xotira postlar yo'q</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">Oila daraxti profilidan "+" tugmasi orqali post qo'shing</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Yuqoridagi "+" tugmasini bosib xotira post qo'shing</p>
                   </div>
                 ) : (
                   <div className="space-y-4 px-0 md:px-4 pb-20">
@@ -1148,11 +1246,11 @@ const UserProfilePage = () => {
 
 
         {/* Full screen viewer */}
-        {viewerOpen && (
+        {isViewerOpen && (
           <FullScreenViewer
             posts={viewerPosts.length > 0 ? viewerPosts : filteredPosts}
-            initialIndex={viewerInitialIndex}
-            onClose={() => setViewerOpen(false)}
+            initialIndex={viewerStartIndex}
+            onClose={() => setIsViewerOpen(false)}
           />
         )}
 
@@ -1161,6 +1259,7 @@ const UserProfilePage = () => {
           <StoryViewer
             storyGroups={profileStoryGroups}
             initialGroupIndex={0}
+            initialStoryIndex={initialStoryIndex}
             persistKey={`userprofile:${userId || 'unknown'}`}
             onClose={() => setStoryViewerOpen(false)}
           />
