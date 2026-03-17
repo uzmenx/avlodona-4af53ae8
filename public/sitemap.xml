@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://avlodona.com</loc>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://avlodona.com/signup</loc>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://avlodona.com/profile</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://avlodona.com/feed</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://avlodona.com/tree</loc>
+    <priority>0.8</priority>
+  </url>
+</urlset>
