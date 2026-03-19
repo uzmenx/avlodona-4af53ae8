@@ -327,17 +327,17 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
                 <Mic className="w-8 h-8 text-foreground animate-pulse" /> :
 
                 <>
-                    <div className={cn(
-                    "w-2.5 bg-foreground rounded-full transition-all duration-300",
-                    isSpeaking ? "h-8 animate-pulse shadow-[0_0_15px_hsl(var(--foreground))]" :
-                    isProcessing ? "h-3 animate-bounce" :
-                    "h-3 opacity-50"
+                    <div className={cn("w-2.5 bg-foreground rounded-full transition-all duration-300 py-[13px]",
+
+                  isSpeaking ? "h-8 animate-pulse shadow-[0_0_15px_hsl(var(--foreground))]" :
+                  isProcessing ? "h-3 animate-bounce" :
+                  "h-3 opacity-50"
                   )} />
-                    <div className={cn(
-                    "w-2.5 bg-foreground rounded-full transition-all duration-300 delay-75",
-                    isSpeaking ? "h-8 animate-pulse shadow-[0_0_15px_hsl(var(--foreground))]" :
-                    isProcessing ? "h-3 animate-bounce" :
-                    "h-3 opacity-50"
+                    <div className={cn("w-2.5 bg-foreground rounded-full transition-all duration-300 delay-75 py-[13px]",
+
+                  isSpeaking ? "h-8 animate-pulse shadow-[0_0_15px_hsl(var(--foreground))]" :
+                  isProcessing ? "h-3 animate-bounce" :
+                  "h-3 opacity-50"
                   )} />
                   </>
                 }
