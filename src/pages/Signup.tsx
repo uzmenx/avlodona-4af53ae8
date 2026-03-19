@@ -7,7 +7,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Lock, User, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LangSwitcher } from "@/components/LangSwitcher";
 import { LegalFooter } from "@/components/legal/LegalFooter";
@@ -75,8 +74,11 @@ const Signup = () => {
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
       if (error) throw error;
     } catch (error: any) {
