@@ -11,7 +11,7 @@ interface AIChatMessage {
   content: string;
   timestamp: Date;
   model?: string;
-  attachments?: { type: string; data: string; name: string }[];
+  attachments?: {type: string;data: string;name: string;}[];
 }
 
 const VOICE_SYSTEM_PROMPT = `Siz foydalanuvchi bilan ovozli suhbat qilayotgan AI yordamchisiz.
@@ -42,15 +42,15 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const appStateRef = useRef<AIState>('idle');
 
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
-  useEffect(() => { appStateRef.current = appState; }, [appState]);
+  useEffect(() => {messagesRef.current = messages;}, [messages]);
+  useEffect(() => {appStateRef.current = appState;}, [appState]);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  useEffect(() => { scrollToBottom(); }, [messages]);
+  useEffect(() => {scrollToBottom();}, [messages]);
 
   const stopEverything = useCallback(() => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
@@ -85,7 +85,7 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
     fakeVolumeAnim();
   }, []);
 
-  const sendQuery = useCallback(async (text: string, audioData?: { base64: string, mimeType: string }) => {
+  const sendQuery = useCallback(async (text: string, audioData?: {base64: string;mimeType: string;}) => {
     if (!text.trim() && !audioData) return;
     if (appStateRef.current === 'processing') return;
 
@@ -96,17 +96,17 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
       id: crypto.randomUUID(),
       role: 'user',
       content: text.trim() || (audioData ? '🎤 Ovozli xabar...' : ''),
-      timestamp: new Date(),
+      timestamp: new Date()
     };
-    
-    setMessages(prev => [...prev, userMsg]);
+
+    setMessages((prev) => [...prev, userMsg]);
 
     try {
       const allMsgs = [...messagesRef.current, userMsg];
       const apiMessages = [
-        { role: 'system', content: VOICE_SYSTEM_PROMPT },
-        ...allMsgs.map(h => ({ role: h.role, content: h.content }))
-      ];
+      { role: 'system', content: VOICE_SYSTEM_PROMPT },
+      ...allMsgs.map((h) => ({ role: h.role, content: h.content }))];
+
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const body: any = { messages: apiMessages };
@@ -119,9 +119,9 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(body)
       });
 
       if (!resp.ok) throw new Error('API xatosi');
@@ -148,21 +148,21 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
             const c = parsed.choices?.[0]?.delta?.content;
             if (c) {
               result += c;
-              setMessages(prev => {
+              setMessages((prev) => {
                 const last = prev[prev.length - 1];
                 if (last?.id === assistantMsgId) {
-                  return prev.map(m => m.id === assistantMsgId ? { ...m, content: result } : m);
+                  return prev.map((m) => m.id === assistantMsgId ? { ...m, content: result } : m);
                 }
-                return [...prev, { 
-                  id: assistantMsgId, 
-                  role: 'assistant', 
-                  content: result, 
+                return [...prev, {
+                  id: assistantMsgId,
+                  role: 'assistant',
+                  content: result,
                   timestamp: new Date(),
                   model: 'Gemini 1.5 Flash'
                 }];
               });
             }
-          } catch (err) { console.error('Parse error', err); }
+          } catch (err) {console.error('Parse error', err);}
         }
       }
 
@@ -177,7 +177,7 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
     }
   }, [stopEverything, speakText, setMessages]);
 
-  const convertWebmToMp3 = async (webmBlob: Blob): Promise<{ base64: string, mimeType: string }> => {
+  const convertWebmToMp3 = async (webmBlob: Blob): Promise<{base64: string;mimeType: string;}> => {
     try {
       const { FFmpeg } = await import('@ffmpeg/ffmpeg');
       const { fetchFile } = await import('@ffmpeg/util');
@@ -185,19 +185,19 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
       const ffmpeg = new FFmpeg();
       await ffmpeg.load({
         coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/ffmpeg-core.js',
-        wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/ffmpeg-core.wasm',
+        wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/ffmpeg-core.wasm'
       });
 
       const inputName = 'input.webm';
       const outputName = 'output.mp3';
-      
+
       await ffmpeg.writeFile(inputName, await fetchFile(webmBlob));
-      
+
       await ffmpeg.exec(['-i', inputName, '-vn', '-ab', '128k', '-ar', '44100', '-y', outputName]);
 
       const data = await ffmpeg.readFile(outputName);
       const uint8 = data instanceof Uint8Array ? data : new TextEncoder().encode(data as string);
-      
+
       let binary = '';
       const len = uint8.byteLength;
       for (let i = 0; i < len; i++) {
@@ -248,7 +248,7 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
           setAppState('idle');
           return;
         }
-        
+
         setAppState('processing');
         const audioData = await convertWebmToMp3(webmBlob);
         sendQuery('', audioData);
@@ -271,13 +271,13 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
     }
   };
 
-  useEffect(() => { return () => stopEverything(); }, [stopEverything]);
+  useEffect(() => {return () => stopEverything();}, [stopEverything]);
 
   const isListening = appState === 'listening';
   const isSpeaking = appState === 'speaking';
   const isProcessing = appState === 'processing';
 
-  const dynamicScale = 1 + (volume / 255) * 0.4;
+  const dynamicScale = 1 + volume / 255 * 0.4;
 
   return (
     <div className="h-full flex flex-col items-center justify-between pb-6 px-4">
@@ -287,8 +287,8 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
 
         <div
           onClick={appState === 'idle' ? startListening : stopEverything}
-          className="relative w-48 h-48 flex items-center justify-center cursor-pointer group"
-        >
+          className="relative w-48 h-48 flex items-center justify-center cursor-pointer group">
+          
           {/* Outer glow */}
           <div
             className={cn(
@@ -300,9 +300,9 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
             )}
             style={{
               transform: `scale(${dynamicScale})`,
-              ...( !isListening && !isSpeaking && !isProcessing ? { background: 'hsl(var(--muted))' } : {})
-            }}
-          />
+              ...(!isListening && !isSpeaking && !isProcessing ? { background: 'hsl(var(--muted))' } : {})
+            }} />
+          
 
           {/* Main conic ring */}
           <div
@@ -312,35 +312,35 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
             )}
             style={{
               transform: `scale(${dynamicScale})`,
-              background: (isListening || isSpeaking || isProcessing)
-                ? 'conic-gradient(from 0deg, #ff3b30, #ff9500, #ffcc00, #4cd964, #5ac8fa, #007aff, #5856d6, #ff2d55, #ff3b30)'
-                : 'hsl(var(--muted))',
+              background: isListening || isSpeaking || isProcessing ?
+              'conic-gradient(from 0deg, #ff3b30, #ff9500, #ffcc00, #4cd964, #5ac8fa, #007aff, #5856d6, #ff2d55, #ff3b30)' :
+              'hsl(var(--muted))',
               padding: '6px'
-            }}
-          >
+            }}>
+            
             {/* Dark center */}
             <div className="w-full h-full bg-background rounded-full flex items-center justify-center relative shadow-[inset_0_4px_20px_rgba(0,0,0,0.8)]">
 
               {/* AI "Eyes" */}
-              <div className="flex gap-3 z-10">
-                {isListening ? (
-                  <Mic className="w-8 h-8 text-foreground animate-pulse" />
-                ) : (
-                  <>
+              <div className="z-10 flex items-start justify-start gap-[40px] my-0 py-0">
+                {isListening ?
+                <Mic className="w-8 h-8 text-foreground animate-pulse" /> :
+
+                <>
                     <div className={cn(
-                      "w-2.5 bg-foreground rounded-full transition-all duration-300",
-                      isSpeaking ? "h-8 animate-pulse shadow-[0_0_15px_hsl(var(--foreground))]" :
-                      isProcessing ? "h-3 animate-bounce" :
-                      "h-3 opacity-50"
-                    )} />
+                    "w-2.5 bg-foreground rounded-full transition-all duration-300",
+                    isSpeaking ? "h-8 animate-pulse shadow-[0_0_15px_hsl(var(--foreground))]" :
+                    isProcessing ? "h-3 animate-bounce" :
+                    "h-3 opacity-50"
+                  )} />
                     <div className={cn(
-                      "w-2.5 bg-foreground rounded-full transition-all duration-300 delay-75",
-                      isSpeaking ? "h-8 animate-pulse shadow-[0_0_15px_hsl(var(--foreground))]" :
-                      isProcessing ? "h-3 animate-bounce" :
-                      "h-3 opacity-50"
-                    )} />
+                    "w-2.5 bg-foreground rounded-full transition-all duration-300 delay-75",
+                    isSpeaking ? "h-8 animate-pulse shadow-[0_0_15px_hsl(var(--foreground))]" :
+                    isProcessing ? "h-3 animate-bounce" :
+                    "h-3 opacity-50"
+                  )} />
                   </>
-                )}
+                }
               </div>
             </div>
           </div>
@@ -354,36 +354,36 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
           {appState === 'idle' && <p className="text-xs text-muted-foreground tracking-wider underline underline-offset-4">GAPIRISH UCHUN BOSING</p>}
         </div>
 
-        {appState !== 'idle' && (
-          <button
-            onClick={stopEverything}
-            className="px-6 py-2 rounded-full border border-border bg-muted/50 hover:bg-muted transition-colors text-xs font-semibold flex items-center gap-2 text-foreground"
-          >
+        {appState !== 'idle' &&
+        <button
+          onClick={stopEverything}
+          className="px-6 py-2 rounded-full border border-border bg-muted/50 hover:bg-muted transition-colors text-xs font-semibold flex items-center gap-2 text-foreground">
+          
             <Square className="h-3 w-3 fill-current" /> To'xtatish
           </button>
-        )}
+        }
       </div>
 
       {/* Chat History */}
       <div className="w-full max-w-md bg-card/50 border border-border/50 rounded-3xl p-4 h-[160px] flex flex-col relative overflow-hidden mb-4 shadow-xl">
         <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-background to-transparent z-10" />
         <div className="flex-1 overflow-y-auto space-y-3 py-2 scrollbar-hide">
-          {messages.length > 0 ? (
-            messages.map((item, i) => (
-              <div key={i} className={cn('text-sm w-full flex', item.role === 'user' ? 'justify-end' : 'justify-start')}>
+          {messages.length > 0 ?
+          messages.map((item, i) =>
+          <div key={i} className={cn('text-sm w-full flex', item.role === 'user' ? 'justify-end' : 'justify-start')}>
                 <div className={cn(
-                  "px-4 py-2 rounded-2xl max-w-[85%] leading-relaxed",
-                  item.role === 'user' ? "bg-primary/20 text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
-                )}>
+              "px-4 py-2 rounded-2xl max-w-[85%] leading-relaxed",
+              item.role === 'user' ? "bg-primary/20 text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
+            )}>
                   {item.content}
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground text-xs text-center px-4">
+          ) :
+
+          <div className="h-full flex items-center justify-center text-muted-foreground text-xs text-center px-4">
               Ovozli vizualizatorni bosing yoki xabar yozing.
             </div>
-          )}
+          }
           <div ref={messagesEndRef} />
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent z-10" />
@@ -395,13 +395,13 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
         <input
           value={textInput}
           onChange={(e) => setTextInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { sendQuery(textInput); setTextInput(''); } }}
+          onKeyDown={(e) => {if (e.key === 'Enter') {sendQuery(textInput);setTextInput('');}}}
           placeholder="Xabar yozish..."
           className="w-full bg-muted/50 border border-border focus:border-ring focus:bg-muted rounded-full h-12 pl-11 pr-12 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all"
-          disabled={appState === 'processing'}
-        />
+          disabled={appState === 'processing'} />
+        
         <button
-          onClick={() => { sendQuery(textInput); setTextInput(''); }}
+          onClick={() => {sendQuery(textInput);setTextInput('');}}
           disabled={!textInput.trim() || appState === 'processing'}
           className={cn(
             'absolute right-1.5 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300',
@@ -410,8 +410,8 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
           <Send className="h-4 w-4 ml-0.5" />
         </button>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default AIVoiceView;
