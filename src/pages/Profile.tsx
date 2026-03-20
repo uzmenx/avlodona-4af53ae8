@@ -1041,16 +1041,21 @@ const Profile = () => {
         </div>
       </div>
 
-      <FullScreenViewer
-        open={viewerOpen}
-        onOpenChange={setViewerOpen}
-        posts={viewerPosts}
-        initialIndex={viewerInitialIndex} />
+      {viewerOpen && (
+        <FullScreenViewer
+          posts={viewerPosts}
+          initialIndex={viewerInitialIndex}
+          onClose={() => setViewerOpen(false)}
+        />
+      )}
 
-      <HighlightEditor
-        open={showNewHighlight}
-        onOpenChange={setShowNewHighlight}
-        onSuccess={fetchHighlights} />
+      {showNewHighlight && (
+        <HighlightEditor
+          open={showNewHighlight}
+          onClose={() => { setShowNewHighlight(false); fetchHighlights(); }}
+          isNew
+        />
+      )}
 
       <CollabRequestsSheet
         open={showCollabRequests}
@@ -1058,10 +1063,13 @@ const Profile = () => {
         requests={pendingCollabs}
         onRespond={respondToCollab} />
 
-      <StoryViewer
-        open={storyViewerOpen}
-        onOpenChange={setStoryViewerOpen}
-        storyGroups={profileStoryGroups} />
+      {storyViewerOpen && profileStoryGroups.length > 0 && (
+        <StoryViewer
+          storyGroups={profileStoryGroups}
+          initialGroupIndex={0}
+          onClose={() => setStoryViewerOpen(false)}
+        />
+      )}
 
         {/* Collection Editor Dialog */}
         <Dialog open={collectionEditorOpen} onOpenChange={setCollectionEditorOpen}>

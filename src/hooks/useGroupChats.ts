@@ -129,15 +129,16 @@ export const useGroupChats = () => {
 
       const { data: newChat, error } = await supabase
         .from('group_chats')
-        .insert({
+        .insert([{
           name,
           description,
           avatar_url: avatarUrl,
           type,
           visibility,
           invite_link: inviteLink,
-          owner_id: user.id
-        })
+          owner_id: user.id,
+          created_by: user.id
+        }])
         .select()
         .single();
 

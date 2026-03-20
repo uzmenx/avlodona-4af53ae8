@@ -78,7 +78,7 @@ export const StoryViewer = ({
   const audioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mutedMediaRef = useRef(new Map<HTMLMediaElement, { muted: boolean; volume: number }>());
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRef = useRef<number>(0);
   const lastPersistRef = useRef<number>(0);
 

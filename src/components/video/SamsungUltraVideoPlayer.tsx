@@ -106,7 +106,7 @@ interface TouchState {
 
   side: 'left' | 'right' | 'center';
 
-  longPressTimer: NodeJS.Timeout | null;
+  longPressTimer: ReturnType<typeof setTimeout> | null;
 
   isLongPress: boolean;
 
@@ -207,9 +207,9 @@ export const SamsungUltraVideoPlayer = ({
 
   const progressRef = useRef<HTMLDivElement>(null);
 
-  const controlsTimer = useRef<NodeJS.Timeout | null>(null);
+  const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const gestureTimer = useRef<NodeJS.Timeout | null>(null);
+  const gestureTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

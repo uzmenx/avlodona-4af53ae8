@@ -108,18 +108,18 @@ export const SendInvitationModal = ({
     
     setIsGeneratingLink(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('family_invites')
         .insert({
           invited_by: user.id,
-          tree_node_id: member.id, // Using the node ID 
+          tree_node_id: member.id,
           relation_type: 'family_member', 
         })
         .select('token')
         .single();
         
       if (error) throw error;
-      return data.token;
+      return data?.token;
     } catch (error) {
       console.error('Error creating invite token:', error);
       toast({

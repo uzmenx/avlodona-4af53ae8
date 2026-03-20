@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export type SavedMusicRow = {
   id: string;
@@ -25,15 +25,14 @@ export function useSavedMusic() {
     }
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('saved_tracks')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      setItems((data as any[]) as SavedMusicRow[]);
+      setItems((data || []) as SavedMusicRow[]);
     } catch (e) {
-      // ignore
       setItems([]);
     } finally {
       setIsLoading(false);
@@ -55,13 +54,13 @@ export function useSavedMusic() {
   const save = useCallback(
     async (payload: { audio_url: string; audio_title?: string | null; audio_artist?: string | null }) => {
       if (!user) return;
-      await supabase.from('saved_tracks').upsert(
+      await (supabase as any).from('saved_tracks').upsert(
         {
           user_id: user.id,
           audio_url: payload.audio_url,
           audio_title: payload.audio_title ?? null,
           audio_artist: payload.audio_artist ?? null,
-        } as any,
+        },
         { onConflict: 'user_id,audio_url' }
       );
       await fetchSaved();
@@ -72,7 +71,7 @@ export function useSavedMusic() {
   const unsave = useCallback(
     async (audioUrl: string) => {
       if (!user) return;
-      await supabase.from('saved_tracks').delete().eq('user_id', user.id).eq('audio_url', audioUrl);
+      await (supabase as any).from('saved_tracks').delete().eq('user_id', user.id).eq('audio_url', audioUrl);
       await fetchSaved();
     },
     [fetchSaved, user]

@@ -54,7 +54,7 @@ const AIChat = () => {
     const loadFromDB = async () => {
       if (!user?.id) return;
       try {
-        const { data: conversations } = await supabase
+        const { data: conversations } = await (supabase as any)
           .from('ai_conversations')
           .select('*')
           .eq('user_id', user.id)
@@ -65,29 +65,29 @@ const AIChat = () => {
           return;
         }
 
-        const convIds = conversations.map(c => c.id);
-        const { data: allMessages } = await supabase
+        const convIds = (conversations as any[]).map((c: any) => c.id);
+        const { data: allMessages } = await (supabase as any)
           .from('ai_messages')
           .select('*')
           .in('conversation_id', convIds)
           .order('created_at');
 
-        const msgsByConv = new Map<string, typeof allMessages>();
-        (allMessages || []).forEach(m => {
+        const msgsByConv = new Map<string, any[]>();
+        ((allMessages || []) as any[]).forEach((m: any) => {
           if (!m.conversation_id) return;
           const list = msgsByConv.get(m.conversation_id) || [];
           list.push(m);
           msgsByConv.set(m.conversation_id, list);
         });
 
-        const loadedSessions: ChatSession[] = conversations.map(conv => {
+        const loadedSessions: ChatSession[] = (conversations as any[]).map((conv: any) => {
           const msgs = msgsByConv.get(conv.id) || [];
-          msgs.forEach(m => savedMsgIdsRef.current.add(m.id));
+          msgs.forEach((m: any) => savedMsgIdsRef.current.add(m.id));
           return {
             id: conv.id,
             title: conv.title || 'New Chat',
             updatedAt: new Date(conv.created_at || Date.now()).getTime(),
-            messages: msgs.map(m => ({
+            messages: msgs.map((m: any) => ({
               id: m.id,
               role: (m.role as 'user' | 'assistant') || 'user',
               content: m.content || '',
@@ -151,7 +151,7 @@ const AIChat = () => {
           : (session.messages.find(m => m.role === 'user' && m.content?.trim())?.content?.trim().slice(0, 32) || 'New Chat');
 
         // Upsert conversation
-        await supabase.from('ai_conversations').upsert({
+        await (supabase as any).from('ai_conversations').upsert({
           id: session.id,
           user_id: user.id,
           title,
@@ -160,7 +160,7 @@ const AIChat = () => {
         // Find new messages
         const newMsgs = session.messages.filter(m => !savedMsgIdsRef.current.has(m.id));
         if (newMsgs.length > 0) {
-          const { error } = await supabase.from('ai_messages').upsert(
+          const { error } = await (supabase as any).from('ai_messages').upsert(
             newMsgs.map(m => ({
               id: m.id,
               conversation_id: session.id,
@@ -191,7 +191,7 @@ const AIChat = () => {
       try {
         const emptyConvIds = sessions.filter(s => s.messages.length === 0).map(s => s.id);
         if (emptyConvIds.length > 0) {
-          await supabase.from('ai_conversations').delete().in('id', emptyConvIds);
+          await (supabase as any).from('ai_conversations').delete().in('id', emptyConvIds);
         }
       } catch (cleanupErr) {
         console.error('Cleanup empty conversations error:', cleanupErr);

@@ -227,7 +227,7 @@ export const FullScreenViewer = ({ posts, initialIndex, onClose }: FullScreenVie
     if (!container) return;
 
     let isScrolling = false;
-    let scrollTimeout: NodeJS.Timeout;
+    let scrollTimeout: ReturnType<typeof setTimeout>;
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();

@@ -144,7 +144,7 @@ const GroupChat = () => {
       const { count: memberCount } = await supabase
         .from('group_members').select('*', { count: 'exact', head: true }).eq('group_id', groupId);
 
-      setGroupInfo({ ...group, memberCount: (memberCount || 0) + 1 });
+      setGroupInfo({ ...group, type: (group.type || 'group') as 'channel' | 'group', visibility: (group.visibility || 'private') as 'private' | 'public', memberCount: (memberCount || 0) + 1 } as any);
 
       if (group.owner_id === user?.id) {
         setIsMember(true);

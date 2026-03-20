@@ -35,7 +35,7 @@ export default function InviteAccept() {
       }
 
       try {
-        const { data, error: fetchError } = await supabase
+        const { data, error: fetchError } = await (supabase as any)
           .from('family_invites')
           .select('*, profiles!invited_by(name, avatar_url)')
           .eq('token', token)
@@ -80,16 +80,14 @@ export default function InviteAccept() {
     setIsAccepting(true);
     try {
       // 1. Update invite status to accepted
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
         .from('family_invites')
         .update({ status: 'accepted' })
         .eq('id', invite.id);
         
       if (updateError) throw updateError;
 
-      // 2. Link the current authenticated user to the specified tree node
-      // Note: Make sure the RLS policies on family_members allow this or we do it carefully.
-      const { error: memberError } = await supabase
+      const { error: memberError } = await (supabase as any)
         .from('family_members')
         .update({ linked_user_id: user.id })
         .eq('id', invite.tree_node_id);

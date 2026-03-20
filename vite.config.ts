@@ -16,20 +16,16 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico"],
-      workbox: {
-        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-        navigateFallbackDenylist: [/^\/~oauth/],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase-cache",
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 },
+        workbox: {
+          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+          navigateFallbackDenylist: [/^\/~oauth/],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/(rest|auth|storage|functions)\/.*/i,
+              handler: "NetworkOnly",
             },
-          },
-        ],
-      },
+          ],
+        },
       manifest: {
         name: "Avlodona",
         short_name: "Avlodona",

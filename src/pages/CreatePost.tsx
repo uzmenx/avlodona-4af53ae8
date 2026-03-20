@@ -66,11 +66,11 @@ const CreatePost = () => {
     if (!targetMemberId) return;
     supabase
       .from('family_tree_members')
-      .select('name')
+      .select('member_name')
       .eq('id', targetMemberId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.name) setTargetMemberName(data.name);
+        if (data?.member_name) setTargetMemberName(data.member_name);
       });
   }, [targetMemberId]);
 

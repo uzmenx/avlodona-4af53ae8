@@ -63,7 +63,7 @@ export const useAIConnectorLines = (
   const [isCalculating, setIsCalculating] = useState(false);
   const { toast } = useToast();
   const lastCalculationRef = useRef<string>('');
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Calculate positions from DOM elements
   const calculatePositions = useCallback(() => {

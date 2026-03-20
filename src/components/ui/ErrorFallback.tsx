@@ -23,7 +23,7 @@ export const ErrorFallback = ({ error, resetErrorBoundary }: ErrorFallbackProps)
           </p>
         </div>
 
-        {process.env.NODE_ENV === 'development' && (
+        {import.meta.env.DEV && (
           <div className="p-4 bg-muted rounded-lg text-left overflow-auto max-h-40 text-xs font-mono border border-border">
             <p className="font-bold text-destructive mb-1">{error.name}: {error.message}</p>
             <pre className="opacity-70">{error.stack}</pre>

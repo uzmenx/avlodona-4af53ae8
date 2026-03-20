@@ -58,7 +58,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
   const navigate = useNavigate();
 
   // Long press detection
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressRef = useRef(false);
   const pointerStartRef = useRef<{x: number;y: number;} | null>(null);
   const didMoveRef = useRef(false);
