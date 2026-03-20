@@ -123,7 +123,6 @@ export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, in
             media_urls: post.media_urls || [],
             author: authorProfile ? {
               id: authorProfile.id,
-              email: authorProfile.email || '',
               full_name: authorProfile.name || 'Foydalanuvchi',
               username: authorProfile.username || 'user',
               bio: authorProfile.bio || '',

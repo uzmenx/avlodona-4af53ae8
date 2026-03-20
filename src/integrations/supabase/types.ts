@@ -901,7 +901,6 @@ export type Database = {
           bio: string | null
           cover_url: string | null
           created_at: string
-          email: string | null
           family_network_id: string | null
           full_name: string | null
           gender: string | null
@@ -920,7 +919,6 @@ export type Database = {
           bio?: string | null
           cover_url?: string | null
           created_at?: string
-          email?: string | null
           family_network_id?: string | null
           full_name?: string | null
           gender?: string | null
@@ -939,7 +937,6 @@ export type Database = {
           bio?: string | null
           cover_url?: string | null
           created_at?: string
-          email?: string | null
           family_network_id?: string | null
           full_name?: string | null
           gender?: string | null
