@@ -431,11 +431,25 @@ export const UserProfilePage = () => {
         }
       } else {
         setResolvedMemorialMemberId(undefined);
-        const { data, error } = await supabase.
+        let { data, error } = await supabase.
         from('profiles').
         select('*').
-        eq('user_id', userId).
+        eq('id', userId).
         maybeSingle();
+
+        if (error || !data) {
+          // Fallback to user_id if id query fails or returns nothing
+          const { data: fallbackData } = await supabase.
+          from('profiles').
+          select('*').
+          eq('user_id', userId).
+          maybeSingle();
+
+          if (fallbackData) {
+            data = fallbackData;
+            error = null;
+          }
+        }
 
         if (error) throw error;
         if (data) {
