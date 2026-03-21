@@ -1004,8 +1004,8 @@ export const UserProfilePage = () => {
         <>
 
         {/* ═══════════════════════════════════════
-                     TABS
-                  ═══════════════════════════════════════ */}
+                        TABS
+                     ═══════════════════════════════════════ */}
         <div className="px-4">
           <div className="flex border-b border-border mb-2">
             
@@ -1071,24 +1071,24 @@ export const UserProfilePage = () => {
 
 
               
-            <button
-                onClick={() => setActiveTab('mentions')}
-                className={cn(
-                  'flex-1 py-2 flex items-center justify-center border-b-2 transition-colors',
-                  activeTab === 'mentions' ?
-                  'border-primary text-primary' :
-                  'border-transparent text-muted-foreground'
-                )}>
-                
-              {isMemorial ?
-                <div className="flex items-center gap-2">
-                  <Heart className="h-5 w-5" />
-                  <span className="text-sm font-medium">Xotira postlari</span>
-                </div> :
+            
 
-                <AtSign className="h-5 w-5" />
-                }
-            </button>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+              
 
           </div>
         </div>
