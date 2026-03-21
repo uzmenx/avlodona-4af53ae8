@@ -40,6 +40,7 @@ export interface Post {
   created_at: string;
   updated_at?: string;
   author?: User;
+  is_memorial?: boolean;
 }
 
 export interface Notification {

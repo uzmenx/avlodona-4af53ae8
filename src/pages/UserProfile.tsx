@@ -164,7 +164,8 @@ export const UserProfilePage = () => {
       likes_count: mp.likes_count || 0,
       comments_count: mp.comments_count || 0,
       views_count: mp.views_count || 0,
-      author: mp.author as any
+      author: mp.author as any,
+      is_memorial: true
     })) as Post[];
   }, [memorialPosts]);
 

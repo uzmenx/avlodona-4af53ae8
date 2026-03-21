@@ -6,13 +6,14 @@ export function useMemorialPostSocial(memorialPostId: string) {
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
+  const [commentsCount, setCommentsCount] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const init = useCallback(async () => {
     if (!memorialPostId) return;
 
-    const [likeRes, saveRes, countRes] = await Promise.all([
+    const [likeRes, saveRes, countRes, commentRes] = await Promise.all([
       user
         ? (supabase as any)
             .from('memorial_post_likes')
@@ -33,11 +34,16 @@ export function useMemorialPostSocial(memorialPostId: string) {
         .from('memorial_post_likes')
         .select('*', { count: 'exact', head: true })
         .eq('memorial_post_id', memorialPostId),
+      (supabase as any)
+        .from('memorial_post_comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('memorial_post_id', memorialPostId),
     ]);
 
     setIsLiked(!!likeRes.data);
     setIsSaved(!!saveRes.data);
     setLikesCount(countRes.count ?? 0);
+    setCommentsCount(commentRes.count ?? 0);
   }, [memorialPostId, user]);
 
   useEffect(() => {
@@ -113,5 +119,26 @@ export function useMemorialPostSocial(memorialPostId: string) {
     }
   }, [user, memorialPostId]);
 
-  return { isLiked, likesCount, isSaved, toggleLike, toggleSave, trackView };
+  const handleShare = useCallback(async () => {
+    const shareUrl = `${window.location.origin}/memorial-post/${memorialPostId}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Xotira post',
+          url: shareUrl,
+        });
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        // We could add a toast here if we had access to one
+      } catch (err) {
+        console.error('Error copying to clipboard:', err);
+      }
+    }
+  }, [memorialPostId]);
+
+  return { isLiked, likesCount, commentsCount, isSaved, toggleLike, toggleSave, trackView, handleShare };
 }

@@ -6,6 +6,7 @@ import { Post } from '@/types';
 import { cn } from '@/lib/utils';
 import { useColorExtractor } from '@/hooks/useColorExtractor';
 import { FullscreenActions } from '@/components/post/FullscreenActions';
+import { MemorialFullscreenActions } from '@/components/post/MemorialFullscreenActions';
 import { PostCaption } from '@/components/post/PostCaption';
 import { usePostLikes } from '@/hooks/usePostLikes';
 import { UserAvatar } from '@/components/user/UserAvatar';
@@ -551,31 +552,42 @@ export const FullScreenViewer = ({ posts, initialIndex, onClose }: FullScreenVie
 
         {/* Right side actions - vertical layout like reference */}
         <div className="absolute right-4 bottom-32 z-[2]">
-          <FullscreenActions
-            postId={currentPost.id}
-            initialLikesCount={currentPost.likes_count}
-            initialCommentsCount={currentPost.comments_count}
-            initialViewsCount={currentPost.views_count ?? 0}
-            videoUrl={isVideo(currentMediaUrl) ? currentMediaUrl : undefined}
-            onOpenVideoPlayer={(url) => {
-              setVideoPlayerSrc(url);
-              setShowVideoPlayer(true);
-              if (videoRef.current) videoRef.current.pause();
-              setIsPlaying(false);
-              stopActiveAudio(audioKey || undefined);
-              stopAudio();
-            }} />
-
+          {currentPost.is_memorial ? (
+            <MemorialFullscreenActions
+              memorialPostId={currentPost.id}
+              initialLikesCount={currentPost.likes_count}
+              initialCommentsCount={currentPost.comments_count}
+              initialViewsCount={currentPost.views_count ?? 0}
+            />
+          ) : (
+            <FullscreenActions
+              postId={currentPost.id}
+              initialLikesCount={currentPost.likes_count}
+              initialCommentsCount={currentPost.comments_count}
+              initialViewsCount={currentPost.views_count ?? 0}
+              videoUrl={isVideo(currentMediaUrl) ? currentMediaUrl : undefined}
+              onOpenVideoPlayer={(url) => {
+                setVideoPlayerSrc(url);
+                setShowVideoPlayer(true);
+                if (videoRef.current) videoRef.current.pause();
+                setIsPlaying(false);
+                stopActiveAudio(audioKey || undefined);
+                stopAudio();
+              }} 
+            />
+          )}
         </div>
 
         {/* Author info */}
         <div className="absolute bottom-14 left-0 right-14 bg-transparent p-4 pt-14 z-[1]">
-          <div className="flex items-center mb-2 gap-2">
-            <UserAvatar userId={currentPost.user_id} avatarUrl={currentPost.author?.avatar_url} name={currentPost.author?.full_name} size="lg" className="border-2 border-white/20 ring-0" />
-            <UserInfo userId={currentPost.user_id} name={currentPost.author?.full_name} username={currentPost.author?.username} variant="fullscreen" />
-            <FollowButton targetUserId={currentPost.user_id} size="sm" />
-          </div>
-          {locationTextShort && mapUrl && (
+          {!currentPost.is_memorial && (
+            <div className="flex items-center mb-2 gap-2">
+              <UserAvatar userId={currentPost.user_id} avatarUrl={currentPost.author?.avatar_url} name={currentPost.author?.full_name} size="lg" className="border-2 border-white/20 ring-0" />
+              <UserInfo userId={currentPost.user_id} name={currentPost.author?.full_name} username={currentPost.author?.username} variant="fullscreen" />
+              <FollowButton targetUserId={currentPost.user_id} size="sm" />
+            </div>
+          )}
+          {locationTextShort && mapUrl && !currentPost.is_memorial && (
             <a
               href={mapUrl}
               target="_blank"
