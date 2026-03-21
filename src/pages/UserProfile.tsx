@@ -923,42 +923,42 @@ export const UserProfilePage = () => {
           {/* Bio */}
           {profile.bio &&
           <div className="mb-1.5 px-3">
-              <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] text-center">
-                <div className="relative">
-                  <div
-                  ref={bioRef}
-                  className={`text-xs text-muted-foreground leading-relaxed transition-all duration-300 cursor-pointer ${
-                  !bioExpanded && needsMoreButton ? 'line-clamp-2' : ''}`
-                  }
-                  style={{
-                    overflow: 'hidden',
-                    display: '-webkit-box',
-                    WebkitBoxOrient: 'vertical',
-                    WebkitLineClamp: bioExpanded ? 'unset' : '2'
-                  }}
-                  onClick={() => needsMoreButton && setBioExpanded(!bioExpanded)}>
-                  
-                    {profile.bio}
-                    {!bioExpanded && needsMoreButton &&
-                  <span className="inline-flex items-center gap-1 ml-1">
-                        <span className="text-blue-500 hover:underline">...</span>
-                        <ChevronDown
-                      className="h-4 w-4"
-                      style={{ color: 'rgba(255,255,255,0.6)', transition: 'transform 0.2s' }} />
-                    
-                      </span>
-                  }
-                    {bioExpanded &&
-                  <span className="inline-flex items-center gap-1 ml-1">
-                        <ChevronUp
-                      className="h-4 w-4"
-                      style={{ color: 'rgba(255,255,255,0.6)', transition: 'transform 0.2s' }} />
-                    
-                      </span>
-                  }
-                  </div>
-                </div>
-              </div>
+              
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
             </div>
           }
 
@@ -1004,8 +1004,8 @@ export const UserProfilePage = () => {
         <>
 
         {/* ═══════════════════════════════════════
-                           TABS
-                        ═══════════════════════════════════════ */}
+                              TABS
+                           ═══════════════════════════════════════ */}
         <div className="px-4">
           
 
