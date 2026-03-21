@@ -143,7 +143,8 @@ export const useGroupChats = () => {
         .single();
 
       if (error) {
-        console.error('Error inserting group chat:', error.message, error.details);
+        console.error('Error inserting group chat:', error.message, error.details, error.hint, error.code);
+        // If it throws PGRST116, it means the RLS policy is blocking the `select()` returned from `insert()`.
         throw error;
       }
 

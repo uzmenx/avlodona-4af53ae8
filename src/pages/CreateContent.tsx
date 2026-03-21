@@ -128,10 +128,33 @@ const CreateContent = () => {
     };
   }, [locationQuery, showLocationSearch, selectedLocation]);
 
-  const handleMediaFromCapture = useCallback((items: {file: File;filter: string;}[]) => {
+  const handleMediaFromCapture = useCallback((items: {file: File;filter: string;}[], captureCaption?: string) => {
     setEditedFiles(items);
-    setStep('publish');
-  }, []);
+    if (memoryMemberId && user) {
+      startBackgroundPublish({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        userId: user.id,
+        files: items.map((m) => m.file),
+        storyFiles: [],
+        audioFile: null,
+        audioMeta: null,
+        caption: captureCaption || '',
+        sharePost: true,
+        shareStory: false,
+        ringId: 'default',
+        mentionIds: [],
+        collabIds: [],
+        postCollectionIds: [],
+        storyHighlightId: null,
+        memoryMemberId
+      });
+      toast.success('Xotira yuklanmoqda…');
+      navigate('/');
+    } else {
+      if (captureCaption) setCaption(captureCaption);
+      setStep('publish');
+    }
+  }, [memoryMemberId, user, navigate]);
 
   useEffect(() => {
     if (memoryMemberId) {
@@ -209,10 +232,9 @@ const CreateContent = () => {
   if (step === 'media') {
     return (
       <InstagramMediaCapture
+        memoryMemberId={memoryMemberId}
         onClose={() => navigate(-1)}
         onNext={handleMediaFromCapture} />);
-
-
   }
 
   // Publish form - minimalist modern design

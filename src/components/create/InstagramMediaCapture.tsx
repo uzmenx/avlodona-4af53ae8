@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, ChevronRight, Image as ImageIcon, Lock, Music2, Play, Pause, RefreshCw, Smile, Type, Volume2, VolumeX, X, Disc, ImagePlus } from 'lucide-react';
+import { Camera, ChevronRight, Image as ImageIcon, Lock, Music2, Play, Pause, RefreshCw, Smile, Type, Volume2, VolumeX, X, Disc, ImagePlus, AlignLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EMOJIS, MEDIA_FILTERS } from './filters';
 import FilterStrip from './FilterStrip';
@@ -194,11 +194,12 @@ function ImageOverlay({
 
 interface InstagramMediaCaptureProps {
   onClose: () => void;
-  onNext: (items: { file: File; filter: string }[]) => void;
+  onNext: (items: { file: File; filter: string }[], captionText?: string) => void;
   maxItems?: number;
+  memoryMemberId?: string | null;
 }
 
-export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5 }: InstagramMediaCaptureProps) {
+export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, memoryMemberId }: InstagramMediaCaptureProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
@@ -256,6 +257,8 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5 }:
   const [captureMode, setCaptureMode] = useState<CaptureMode>('photo');
 
   const [showTextInput, setShowTextInput] = useState(false);
+  const [showCaptionInput, setShowCaptionInput] = useState(false);
+  const [postCaption, setPostCaption] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showMusicPicker, setShowMusicPicker] = useState(false);
   const [textValue, setTextValue] = useState('');
@@ -1193,11 +1196,11 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5 }:
         const f = await exportVideo(it);
         edited.push({ file: f, filter: 'original' });
       }
-      onNext(edited);
+      onNext(edited, postCaption);
     } finally {
       setIsExporting(false);
     }
-  }, [exportPhoto, exportVideo, isExporting, items, onNext]);
+  }, [exportPhoto, exportVideo, isExporting, items, onNext, postCaption]);
 
   const toggleMusicPlayback = useCallback(() => {
     if (!musicAudioRef.current || !selectedMusic) return;
@@ -1338,8 +1341,8 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5 }:
               isExporting && 'opacity-60 pointer-events-none'
             )}
           >
-            {isExporting ? 'Tayyorlanmoqda…' : 'Keyingi'}
-            <ChevronRight className="w-4 h-4" />
+            {isExporting ? 'Tayyorlanmoqda…' : (memoryMemberId ? 'Ulashish' : 'Keyingi')}
+            {!memoryMemberId && <ChevronRight className="w-4 h-4" />}
           </button>
         )}
       </div>
@@ -1778,6 +1781,22 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5 }:
                   <span className="text-[9px] text-white/70 font-medium">Matn</span>
                 </button>
 
+                {memoryMemberId && (
+                  <button
+                    onClick={() => {
+                      setShowCaptionInput(true);
+                      setShowEmojiPicker(false);
+                      setShowTextInput(false);
+                    }}
+                    className="flex flex-col items-center gap-0.5"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-lg">
+                      <AlignLeft className="w-5 h-5" />
+                    </div>
+                    <span className="text-[9px] text-white/70 font-medium">Izoh</span>
+                  </button>
+                )}
+
                 {isVideo && (
                   <button
                     onClick={() => {
@@ -1855,6 +1874,29 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5 }:
                       className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
                     >
                       Qo'shish
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {showCaptionInput && (
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+                <div className="bg-black/70 backdrop-blur-xl border border-white/20 rounded-2xl p-5 w-full max-w-sm space-y-4">
+                  <h3 className="font-semibold text-lg text-white">Post izohi</h3>
+                  <textarea
+                    autoFocus
+                    value={postCaption}
+                    onChange={(e) => setPostCaption(e.target.value)}
+                    placeholder="Xotira uchun izoh..."
+                    className="w-full h-32 p-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={() => setShowCaptionInput(false)}
+                      className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
+                    >
+                      Saqlash
                     </button>
                   </div>
                 </div>

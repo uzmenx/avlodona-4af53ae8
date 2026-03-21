@@ -169,32 +169,7 @@ export const UserProfilePage = () => {
     })) as Post[];
   }, [memorialPosts]);
 
-  const [showMemorialSheet, setShowMemorialSheet] = useState(false);
-  const [memorialFile, setMemorialFile] = useState<File | null>(null);
-  const [memorialPreview, setMemorialPreview] = useState<string | null>(null);
-  const [memorialCaption, setMemorialCaption] = useState('');
-  const [memorialUploading, setMemorialUploading] = useState(false);
-  const memorialFileRef = useRef<HTMLInputElement>(null);
 
-  const handleMemorialFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setMemorialFile(file);
-    setMemorialPreview(URL.createObjectURL(file));
-    e.target.value = '';
-  };
-
-  const handleMemorialSave = async () => {
-    if (!memorialFile) return;
-    setMemorialUploading(true);
-    await addMemorialPost(memorialFile, memorialCaption);
-    setMemorialUploading(false);
-    setMemorialFile(null);
-    if (memorialPreview) URL.revokeObjectURL(memorialPreview);
-    setMemorialPreview(null);
-    setMemorialCaption('');
-    setShowMemorialSheet(false);
-  };
   const lastProfileTapTsRef = useRef<number>(0);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [viewerStartIndex, setViewerStartIndex] = useState(0);
@@ -701,7 +676,7 @@ export const UserProfilePage = () => {
             <Button
             variant="ghost"
             size="icon"
-            onClick={() => setShowMemorialSheet(true)}
+            onClick={() => navigate('/create?memberId=' + resolvedMemorialMemberId)}
             className="h-10 w-10 rounded-full text-white"
             style={{
               backgroundColor: 'rgba(255,255,255,0.2)',
@@ -1289,7 +1264,7 @@ export const UserProfilePage = () => {
                     <Heart className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
                     <p className="text-muted-foreground">Hali xotira post yo'q</p>
                     <p className="text-xs text-muted-foreground/60 mt-1">+ tugmasini bosing</p>
-                    <Button variant="outline" className="mt-4" onClick={() => setShowMemorialSheet(true)}>
+                    <Button variant="outline" className="mt-4" onClick={() => navigate('/create?memberId=' + resolvedMemorialMemberId)}>
                       <Plus className="h-4 w-4 mr-1" /> Xotira qo'shish
                     </Button>
                   </div> :
@@ -1460,70 +1435,7 @@ export const UserProfilePage = () => {
             targetUserId={userId}
             targetUserName={profile?.name || 'Foydalanuvchi'} />
           
-          {/* Memorial upload sheet */}
-          <Sheet open={showMemorialSheet} onOpenChange={setShowMemorialSheet}>
-            <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh]">
-              <SheetHeader>
-                <SheetTitle>Xotira post qo'shish</SheetTitle>
-              </SheetHeader>
-              <div className="space-y-4 mt-4">
-                <input
-                  ref={memorialFileRef}
-                  type="file"
-                  accept="image/*,video/*"
-                  className="hidden"
-                  onChange={handleMemorialFileSelect} />
-                
-                {memorialPreview ?
-                <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-muted">
-                    {memorialFile?.type.startsWith('video') ?
-                  <video src={memorialPreview} className="w-full h-full object-cover" controls /> :
 
-                  <img src={memorialPreview} alt="" className="w-full h-full object-cover" />
-                  }
-                    <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/50 text-white"
-                    onClick={() => {
-                      setMemorialFile(null);
-                      if (memorialPreview) URL.revokeObjectURL(memorialPreview);
-                      setMemorialPreview(null);
-                    }}>
-                    
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div> :
-
-                <Button
-                  variant="outline"
-                  className="w-full h-32 rounded-xl border-dashed flex flex-col gap-2"
-                  onClick={() => memorialFileRef.current?.click()}>
-                  
-                    <Image className="h-8 w-8 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Rasm yoki video tanlang</span>
-                  </Button>
-                }
-                <Textarea
-                  placeholder="Izoh qo'shing..."
-                  value={memorialCaption}
-                  onChange={(e) => setMemorialCaption(e.target.value)}
-                  rows={2}
-                  className="rounded-xl" />
-                
-                <Button
-                  className="w-full rounded-xl"
-                  disabled={!memorialFile || memorialUploading}
-                  onClick={handleMemorialSave}>
-                  
-                  {memorialUploading ?
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" /> :
-                  null}
-                  Saqlash
-                </Button>
-              </div>
-            </SheetContent>
-          </Sheet>
 
           </>
         }

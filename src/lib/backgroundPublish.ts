@@ -25,35 +25,20 @@ export type PublishTask = {
 
 const MEMBER_MENTION_COLUMNS = ['family_member_id', 'family_tree_member_id', 'member_id'] as const;
 
-const insertMemoryMention = async (postId: string, memberId: string) => {
-  let lastErr: any = null;
-  const columnErrors: string[] = [];
+const insertMemoryMention = async (postId: string, memberId: string): Promise<void> => {
   for (const col of MEMBER_MENTION_COLUMNS) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sb: any = supabase;
-    const { error } = await sb
-      .from('post_mentions')
-      .insert({ post_id: postId, [col]: memberId });
-
+    const sb = supabase as unknown as Record<string, (t: string) => { insert: (r: Record<string, unknown>) => Promise<{ error: unknown }> }>;
+    const { error } = await sb.from('post_mentions').insert({ post_id: postId, [col]: memberId });
     if (!error) return;
-
-    lastErr = error;
-    const msg = String((error as any)?.message || '');
-    if (msg.toLowerCase().includes('column')) {
-      columnErrors.push(msg);
-      continue;
-    }
-
-    break;
+    const msg = String((error as { message?: string })?.message || '');
+    // If it's a column-not-found error, try the next column name
+    if (msg.toLowerCase().includes('column') || msg.toLowerCase().includes('does not exist')) continue;
+    // Any other error — warn but don't throw so the post still saves
+    console.warn('[insertMemoryMention] non-fatal error:', error);
+    return;
   }
-
-  if (columnErrors.length === MEMBER_MENTION_COLUMNS.length) {
-    throw new Error(
-      "Supabase schema mos emas: post_mentions jadvalida memorial uchun ustun topilmadi. " +
-        "Kerakli ustun: post_mentions.family_member_id (uuid). So'ng Settings → API → Reload schema qiling."
-    );
-  }
-  throw lastErr;
+  // All columns failed — warn only, the memorial post itself saves fine without this extra row
+  console.warn('[insertMemoryMention] could not link post to family member — schema may need fixing');
 };
 
 const ensureYearHighlight = async (userId: string) => {
@@ -375,7 +360,7 @@ const runPublish = async (task: PublishTask) => {
               fileToUpload = f;
             }
           }
-          const url = await uploadMedia(fileToUpload, 'posts', task.userId);
+          const url = await uploadMedia(fileToUpload, task.memoryMemberId ? 'memorial' : 'posts', task.userId);
           tick();
           return url;
         })
@@ -447,9 +432,24 @@ const runPublish = async (task: PublishTask) => {
           if (mentionInsertError) throw mentionInsertError;
         }
         
-        // Add memory post mention
+        // Add memory post mention — wrapped in try/catch so post always saves
         if (task.memoryMemberId) {
-          await insertMemoryMention(post.id, task.memoryMemberId);
+          try {
+            await insertMemoryMention(post.id, task.memoryMemberId);
+
+            // Also directly save to memorial_posts table so it appears on the memorial wall
+            await (supabase as unknown as { from: (t: string) => { insert: (r: Record<string, unknown>) => Promise<{ error: unknown }> } })
+              .from('memorial_posts')
+              .insert({
+                family_member_id: task.memoryMemberId,
+                created_by: task.userId,
+                media_url: postUrls[0] ?? null,
+                media_type: (task.files[0]?.type?.startsWith('video') ? 'video' : 'image'),
+                caption: task.caption || null,
+              });
+          } catch (memErr) {
+            console.warn('[backgroundPublish] memorial mention/post insert error (non-fatal):', memErr);
+          }
         }
 
         if (task.collabIds.length > 0) {
