@@ -24,6 +24,7 @@ import { useActiveStories } from '@/hooks/useActiveStories';
 
 import { useStories } from '@/hooks/useStories';
 import { PostCard } from '@/components/feed/PostCard';
+import { MemorialPostCard } from '@/components/post/MemorialPostCard';
 import { FullScreenViewer } from '@/components/feed/FullScreenViewer';
 import { PullToRefresh } from '@/components/feed/PullToRefresh';
 import { EndOfFeed } from '@/components/feed/EndOfFeed';
@@ -125,7 +126,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { posts, isLoading, postsCount, refetch, removePost } = useUserPosts(user?.id);
-  const { savedPosts, isLoading: savedLoading, fetchSavedPosts } = useSavedPosts();
+  const { savedPosts, savedMemorialPosts, isLoading: savedLoading, fetchSavedPosts } = useSavedPosts();
   const { followersCount, followingCount } = useFollow(user?.id);
   const { highlights, fetchHighlights } = useStoryHighlights();
   const {
@@ -986,22 +987,30 @@ const Profile = () => {
             <div className="text-center py-12">
                 <p className="text-muted-foreground">{t('loading')}</p>
               </div> :
-            savedPosts.length === 0 ?
+            savedPosts.length === 0 && savedMemorialPosts.length === 0 ?
             <div className="text-center py-12 px-4">
                 <Bookmark className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
                 <p className="text-muted-foreground">{t('noSaved')}</p>
               </div> :
 
             <div ref={scrollContainerRef} className="smooth-scroll-container space-y-4 px-0 md:px-4">
-                {savedPosts.map((post, index) =>
-              <div
-                key={post.id}
-                onClick={() => openViewer(index, savedPosts)}
-                className="cursor-pointer">
-                
-                    <PostCard post={post} />
-                  </div>
-              )}
+                {/* Merge and sort both regular and memorial saved posts by date */}
+                {[
+                  ...savedPosts.map(p => ({ type: 'regular' as const, post: p, date: new Date(p.created_at).getTime() })),
+                  ...savedMemorialPosts.map(p => ({ type: 'memorial' as const, post: p, date: new Date(p.savedAt || p.created_at).getTime() }))
+                ]
+                  .sort((a, b) => b.date - a.date)
+                  .map((item, index) => item.type === 'regular' ? (
+                    <div
+                      key={`reg-${item.post.id}`}
+                      onClick={() => openViewer(index, savedPosts)}
+                      className="cursor-pointer">
+                      <PostCard post={item.post} />
+                    </div>
+                  ) : (
+                    <MemorialPostCard key={`mem-${item.post.id}`} post={item.post as any} />
+                  ))
+                }
                 <EndOfFeed />
               </div>
             }

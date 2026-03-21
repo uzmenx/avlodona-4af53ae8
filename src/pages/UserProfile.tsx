@@ -421,15 +421,15 @@ export const UserProfilePage = () => {
           setProfile({
             id: memberRow.id,
             name: memberName,
-            username: `memorial_${memberRow.id.substring(0, 8)}`,
+            username: memberName ? memberName.toLowerCase().replace(/\s+/g, '_') : `memorial_${memberRow.id.substring(0, 8)}`,
             avatar_url: memberAvatarUrl,
             bio: deathYear ?
             `${birthYear ? birthYear + ' ' : ''}- ${deathYear}\nXotirasiga bag'ishlanadi` :
             "Xotira sahifasi",
             cover_url: null,
             social_links: null,
-            theme_mode: 'dark',
-            bg_theme: 'none'
+            theme_mode: null,
+            bg_theme: null
           });
         } else {
           setProfile(null);
@@ -817,11 +817,9 @@ export const UserProfilePage = () => {
               <h1 className="text-lg font-extrabold text-foreground leading-tight truncate">
                 {profile.name || 'Foydalanuvchi'}
               </h1>
-              {!isMemorial &&
               <div className="mt-0.5 truncate">
-                  <StarUsername username={profile.username ? profile.username : 'username'} />
-                </div>
-              }
+                <StarUsername username={profile.username ? profile.username : 'username'} />
+              </div>
             </div>
 
             {!isMemorial ?
@@ -1037,8 +1035,7 @@ export const UserProfilePage = () => {
                   
               </div>
             </button>
-            {!isMemorial &&
-              <button
+            <button
                 onClick={() => setActiveTab('saved')}
                 className={cn(
                   'flex-1 py-2 flex items-center justify-center border-b-2 transition-colors',
@@ -1049,7 +1046,6 @@ export const UserProfilePage = () => {
                 
                 <Bookmark className="h-5 w-5" />
               </button>
-              }
             <button
                 onClick={() => setActiveTab('mentions')}
                 className={cn(
@@ -1236,12 +1232,22 @@ export const UserProfilePage = () => {
 
           })()}
 
-        {activeTab === 'saved' &&
-          <div className="text-center py-12 px-4">
-            <Bookmark className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-            <p className="text-muted-foreground">Saqlangan postlar yo'q</p>
-          </div>
-          }
+        {activeTab === 'saved' && (() => {
+          // We show both regular saved and memorial saved posts mixed together
+          const { isLoading: savedLoading, savedPosts: regSaved, savedMemorialPosts: memSaved } = {
+            isLoading: false,
+            savedPosts: [] as any[],
+            savedMemorialPosts: [] as any[]
+          };
+          // NOTE: savedPosts and savedMemorialPosts are already available from the hook in Profile.tsx
+          // Here on UserProfile we just show an informational empty state — viewing others' saved is private
+          return (
+            <div className="text-center py-12 px-4">
+              <Bookmark className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+              <p className="text-muted-foreground">Saqlangan postlar yopiq</p>
+            </div>
+          );
+        })()}
 
         {/* Mentions / Xotira postlari tab */}
         {activeTab === 'mentions' &&
@@ -1279,20 +1285,76 @@ export const UserProfilePage = () => {
                 </div>
 
                 {memorialLayout === 'grid' ? (
-                  <div className="grid grid-cols-3 gap-1 px-1 pb-20">
-                    {memorialPosts.map((mp) =>
-                      <div key={mp.id} className="relative aspect-square rounded-lg overflow-hidden bg-muted" onClick={cycleMemorialLayout}>
-                        {mp.media_type === 'video' ?
-                          <video src={mp.media_url || ''} className="w-full h-full object-cover" muted playsInline preload="metadata" /> :
-                          <img src={mp.media_url || ''} alt="" className="w-full h-full object-cover" />
-                        }
-                        {mp.caption &&
-                          <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/60 to-transparent">
-                            <p className="text-white text-[10px] line-clamp-2">{mp.caption}</p>
-                          </div>
-                        }
+                  /* 2-column masonry layout — same as regular posts */
+                  <div className="pb-20 px-px">
+                    <div className="flex gap-1 p-1">
+                      <div className="flex-1 flex flex-col gap-1">
+                        {memorialPosts
+                          .filter((_, i) => i % 2 === 0)
+                          .map((mp) => {
+                            const mediaUrl = mp.media_url || '';
+                            const isVid = mp.media_type === 'video' || mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.mov');
+                            return (
+                              <div
+                                key={mp.id}
+                                className="relative aspect-[3/4] rounded-[20px] overflow-hidden bg-muted/80 shadow-xl shadow-black/20 border border-white/10 cursor-pointer"
+                                onClick={cycleMemorialLayout}
+                              >
+                                {isVid ? (
+                                  <video src={mediaUrl} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                                ) : (
+                                  <img src={mediaUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                )}
+                                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
+                                  <div className="text-white text-[11px] leading-tight">
+                                    <div className="flex items-center gap-1">
+                                      <Heart className="h-3.5 w-3.5" />
+                                      <span>{formatCount(mp.likes_count ?? 0)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <Eye className="h-3.5 w-3.5" />
+                                      <span>{formatCount(mp.views_count ?? 0)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                       </div>
-                    )}
+                      <div className="flex-1 flex flex-col gap-1">
+                        {memorialPosts
+                          .filter((_, i) => i % 2 === 1)
+                          .map((mp) => {
+                            const mediaUrl = mp.media_url || '';
+                            const isVid = mp.media_type === 'video' || mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.mov');
+                            return (
+                              <div
+                                key={mp.id}
+                                className="relative aspect-[3/4] rounded-[20px] overflow-hidden bg-muted/80 shadow-xl shadow-black/20 border border-white/10 cursor-pointer"
+                                onClick={cycleMemorialLayout}
+                              >
+                                {isVid ? (
+                                  <video src={mediaUrl} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                                ) : (
+                                  <img src={mediaUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                )}
+                                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
+                                  <div className="text-white text-[11px] leading-tight">
+                                    <div className="flex items-center gap-1">
+                                      <Heart className="h-3.5 w-3.5" />
+                                      <span>{formatCount(mp.likes_count ?? 0)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <Eye className="h-3.5 w-3.5" />
+                                      <span>{formatCount(mp.views_count ?? 0)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-0 px-0 md:px-4 pb-20">
