@@ -148,7 +148,7 @@ export const UserProfilePage = () => {
   const [postsLayout, setPostsLayout] = useState<'pinterest1' | 'list'>('pinterest1');
   const [memorialLayout, setMemorialLayout] = useState<'grid' | 'list'>('grid');
   const cycleMemorialLayout = useCallback(() => {
-    setMemorialLayout((prev) => (prev === 'grid' ? 'list' : 'grid'));
+    setMemorialLayout((prev) => prev === 'grid' ? 'list' : 'grid');
   }, []);
   const lastPostsTabTapTsRef = useRef<number>(0);
 
@@ -750,8 +750,8 @@ export const UserProfilePage = () => {
             <button
               type="button"
               className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0"
-              onClick={() => setActiveTab('mentions')}
-            >
+              onClick={() => setActiveTab('mentions')}>
+              
               <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
                 Postlar
               </span>
@@ -1004,8 +1004,8 @@ export const UserProfilePage = () => {
         <>
 
         {/* ═══════════════════════════════════════
-               TABS
-            ═══════════════════════════════════════ */}
+                  TABS
+               ═══════════════════════════════════════ */}
         <div className="px-4">
           <div className="flex border-b border-border mb-2">
             <button
@@ -1060,17 +1060,17 @@ export const UserProfilePage = () => {
                   
               </div>
             </button>
-            <button
-                onClick={() => setActiveTab('saved')}
-                className={cn(
-                  'flex-1 py-2 flex items-center justify-center border-b-2 transition-colors',
-                  activeTab === 'saved' ?
-                  'border-primary text-primary' :
-                  'border-transparent text-muted-foreground'
-                )}>
-                
-                <Bookmark className="h-5 w-5" />
-              </button>
+            
+
+
+
+
+
+
+
+
+
+              
             <button
                 onClick={() => setActiveTab('mentions')}
                 className={cn(
@@ -1258,21 +1258,21 @@ export const UserProfilePage = () => {
           })()}
 
         {activeTab === 'saved' && (() => {
-          // We show both regular saved and memorial saved posts mixed together
-          const { isLoading: savedLoading, savedPosts: regSaved, savedMemorialPosts: memSaved } = {
-            isLoading: false,
-            savedPosts: [] as any[],
-            savedMemorialPosts: [] as any[]
-          };
-          // NOTE: savedPosts and savedMemorialPosts are already available from the hook in Profile.tsx
-          // Here on UserProfile we just show an informational empty state — viewing others' saved is private
-          return (
-            <div className="text-center py-12 px-4">
+            // We show both regular saved and memorial saved posts mixed together
+            const { isLoading: savedLoading, savedPosts: regSaved, savedMemorialPosts: memSaved } = {
+              isLoading: false,
+              savedPosts: [] as any[],
+              savedMemorialPosts: [] as any[]
+            };
+            // NOTE: savedPosts and savedMemorialPosts are already available from the hook in Profile.tsx
+            // Here on UserProfile we just show an informational empty state — viewing others' saved is private
+            return (
+              <div className="text-center py-12 px-4">
               <Bookmark className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
               <p className="text-muted-foreground">Saqlangan postlar yopiq</p>
-            </div>
-          );
-        })()}
+            </div>);
+
+          })()}
 
         {/* Mentions / Xotira postlari tab */}
         {activeTab === 'mentions' &&
@@ -1300,49 +1300,49 @@ export const UserProfilePage = () => {
                   <div className="bg-white/10 p-1 rounded-full flex gap-1 relative">
                     <button
                       onClick={() => setMemorialLayout('list')}
-                      className={cn("p-1.5 rounded-full z-10 transition-colors", memorialLayout === 'list' ? "text-white" : "text-white/50")}
-                    >
+                      className={cn("p-1.5 rounded-full z-10 transition-colors", memorialLayout === 'list' ? "text-white" : "text-white/50")}>
+                      
                       <LayoutList className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => setMemorialLayout('grid')}
-                      className={cn("p-1.5 rounded-full z-10 transition-colors", memorialLayout === 'grid' ? "text-white" : "text-white/50")}
-                    >
+                      className={cn("p-1.5 rounded-full z-10 transition-colors", memorialLayout === 'grid' ? "text-white" : "text-white/50")}>
+                      
                       <Grid2X2 className="h-4 w-4" />
                     </button>
                     {/* Animated pill background */}
-                    <div 
+                    <div
                       className="absolute inset-y-1 bg-white/20 rounded-full transition-all duration-300 ease-out"
-                      style={{ 
+                      style={{
                         left: memorialLayout === 'list' ? '0.25rem' : 'calc(50% + 0.125rem)',
                         width: 'calc(50% - 0.375rem)'
-                      }} 
-                    />
+                      }} />
+                    
                   </div>
                 </div>
 
                 {memorialLayout === 'grid' ? (
-                  /* 2-column masonry layout — same as regular posts */
-                  <div className="pb-20 px-px">
+                /* 2-column masonry layout — same as regular posts */
+                <div className="pb-20 px-px">
                     <div className="flex gap-1 p-1">
                       <div className="flex-1 flex flex-col gap-1">
-                        {memorialPosts
-                          .filter((_, i) => i % 2 === 0)
-                          .map((mp) => {
-                            const mediaUrl = mp.media_url || '';
-                            const isVid = mp.media_type === 'video' || mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.mov');
-                            const originalIndex = memorialPosts.findIndex(p => p.id === mp.id);
-                            return (
-                              <div
-                                key={mp.id}
-                                className="relative aspect-[3/4] rounded-[20px] overflow-hidden bg-muted/80 shadow-xl shadow-black/20 border border-white/10 cursor-pointer"
-                                onClick={() => openViewer(mappedMemorialPosts, originalIndex)}
-                              >
-                                {isVid ? (
-                                  <video src={mediaUrl} className="w-full h-full object-cover pointer-events-none" muted playsInline preload="metadata" />
-                                ) : (
-                                  <img src={mediaUrl} alt="" className="w-full h-full object-cover pointer-events-none" loading="lazy" />
-                                )}
+                        {memorialPosts.
+                      filter((_, i) => i % 2 === 0).
+                      map((mp) => {
+                        const mediaUrl = mp.media_url || '';
+                        const isVid = mp.media_type === 'video' || mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.mov');
+                        const originalIndex = memorialPosts.findIndex((p) => p.id === mp.id);
+                        return (
+                          <div
+                            key={mp.id}
+                            className="relative aspect-[3/4] rounded-[20px] overflow-hidden bg-muted/80 shadow-xl shadow-black/20 border border-white/10 cursor-pointer"
+                            onClick={() => openViewer(mappedMemorialPosts, originalIndex)}>
+                            
+                                {isVid ?
+                            <video src={mediaUrl} className="w-full h-full object-cover pointer-events-none" muted playsInline preload="metadata" /> :
+
+                            <img src={mediaUrl} alt="" className="w-full h-full object-cover pointer-events-none" loading="lazy" />
+                            }
                                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
                                   <div className="text-white text-[11px] leading-tight">
                                     <div className="flex items-center gap-1">
@@ -1355,28 +1355,28 @@ export const UserProfilePage = () => {
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              </div>);
+
+                      })}
                       </div>
                       <div className="flex-1 flex flex-col gap-1">
-                        {memorialPosts
-                          .filter((_, i) => i % 2 === 1)
-                          .map((mp) => {
-                            const mediaUrl = mp.media_url || '';
-                            const isVid = mp.media_type === 'video' || mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.mov');
-                            const originalIndex = memorialPosts.findIndex(p => p.id === mp.id);
-                            return (
-                              <div
-                                key={mp.id}
-                                className="relative aspect-[3/4] rounded-[20px] overflow-hidden bg-muted/80 shadow-xl shadow-black/20 border border-white/10 cursor-pointer"
-                                onClick={() => openViewer(mappedMemorialPosts, originalIndex)}
-                              >
-                                {isVid ? (
-                                  <video src={mediaUrl} className="w-full h-full object-cover pointer-events-none" muted playsInline preload="metadata" />
-                                ) : (
-                                  <img src={mediaUrl} alt="" className="w-full h-full object-cover pointer-events-none" loading="lazy" />
-                                )}
+                        {memorialPosts.
+                      filter((_, i) => i % 2 === 1).
+                      map((mp) => {
+                        const mediaUrl = mp.media_url || '';
+                        const isVid = mp.media_type === 'video' || mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.mov');
+                        const originalIndex = memorialPosts.findIndex((p) => p.id === mp.id);
+                        return (
+                          <div
+                            key={mp.id}
+                            className="relative aspect-[3/4] rounded-[20px] overflow-hidden bg-muted/80 shadow-xl shadow-black/20 border border-white/10 cursor-pointer"
+                            onClick={() => openViewer(mappedMemorialPosts, originalIndex)}>
+                            
+                                {isVid ?
+                            <video src={mediaUrl} className="w-full h-full object-cover pointer-events-none" muted playsInline preload="metadata" /> :
+
+                            <img src={mediaUrl} alt="" className="w-full h-full object-cover pointer-events-none" loading="lazy" />
+                            }
                                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
                                   <div className="text-white text-[11px] leading-tight">
                                     <div className="flex items-center gap-1">
@@ -1389,20 +1389,20 @@ export const UserProfilePage = () => {
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              </div>);
+
+                      })}
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="space-y-0 px-0 md:px-4 pb-20">
+                  </div>) :
+
+                <div className="space-y-0 px-0 md:px-4 pb-20">
                     {memorialPosts.map((mp, index) =>
-                      <MemorialPostCard key={mp.id} post={mp} onMediaClick={() => openViewer(mappedMemorialPosts, index)} />
-                    )}
+                  <MemorialPostCard key={mp.id} post={mp} onMediaClick={() => openViewer(mappedMemorialPosts, index)} />
+                  )}
                     <EndOfFeed />
                   </div>
-                )}
+                }
               </>
               }
               </PullToRefresh>) : (
