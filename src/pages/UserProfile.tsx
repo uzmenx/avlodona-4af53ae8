@@ -1004,62 +1004,62 @@ export const UserProfilePage = () => {
         <>
 
         {/* ═══════════════════════════════════════
-                  TABS
-               ═══════════════════════════════════════ */}
+                     TABS
+                  ═══════════════════════════════════════ */}
         <div className="px-4">
           <div className="flex border-b border-border mb-2">
-            <button
-                onClick={() => {
-                  if (activeTab !== 'posts') {
-                    setActiveTab('posts');
-                  } else {
-                    cyclePostsLayout();
-                  }
-                }}
-                className={cn(
-                  'flex-1 py-2 flex items-center justify-center border-b-2 transition-all duration-300',
-                  activeTab === 'posts' ?
-                  'border-primary' :
-                  'border-transparent'
-                )}>
-                
-              <div
-                  className={cn(
-                    "relative w-16 h-8 bg-slate-100/90 dark:bg-slate-800/80 rounded-full border border-slate-200/60 dark:border-white/10 p-1 flex items-center shadow-md transition-all duration-500 overflow-hidden",
-                    activeTab !== 'posts' && "opacity-60 scale-90 grayscale-[0.5]"
-                  )}>
-                  
-                {/* Sliding Handle */}
-                <div
-                    className={cn(
-                      "absolute inset-y-1 w-7 rounded-full bg-white dark:bg-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.15)] flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform z-20",
-                      postsLayout === 'list' ? "left-1" : "left-8"
-                    )}>
-                    
-                  <Icon
-                      icon={postsLayout === 'list' ? "weui:transfer2-filled" : "mdi:stars"}
-                      className={cn(
-                        "h-4 w-4 transition-colors duration-300",
-                        postsLayout === 'list' ? "text-emerald-600" : "text-amber-500"
-                      )} />
-                    
-                </div>
+            
 
-                {/* Background Icons */}
-                <div className="flex w-full justify-between items-center px-1.5 opacity-30">
-                  <LayoutList className="h-4 w-4" />
-                  <PremiumStarsIcon active={activeTab === 'posts' && postsLayout !== 'list'} size="sm" />
-                </div>
-                
-                {/* Subtle Glow Trail */}
-                <div
-                    className={cn(
-                      "absolute inset-y-0 w-8 bg-gradient-to-r from-emerald-400/20 to-teal-400/20 blur-md transition-all duration-500",
-                      postsLayout === 'list' ? "left-0" : "left-8"
-                    )} />
-                  
-              </div>
-            </button>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+              
             
 
 
