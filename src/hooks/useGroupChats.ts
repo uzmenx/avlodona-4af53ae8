@@ -51,7 +51,7 @@ export const useGroupChats = () => {
       const { data: ownedChats } = await supabase
         .from('group_chats')
         .select('*')
-        .eq('owner_id', user.id);
+        .eq('owner_id', user.id) as { data: GroupChat[] | null };
 
       const { data: memberOf } = await supabase
         .from('group_members')
@@ -60,12 +60,12 @@ export const useGroupChats = () => {
 
       const memberGroupIds = memberOf?.map(m => m.group_id) || [];
       
-      let memberChats: any[] = [];
+      let memberChats: GroupChat[] = [];
       if (memberGroupIds.length > 0) {
         const { data } = await supabase
           .from('group_chats')
           .select('*')
-          .in('id', memberGroupIds);
+          .in('id', memberGroupIds) as { data: GroupChat[] | null };
         memberChats = data || [];
       }
 
@@ -142,17 +142,27 @@ export const useGroupChats = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error inserting group chat:', error.message, error.details);
+        throw error;
+      }
 
-      // Add members
-      if (memberIds.length > 0) {
-        const members = memberIds.map(memberId => ({
-          group_id: newChat.id,
-          user_id: memberId,
-          role: 'member'
-        }));
+      // Add members including the owner
+      const allMemberIds = [...new Set([user.id, ...memberIds])];
+      
+      const members = allMemberIds.map(memberId => ({
+        group_id: newChat.id,
+        user_id: memberId,
+        role: memberId === user.id ? 'owner' : 'member'
+      }));
 
-        await supabase.from('group_members').upsert(members as any, { onConflict: 'group_id,user_id' });
+      const { error: membersError } = await supabase
+        .from('group_members')
+        .upsert(members, { onConflict: 'group_id,user_id' });
+
+      if (membersError) {
+        console.error('Error adding members:', membersError.message, membersError.details);
+        // Don't throw here, the chat was still created successfully
       }
 
       await fetchGroupChats();
