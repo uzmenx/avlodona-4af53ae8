@@ -154,6 +154,20 @@ export const UserProfilePage = () => {
 
   // Memorial posts
   const { posts: memorialPosts, loading: memorialLoading, addPost: addMemorialPost, refetch: refetchMemorial } = useMemorialPosts(resolvedMemorialMemberId);
+  const mappedMemorialPosts: Post[] = useMemo(() => {
+    return memorialPosts.map((mp) => ({
+      id: mp.id,
+      user_id: mp.created_by,
+      content: mp.caption || '',
+      media_urls: mp.media_url ? [mp.media_url] : [],
+      created_at: mp.created_at || '',
+      likes_count: mp.likes_count || 0,
+      comments_count: mp.comments_count || 0,
+      views_count: mp.views_count || 0,
+      author: mp.author as any
+    })) as Post[];
+  }, [memorialPosts]);
+
   const [showMemorialSheet, setShowMemorialSheet] = useState(false);
   const [memorialFile, setMemorialFile] = useState<File | null>(null);
   const [memorialPreview, setMemorialPreview] = useState<string | null>(null);
@@ -732,8 +746,18 @@ export const UserProfilePage = () => {
                   {formatCount(followersCount)}
                 </span>
               </button> :
-
-            <div className="flex-1" /> /* Spacer */
+            <button
+              type="button"
+              className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0"
+              onClick={() => setActiveTab('mentions')}
+            >
+              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                Postlar
+              </span>
+              <span className="text-lg font-extrabold text-foreground leading-none">
+                {formatCount(memorialPosts.length)}
+              </span>
+            </button>
             }
 
             {/* CENTER: Avatar (with story ring when user has active story) */}
@@ -1271,17 +1295,29 @@ export const UserProfilePage = () => {
 
               <>
                 {/* Layout toggle bar */}
-                <div className="flex items-center justify-end px-3 pb-2">
-                  <button
-                    onClick={cycleMemorialLayout}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs text-muted-foreground hover:bg-white/20 transition-all"
-                  >
-                    {memorialLayout === 'grid' ? (
-                      <><LayoutList className="h-3.5 w-3.5" /><span>Ro'yxat</span></>
-                    ) : (
-                      <><Grid3X3 className="h-3.5 w-3.5" /><span>Katakcha</span></>
-                    )}
-                  </button>
+                <div className="flex items-center justify-center px-3 py-3 border-b border-white/5 mb-2">
+                  <div className="bg-white/10 p-1 rounded-full flex gap-1 relative">
+                    <button
+                      onClick={() => setMemorialLayout('list')}
+                      className={cn("p-1.5 rounded-full z-10 transition-colors", memorialLayout === 'list' ? "text-white" : "text-white/50")}
+                    >
+                      <LayoutList className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setMemorialLayout('grid')}
+                      className={cn("p-1.5 rounded-full z-10 transition-colors", memorialLayout === 'grid' ? "text-white" : "text-white/50")}
+                    >
+                      <Grid2X2 className="h-4 w-4" />
+                    </button>
+                    {/* Animated pill background */}
+                    <div 
+                      className="absolute inset-y-1 bg-white/20 rounded-full transition-all duration-300 ease-out"
+                      style={{ 
+                        left: memorialLayout === 'list' ? '0.25rem' : 'calc(50% + 0.125rem)',
+                        width: 'calc(50% - 0.375rem)'
+                      }} 
+                    />
+                  </div>
                 </div>
 
                 {memorialLayout === 'grid' ? (
@@ -1294,16 +1330,17 @@ export const UserProfilePage = () => {
                           .map((mp) => {
                             const mediaUrl = mp.media_url || '';
                             const isVid = mp.media_type === 'video' || mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.mov');
+                            const originalIndex = memorialPosts.findIndex(p => p.id === mp.id);
                             return (
                               <div
                                 key={mp.id}
                                 className="relative aspect-[3/4] rounded-[20px] overflow-hidden bg-muted/80 shadow-xl shadow-black/20 border border-white/10 cursor-pointer"
-                                onClick={cycleMemorialLayout}
+                                onClick={() => openViewer(mappedMemorialPosts, originalIndex)}
                               >
                                 {isVid ? (
-                                  <video src={mediaUrl} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                                  <video src={mediaUrl} className="w-full h-full object-cover pointer-events-none" muted playsInline preload="metadata" />
                                 ) : (
-                                  <img src={mediaUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                  <img src={mediaUrl} alt="" className="w-full h-full object-cover pointer-events-none" loading="lazy" />
                                 )}
                                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
                                   <div className="text-white text-[11px] leading-tight">
@@ -1327,16 +1364,17 @@ export const UserProfilePage = () => {
                           .map((mp) => {
                             const mediaUrl = mp.media_url || '';
                             const isVid = mp.media_type === 'video' || mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.mov');
+                            const originalIndex = memorialPosts.findIndex(p => p.id === mp.id);
                             return (
                               <div
                                 key={mp.id}
                                 className="relative aspect-[3/4] rounded-[20px] overflow-hidden bg-muted/80 shadow-xl shadow-black/20 border border-white/10 cursor-pointer"
-                                onClick={cycleMemorialLayout}
+                                onClick={() => openViewer(mappedMemorialPosts, originalIndex)}
                               >
                                 {isVid ? (
-                                  <video src={mediaUrl} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                                  <video src={mediaUrl} className="w-full h-full object-cover pointer-events-none" muted playsInline preload="metadata" />
                                 ) : (
-                                  <img src={mediaUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                  <img src={mediaUrl} alt="" className="w-full h-full object-cover pointer-events-none" loading="lazy" />
                                 )}
                                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
                                   <div className="text-white text-[11px] leading-tight">
@@ -1358,8 +1396,8 @@ export const UserProfilePage = () => {
                   </div>
                 ) : (
                   <div className="space-y-0 px-0 md:px-4 pb-20">
-                    {memorialPosts.map((mp) =>
-                      <MemorialPostCard key={mp.id} post={mp} />
+                    {memorialPosts.map((mp, index) =>
+                      <MemorialPostCard key={mp.id} post={mp} onMediaClick={() => openViewer(mappedMemorialPosts, index)} />
                     )}
                     <EndOfFeed />
                   </div>
