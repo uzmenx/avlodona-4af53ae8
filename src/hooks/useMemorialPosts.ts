@@ -2,6 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadMedia } from '@/lib/r2Upload';
 
+export interface MemorialPostAuthor {
+  id: string;
+  name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+}
+
 export interface MemorialPost {
   id: string;
   family_member_id: string;
@@ -10,6 +17,9 @@ export interface MemorialPost {
   media_type: string | null;
   caption: string | null;
   created_at: string;
+  likes_count?: number;
+  views_count?: number;
+  author?: MemorialPostAuthor | null;
 }
 
 export function useMemorialPosts(familyMemberId: string | undefined) {
@@ -25,10 +35,37 @@ export function useMemorialPosts(familyMemberId: string | undefined) {
     setLoading(true);
     const { data } = await (supabase as any)
       .from('memorial_posts')
-      .select('*')
+      .select('*, author:profiles!memorial_posts_created_by_fkey(id, name, username, avatar_url)')
       .eq('family_member_id', familyMemberId)
       .order('created_at', { ascending: false });
-    setPosts((data || []) as MemorialPost[]);
+
+    // If the join failed, fall back to plain select and do a manual profile lookup
+    if (!data || (data.length > 0 && data[0].author === undefined)) {
+      const { data: plain } = await (supabase as any)
+        .from('memorial_posts')
+        .select('*')
+        .eq('family_member_id', familyMemberId)
+        .order('created_at', { ascending: false });
+
+      const plainPosts = (plain || []) as MemorialPost[];
+
+      // Batch fetch author profiles
+      const creatorIds = [...new Set(plainPosts.map((p) => p.created_by))];
+      let profiles: MemorialPostAuthor[] = [];
+      if (creatorIds.length > 0) {
+        const { data: profileData } = await (supabase as any)
+          .from('profiles')
+          .select('id, name, username, avatar_url')
+          .in('id', creatorIds);
+        profiles = (profileData || []) as MemorialPostAuthor[];
+      }
+
+      const profileMap = new Map(profiles.map((p) => [p.id, p]));
+      setPosts(plainPosts.map((p) => ({ ...p, author: profileMap.get(p.created_by) ?? null })));
+    } else {
+      setPosts((data || []) as MemorialPost[]);
+    }
+
     setLoading(false);
   }, [familyMemberId]);
 
@@ -58,7 +95,14 @@ export function useMemorialPosts(familyMemberId: string | undefined) {
       .single();
 
     if (newPost) {
-      setPosts(prev => [newPost as MemorialPost, ...prev]);
+      // Fetch author profile for the new post
+      const { data: authorData } = await (supabase as any)
+        .from('profiles')
+        .select('id, name, username, avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      setPosts(prev => [{ ...newPost as MemorialPost, author: authorData ?? null }, ...prev]);
     }
     return newPost;
   }

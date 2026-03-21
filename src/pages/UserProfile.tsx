@@ -19,6 +19,7 @@ import { useUserPosts } from '@/hooks/useUserPosts';
 import { useFollow } from '@/hooks/useFollow';
 import { useMentionsCollabs } from '@/hooks/useMentionsCollabs';
 import { PostCard } from '@/components/feed/PostCard';
+import { MemorialPostCard } from '@/components/post/MemorialPostCard';
 import { FullScreenViewer } from '@/components/feed/FullScreenViewer';
 import { PullToRefresh } from '@/components/feed/PullToRefresh';
 import { EndOfFeed } from '@/components/feed/EndOfFeed';
@@ -145,6 +146,10 @@ export const UserProfilePage = () => {
   const { followersCount, followingCount } = useFollow(userId);
   const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'mentions'>(isMemorial ? 'mentions' : 'posts');
   const [postsLayout, setPostsLayout] = useState<'pinterest1' | 'list'>('pinterest1');
+  const [memorialLayout, setMemorialLayout] = useState<'grid' | 'list'>('grid');
+  const cycleMemorialLayout = useCallback(() => {
+    setMemorialLayout((prev) => (prev === 'grid' ? 'list' : 'grid'));
+  }, []);
   const lastPostsTabTapTsRef = useRef<number>(0);
 
   // Memorial posts
@@ -1242,7 +1247,7 @@ export const UserProfilePage = () => {
         {activeTab === 'mentions' &&
           <div>
             {isMemorial ? (
-            /* Memorial profile: show memorial_posts grid */
+            /* Memorial profile: show memorial_posts with layout toggle */
             <PullToRefresh onRefresh={refetchMemorial} useWindowScroll={true}>
                 {memorialLoading ?
               <div className="text-center py-12">
@@ -1258,22 +1263,46 @@ export const UserProfilePage = () => {
                     </Button>
                   </div> :
 
-              <div className="grid grid-cols-3 gap-1 px-1 pb-20">
-                    {memorialPosts.map((mp) =>
-                <div key={mp.id} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
-                        {mp.media_type === 'video' ?
-                  <video src={mp.media_url || ''} className="w-full h-full object-cover" muted playsInline preload="metadata" /> :
+              <>
+                {/* Layout toggle bar */}
+                <div className="flex items-center justify-end px-3 pb-2">
+                  <button
+                    onClick={cycleMemorialLayout}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs text-muted-foreground hover:bg-white/20 transition-all"
+                  >
+                    {memorialLayout === 'grid' ? (
+                      <><LayoutList className="h-3.5 w-3.5" /><span>Ro'yxat</span></>
+                    ) : (
+                      <><Grid3X3 className="h-3.5 w-3.5" /><span>Katakcha</span></>
+                    )}
+                  </button>
+                </div>
 
-                  <img src={mp.media_url || ''} alt="" className="w-full h-full object-cover" />
-                  }
+                {memorialLayout === 'grid' ? (
+                  <div className="grid grid-cols-3 gap-1 px-1 pb-20">
+                    {memorialPosts.map((mp) =>
+                      <div key={mp.id} className="relative aspect-square rounded-lg overflow-hidden bg-muted" onClick={cycleMemorialLayout}>
+                        {mp.media_type === 'video' ?
+                          <video src={mp.media_url || ''} className="w-full h-full object-cover" muted playsInline preload="metadata" /> :
+                          <img src={mp.media_url || ''} alt="" className="w-full h-full object-cover" />
+                        }
                         {mp.caption &&
-                  <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/60 to-transparent">
+                          <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/60 to-transparent">
                             <p className="text-white text-[10px] line-clamp-2">{mp.caption}</p>
                           </div>
-                  }
+                        }
                       </div>
-                )}
+                    )}
                   </div>
+                ) : (
+                  <div className="space-y-0 px-0 md:px-4 pb-20">
+                    {memorialPosts.map((mp) =>
+                      <MemorialPostCard key={mp.id} post={mp} />
+                    )}
+                    <EndOfFeed />
+                  </div>
+                )}
+              </>
               }
               </PullToRefresh>) : (
 
