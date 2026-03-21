@@ -894,18 +894,18 @@ export const UserProfilePage = () => {
                   </div>
               }
 
-                <button
-                type="button"
-                onClick={() => setActiveTab('posts')}
-                className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0">
                 
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                    Postlar
-                  </span>
-                  <span className="text-lg font-extrabold text-foreground leading-none">
-                    {formatCount(postsCount)}
-                  </span>
-                </button>
+
+
+
+
+
+
+
+
+
+
+              
               </div>
             </div>
           }
@@ -1004,8 +1004,8 @@ export const UserProfilePage = () => {
         <>
 
         {/* ═══════════════════════════════════════
-                                                                  TABS
-                                                               ═══════════════════════════════════════ */}
+                                                                     TABS
+                                                                  ═══════════════════════════════════════ */}
         <div className="px-4">
           
 
