@@ -1004,8 +1004,8 @@ export const UserProfilePage = () => {
         <>
 
         {/* ═══════════════════════════════════════
-                              TABS
-                           ═══════════════════════════════════════ */}
+                                                                  TABS
+                                                               ═══════════════════════════════════════ */}
         <div className="px-4">
           
 
@@ -1297,7 +1297,7 @@ export const UserProfilePage = () => {
               <>
                 {/* Layout toggle bar */}
                 <div className="flex items-center justify-center px-3 py-3 border-b border-white/5 mb-2">
-                  <div className="bg-white/10 p-1 rounded-full flex gap-1 relative">
+                  <div className="bg-white/10 p-1 rounded-full relative flex-row flex items-start justify-start gap-[4px]">
                     <button
                       onClick={() => setMemorialLayout('list')}
                       className={cn("p-1.5 rounded-full z-10 transition-colors", memorialLayout === 'list' ? "text-white" : "text-white/50")}>
