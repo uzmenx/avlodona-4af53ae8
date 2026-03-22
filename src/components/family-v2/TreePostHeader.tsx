@@ -1,16 +1,22 @@
-import { Save, Search, X } from 'lucide-react';
+import { useState } from 'react';
+import { Save, Search, X, Users, MessageCircle } from 'lucide-react';
 import { Icon } from '@iconify/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { TreeRatings } from '@/components/family-v2/TreeRatings';
 import { FamilyCalendarSheet } from '@/components/family-v2/FamilyCalendarSheet';
+import { TreeStatsDrawer } from '@/components/family-v2/TreeStatsDrawer';
+import { FamilyMember } from '@/types/family';
 
 interface TreePostHeaderProps {
-  onOpenRelativeSearch: () => void;
   onSave: () => void | Promise<void>;
   onPublish: () => void;
-  memberCount?: number;
+  members?: Record<string, FamilyMember>;
+  /** Total profiles in the tree */
+  totalCount?: number;
+  /** Linked / active (live user) profiles */
+  activeCount?: number;
   isSaving?: boolean;
   hasCurrentPost?: boolean;
   searchQuery: string;
@@ -19,95 +25,148 @@ interface TreePostHeaderProps {
 }
 
 export const TreePostHeader = ({
-  onOpenRelativeSearch,
   onSave,
   onPublish,
-  memberCount,
+  members,
+  totalCount,
+  activeCount,
   isSaving,
   hasCurrentPost,
   searchQuery,
   onSearchChange,
   onClearSearch,
 }: TreePostHeaderProps) => {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<'all' | 'active'>('all');
+
+  const memberList = Object.values(members ?? {});
+  const total = totalCount ?? memberList.length;
+  const active = activeCount ?? memberList.filter(m => !!m.linkedUserId).length;
+
+  const openDrawer = (mode: 'all' | 'active') => {
+    setDrawerMode(mode);
+    setDrawerOpen(true);
+  };
+
   return (
-    <div className="sticky top-2 z-50 px-3">
-      <div
-        className={
-          'mx-auto w-[390px] max-w-full h-14 px-4 py-2.5 ' +
-          'flex items-center gap-2.5 rounded-2xl ' +
-          'backdrop-blur-2xl bg-white/30 dark:bg-slate-900/30 ' +
-          'border border-white/20 dark:border-white/10 ' +
-          'shadow-2xl shadow-black/5 dark:shadow-black/20'
-        }
-      >
-        {/* 1) Trophy */}
-        <div className="transition-all duration-150 active:scale-95">
-          <TreeRatings />
-        </div>
+    <>
+      <div className="sticky top-2 z-50 px-3">
+        <div
+          className={
+            'mx-auto w-[390px] max-w-full h-14 px-3 py-2 ' +
+            'flex items-center gap-2 rounded-2xl ' +
+            'backdrop-blur-2xl bg-white/30 dark:bg-slate-900/30 ' +
+            'border border-white/20 dark:border-white/10 ' +
+            'shadow-2xl shadow-black/5 dark:shadow-black/20'
+          }
+        >
+          {/* 1) Trophy */}
+          <div className="transition-all duration-150 active:scale-95 flex-shrink-0">
+            <TreeRatings />
+          </div>
 
-        {/* 2) Calendar */}
-        <div className="transition-all duration-150 active:scale-95">
-          <FamilyCalendarSheet />
-        </div>
+          {/* 2) Calendar */}
+          <div className="transition-all duration-150 active:scale-95 flex-shrink-0">
+            <FamilyCalendarSheet />
+          </div>
 
-        {/* 3) Search Input */}
-        <div className="flex-1 max-w-[180px] relative group">
-          <Search 
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10" 
-            strokeWidth={2} 
-          />
-          <Input
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Qidirish..."
-            className={cn(
-              "pl-9 pr-9 h-9 rounded-full bg-slate-100/80 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/70",
-              "text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400",
-              "focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500/50 transition-all"
+          {/* 3) Search Input */}
+          <div className="flex-1 relative group min-w-0">
+            <Search
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 z-10"
+              strokeWidth={2}
+            />
+            <Input
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Qidirish..."
+              className={cn(
+                "pl-8 pr-8 h-8 rounded-full bg-white/40 dark:bg-slate-800/60 border border-white/30 dark:border-white/10 text-[13px] backdrop-blur-md",
+                "text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400",
+                "focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500/50 transition-all shadow-inner"
+              )}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={onClearSearch}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
+              >
+                <X className="h-3 w-3" />
+              </button>
             )}
-          />
-          {searchQuery && (
+          </div>
+
+          {/* 4) Premium stats: Total + Active — clickable badges */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Total members badge */}
             <button
               type="button"
-              onClick={onClearSearch}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
+              onClick={() => openDrawer('all')}
+              className={cn(
+                "flex items-center gap-1 h-8 px-2 rounded-xl border backdrop-blur-sm shadow-inner transition-all active:scale-95",
+                "bg-slate-800/60 dark:bg-white/8 border-white/10 hover:bg-slate-800/80"
+              )}
+              title="Barcha profillar"
             >
-              <X className="h-3.5 w-3.5" />
+              <Users className="h-3 w-3 text-slate-300 dark:text-slate-400 flex-shrink-0" strokeWidth={2.5} />
+              <span className="text-[12px] font-bold text-white/90 dark:text-slate-100 leading-none tabular-nums">
+                {total}
+              </span>
             </button>
-          )}
-        </div>
 
-        {/* 4) Badge */}
-        {typeof memberCount === 'number' && (
-          <div className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-semibold flex items-center justify-center">
-            {memberCount > 99 ? '99+' : memberCount}
+            {/* Active (linked) members badge */}
+            {active > 0 && (
+              <button
+                type="button"
+                onClick={() => openDrawer('active')}
+                className={cn(
+                  "flex items-center gap-1 h-8 px-2 rounded-xl border backdrop-blur-sm shadow-inner transition-all active:scale-95",
+                  "bg-emerald-600/70 dark:bg-emerald-500/20 border-emerald-400/30 hover:bg-emerald-600/90"
+                )}
+                title="Faol foydalanuvchilar"
+              >
+                <MessageCircle className="h-3 w-3 text-emerald-200 flex-shrink-0" strokeWidth={2.5} />
+                <span className="text-[12px] font-bold text-emerald-100 leading-none tabular-nums">
+                  {active}
+                </span>
+              </button>
+            )}
           </div>
-        )}
 
-        {/* Save (optional) */}
-        {hasCurrentPost && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onSave}
-            disabled={isSaving}
-            className="h-9 w-9 rounded-full transition-all duration-150 active:scale-95"
-            aria-label="Saqlash"
+          {/* Save (optional) */}
+          {hasCurrentPost && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onSave}
+              disabled={isSaving}
+              className="h-8 w-8 rounded-full transition-all duration-150 active:scale-95 flex-shrink-0"
+              aria-label="Saqlash"
+            >
+              <Save className="h-[18px] w-[18px]" strokeWidth={1.8} />
+            </Button>
+          )}
+
+          {/* 5) Share */}
+          <button
+            type="button"
+            onClick={onPublish}
+            className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md shadow-blue-300/60 dark:shadow-blue-500/25 flex items-center justify-center transition-all duration-150 hover:scale-105 active:scale-95 flex-shrink-0"
+            aria-label="Ulashish"
           >
-            <Save className="h-[22px] w-[22px]" strokeWidth={1.8} />
-          </Button>
-        )}
-
-        {/* 5) Share */}
-        <button
-          type="button"
-          onClick={onPublish}
-          className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md shadow-blue-300/60 dark:shadow-blue-500/25 flex items-center justify-center transition-all duration-150 hover:scale-105 active:scale-95"
-          aria-label="Ulashish"
-        >
-          <Icon icon="ci:share-ios-export" className="h-[18px] w-[18px] text-white" />
-        </button>
+            <Icon icon="ci:share-ios-export" className="h-[16px] w-[16px] text-white" />
+          </button>
+        </div>
       </div>
-    </div>
+
+      {/* Stats Drawer */}
+      <TreeStatsDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        mode={drawerMode}
+        members={memberList}
+      />
+    </>
   );
 };

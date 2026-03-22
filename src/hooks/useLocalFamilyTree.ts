@@ -174,6 +174,7 @@ export const useLocalFamilyTree = () => {
           linkedUserId: liveUserId || undefined,
           supabaseId: m.id,
           mergedProfiles: mergedInfos.length > 0 ? mergedInfos : undefined,
+          coverUrl: m.cover_url || undefined,
         };
       });
 
@@ -688,27 +689,52 @@ export const useLocalFamilyTree = () => {
   const updateMember = useCallback(async (id: string, updates: Partial<FamilyMember>) => {
     if (!user?.id) return;
 
+    // Get current member to find linkedUserId
+    const currentMember = members[id];
+    const linkedUserId = currentMember?.linkedUserId;
+
     setMembers((prev) => {
       if (!prev[id]) return prev;
       return { ...prev, [id]: { ...prev[id], ...updates } };
     });
 
-    const dbUpdates: Record<string, any> = {};
+    const dbUpdates: Record<string, unknown> = {};
     if (updates.name !== undefined) dbUpdates.member_name = updates.name;
     if (updates.photoUrl !== undefined) dbUpdates.avatar_url = updates.photoUrl || null;
     if (updates.gender !== undefined) dbUpdates.gender = updates.gender;
     if (updates.birthYear !== undefined) dbUpdates.birth_year = updates.birthYear ?? null;
     if (updates.deathYear !== undefined) dbUpdates.death_year = updates.deathYear ?? null;
+    if (updates.coverUrl !== undefined) dbUpdates.cover_url = updates.coverUrl || null;
 
     if (Object.keys(dbUpdates).length > 0) {
-      // Update any member the user owns or is linked to
-      await supabase
-        .from('family_tree_members')
-        .update(dbUpdates)
-        .eq('id', id)
-        .or(`owner_id.eq.${user.id},linked_user_id.eq.${user.id}`);
+      if (linkedUserId) {
+        // Sync across ALL trees that have this linked user
+        await supabase
+          .from('family_tree_members')
+          .update(dbUpdates)
+          .eq('linked_user_id', linkedUserId);
+
+        // If this IS our own linked profile, also update the main profiles table
+        if (linkedUserId === user.id) {
+          const profileUpdates: Record<string, unknown> = {};
+          if (updates.name !== undefined) profileUpdates.name = updates.name;
+          if (updates.photoUrl !== undefined) profileUpdates.avatar_url = updates.photoUrl || null;
+          if (updates.coverUrl !== undefined) profileUpdates.cover_url = updates.coverUrl || null;
+
+          if (Object.keys(profileUpdates).length > 0) {
+            await supabase.from('profiles').update(profileUpdates).eq('id', user.id);
+          }
+        }
+      } else {
+        // Regular non-linked member: update only the specific row
+        await supabase
+          .from('family_tree_members')
+          .update(dbUpdates)
+          .eq('id', id)
+          .or(`owner_id.eq.${user.id},linked_user_id.eq.${user.id}`);
+      }
     }
-  }, [user?.id]);
+  }, [user?.id, members]);
 
   // Remove member
   const removeMember = useCallback(async (id: string) => {
@@ -1198,9 +1224,15 @@ export const useLocalFamilyTree = () => {
     }
   }, [user?.id, networkId, loadData]);
 
+  // Derived counts
+  const totalCount = Object.keys(members).length;
+  const activeCount = Object.values(members).filter((m) => !!m.linkedUserId).length;
+
   return {
     members,
     rootId,
+    totalCount,
+    activeCount,
     isLoading,
     networkId,
     isSharedNetwork,

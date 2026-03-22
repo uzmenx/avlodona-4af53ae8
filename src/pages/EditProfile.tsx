@@ -52,13 +52,25 @@ const EditProfile = () => {
   const BIO_MAX_LENGTH = 300;
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
+    if (profile) {
+      setOriginalUsername(profile.username || '');
+      setFormData({
+        name: profile.name || '',
+        username: profile.username || user?.email?.split('@')[0] || '',
+        bio: profile.bio || '',
+        avatar_url: profile.avatar_url || '',
+        cover_url: (profile as { cover_url?: string }).cover_url || '',
+        gender: profile.gender as 'male' | 'female' || '',
+        social_links: profile.social_links as SocialLink[] || []
+      });
+    } else if (user && !isLoading) {
+      // Fallback: only fetch if profile from context is completely missing
+      const fetchProfileData = async () => {
         const { data } = await supabase.
-        from('profiles').
-        select('*').
-        eq('id', user.id).
-        single();
+          from('profiles').
+          select('*').
+          eq('id', user.id).
+          maybeSingle();
 
         if (data) {
           setOriginalUsername(data.username || '');
@@ -67,16 +79,15 @@ const EditProfile = () => {
             username: data.username || '',
             bio: data.bio || '',
             avatar_url: data.avatar_url || '',
-            cover_url: (data as any).cover_url || '',
+            cover_url: (data as { cover_url?: string }).cover_url || '',
             gender: data.gender as 'male' | 'female' || '',
-            social_links: (data as any).social_links as SocialLink[] || []
+            social_links: data.social_links as SocialLink[] || []
           });
         }
-      }
-    };
-
-    fetchProfile();
-  }, [user]);
+      };
+      fetchProfileData();
+    }
+  }, [profile, user, isLoading]);
 
   useEffect(() => {
     const checkUsername = async () => {
@@ -140,7 +151,7 @@ const EditProfile = () => {
         cover_url: formData.cover_url,
         gender: formData.gender || null,
         social_links: formData.social_links.filter((l) => l.url.trim())
-      } as any).
+      }).
       eq('id', user.id);
 
       if (error) throw error;
@@ -149,8 +160,9 @@ const EditProfile = () => {
 
       toast({ title: t('saved'), description: t('profileUpdated') });
       navigate('/profile');
-    } catch (error: any) {
-      if (error.code === '23505' || error.message?.includes('duplicate key')) {
+    } catch (error: unknown) {
+      const supabaseError = error as { code?: string; message?: string };
+      if (supabaseError.code === '23505' || supabaseError.message?.includes('duplicate key')) {
         setUsernameError("Kechirasiz, ushbu username band qilingan.");
         toast({
           title: t('error'),
@@ -160,7 +172,7 @@ const EditProfile = () => {
       } else {
         toast({
           title: t('error'),
-          description: error.message || t('updateError'),
+          description: supabaseError.message || t('updateError'),
           variant: "destructive"
         });
       }

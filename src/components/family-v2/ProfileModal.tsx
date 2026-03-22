@@ -88,17 +88,20 @@ export const ProfileModal = ({
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(member.name);
   const [birthYear, setBirthYear] = useState(member.birthYear?.toString() || '');
   const [deathYear, setDeathYear] = useState(member.deathYear?.toString() || '');
   const [photoUrl, setPhotoUrl] = useState(member.photoUrl || '');
+  const [coverUrl, setCoverUrl] = useState(member.coverUrl || '');
 
   const effectiveMemberId = member.supabaseId || member.id;
 
-  const [cropperState, setCropperState] = useState<{ isOpen: boolean; imageUrl: string }>({
+  const [cropperState, setCropperState] = useState<{ isOpen: boolean; imageUrl: string; cropType: 'avatar' | 'cover' }>({
     isOpen: false,
     imageUrl: '',
+    cropType: 'avatar',
   });
 
   const [memorialPostsCount, setMemorialPostsCount] = useState<number>(0);
@@ -132,12 +135,14 @@ export const ProfileModal = ({
   const actionCount = [showAddParents, showAddSpouse, showAddChild, canMessage, showInvite, showProfileView].filter(Boolean).length;
 
   const effectivePhotoUrl = isCurrentUserProfile ? (profile?.avatar_url || photoUrl) : photoUrl;
+  const effectiveCoverUrl = isCurrentUserProfile ? ((profile as any)?.cover_url || coverUrl) : coverUrl;
 
   const hasChanges = 
     name !== member.name ||
     birthYear !== (member.birthYear?.toString() || '') ||
     deathYear !== (member.deathYear?.toString() || '') ||
-    photoUrl !== (member.photoUrl || '');
+    photoUrl !== (member.photoUrl || '') ||
+    coverUrl !== (member.coverUrl || '');
 
   // Birlashgan profillarni yig'ish (Asosiy va boshqalar)
   const allMergedProfiles: MergedProfileData[] = [
@@ -170,6 +175,7 @@ export const ProfileModal = ({
       birthYear: birthYear ? parseInt(birthYear) : undefined,
       deathYear: deathYear ? parseInt(deathYear) : undefined,
       photoUrl: photoUrl || undefined,
+      coverUrl: coverUrl || undefined,
     });
     setIsEditing(false);
   };
@@ -179,6 +185,7 @@ export const ProfileModal = ({
     setBirthYear(member.birthYear?.toString() || '');
     setDeathYear(member.deathYear?.toString() || '');
     setPhotoUrl(member.photoUrl || '');
+    setCoverUrl(member.coverUrl || '');
     setIsEditing(false);
   };
 
@@ -231,7 +238,7 @@ export const ProfileModal = ({
 
     const reader = new FileReader();
     reader.onload = () => {
-      setCropperState({ isOpen: true, imageUrl: reader.result as string });
+      setCropperState({ isOpen: true, imageUrl: reader.result as string, cropType: 'avatar' });
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -250,6 +257,36 @@ export const ProfileModal = ({
     }
   };
 
+  const handleCoverClick = () => {
+    if (!isEditing) return;
+    coverInputRef.current?.click();
+  };
+
+  const handleCoverFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropperState({ isOpen: true, imageUrl: reader.result as string, cropType: 'cover' });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const uploadCroppedCover = async (croppedUrl: string): Promise<void> => {
+    try {
+      const response = await fetch(croppedUrl);
+      const blob = await response.blob();
+      const file = new File([blob], `family_cover_${member.id}_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      const compressed = await compressImage(file);
+      const url = await uploadToR2(compressed, `family-members/${member.id}-cover`);
+      setCoverUrl(url);
+    } finally {
+      URL.revokeObjectURL(croppedUrl);
+    }
+  };
+
   const yearDisplay = member.birthYear
     ? `${member.birthYear}${member.deathYear ? ` — ${member.deathYear}` : ''}`
     : '';
@@ -260,13 +297,32 @@ export const ProfileModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[360px] max-h-[52vh] p-0 overflow-visible rounded-3xl border border-white/10 bg-background/80 backdrop-blur-2xl shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="sr-only">Profil</DialogTitle>
+      <DialogContent className="sm:max-w-[360px] max-h-[90vh] p-0 overflow-y-auto overflow-x-hidden rounded-3xl border border-white/10 bg-background/80 backdrop-blur-2xl shadow-2xl flex flex-col hide-scrollbar">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Profil</DialogTitle>
         </DialogHeader>
 
-        {/* Avatar - true overlap (does not consume card height) */}
-        <div className="absolute left-1/2 -translate-x-1/2 -top-12 z-10">
+        {/* Cover image area */}
+        <div 
+          className={cn("relative w-full h-32 shrink-0 bg-gradient-to-br from-slate-800 to-slate-900",
+           isEditing && "cursor-pointer"
+          )}
+          onClick={handleCoverClick}
+        >
+          {effectiveCoverUrl && <img src={effectiveCoverUrl} alt="Cover" className="w-full h-full object-cover" />}
+          {isEditing && (
+             <div className="absolute inset-0 bg-black/40 flex items-center justify-center transition-colors hover:bg-black/50">
+               <span className="bg-black/40 text-white text-xs px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-sm font-medium flex items-center gap-2">
+                 <ImagePlus className="w-3.5 h-3.5" />
+                 Fon rasmini o'zgartirish
+               </span>
+             </div>
+          )}
+        </div>
+        <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverFileSelect} />
+
+        {/* Avatar - true overlap over the cover */}
+        <div className="absolute left-1/2 -translate-x-1/2 top-20 z-10">
           <div
             className={cn(
               'relative w-24 h-24 rounded-full shadow-xl ring-4 ring-background transition-all duration-300 overflow-hidden',
@@ -303,8 +359,8 @@ export const ProfileModal = ({
           />
         </div>
 
-        {/* Top bar */}
-        <div className="relative z-50 flex items-center justify-between px-4 pt-3 pb-1">
+        {/* Top bar over cover */}
+        <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 pt-3 pb-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -385,14 +441,21 @@ export const ProfileModal = ({
 
           {isEditing ? (
             <div className="space-y-3 mt-1 pb-16">
-              <Input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ism kiriting"
-                className="text-center text-base font-medium rounded-2xl bg-muted/40 border-muted/60 focus:border-primary/40 h-12"
-                autoFocus
-              />
+              <div className="relative">
+                <Input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value.slice(0, 25))}
+                  placeholder="Ism kiriting"
+                  maxLength={25}
+                  className="text-center text-base font-medium rounded-2xl bg-muted/40 border-muted/60 focus:border-primary/40 h-12 pr-14"
+                  autoFocus
+                />
+                <span className={cn(
+                  "absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium tabular-nums",
+                  name.length >= 23 ? "text-rose-400" : "text-muted-foreground/50"
+                )}>{name.length}/25</span>
+              </div>
 
               <div className="flex gap-2">
                 <Input
@@ -567,9 +630,10 @@ export const ProfileModal = ({
           isOpen={cropperState.isOpen}
           onClose={() => setCropperState((prev) => ({ ...prev, isOpen: false }))}
           imageUrl={cropperState.imageUrl}
-          aspectRatio={1}
-          shape="circle"
-          onCropComplete={uploadCroppedAvatar}
+          aspectRatio={cropperState.cropType === 'cover' ? 16 / 7 : 1}
+          shape={cropperState.cropType === 'cover' ? 'rect' : 'circle'}
+          title={cropperState.cropType === 'cover' ? 'Fon rasmini kesish' : 'Profil rasmini kesish'}
+          onCropComplete={cropperState.cropType === 'cover' ? uploadCroppedCover : uploadCroppedAvatar}
         />
       </DialogContent>
     </Dialog>

@@ -7,6 +7,7 @@ interface Profile {
   id: string;
   name: string | null;
   username: string | null;
+  email?: string | null;
   bio: string | null;
   avatar_url: string | null;
   theme_mode?: string | null;
@@ -53,20 +54,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
-      if (data && !data.username) {
+      if (data && (!data.username || !data.name || data.name === 'Foydalanuvchi' || !data.email)) {
         // Generate a username for users who don't have one (e.g., Google login)
+        // Also sync their name from OAuth metadata if missing
         const { data: userData } = await supabase.auth.getUser();
-        const currentUserEmail = userData?.user?.email;
-        if (currentUserEmail) {
+        const user = userData?.user;
+        const currentUserEmail = user?.email;
+        const currentFullName = user?.user_metadata?.full_name || user?.user_metadata?.name;
+        
+        const updates: Partial<Profile> = {};
+
+        if (!data.username && currentUserEmail) {
           const baseUsername = generateBaseUsername(currentUserEmail);
-          const finalUsername = await ensureUniqueUsername(supabase, baseUsername);
-          
-          await supabase
+          const finalUsername = await ensureUniqueUsername(supabase, baseUsername, userId);
+          updates.username = finalUsername;
+        }
+
+        if ((!data.name || data.name === 'Foydalanuvchi') && currentFullName) {
+          updates.name = currentFullName;
+        }
+
+        if (!data.email && currentUserEmail) {
+          updates.email = currentUserEmail;
+        }
+        
+        if (Object.keys(updates).length > 0) {
+          console.log('Fixing profile data for user:', userId, updates);
+          const { data: updatedData, error: updateError } = await supabase
             .from('profiles')
-            .update({ username: finalUsername })
-            .eq('id', userId);
+            .upsert({ id: userId, ...updates })
+            .select()
+            .single();
             
-          data.username = finalUsername;
+          if (updateError) {
+            console.error('Error auto-updating profile:', updateError);
+          } else {
+            console.log('Successfully auto-updated profile for user:', userId, updatedData);
+            return updatedData as Profile;
+          }
         }
       }
 

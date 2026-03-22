@@ -534,26 +534,66 @@ const Messages = () => {
               }
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Icon icon="gravity-ui:chart-line-points" className="h-5 w-5" />
+                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all active:scale-95 group">
+                      <Icon 
+                        icon="heroicons:sparkles-20-solid" 
+                        className="h-5 w-5 text-primary/80 group-hover:text-primary transition-colors" 
+                      />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-56">
-                    <DropdownMenuItem onClick={() => setIsEditMode(true)}>
-                      <Edit2 className="h-4 w-4 mr-2" />
-                      Taxrirlash
+                  <DropdownMenuContent align="end" className="min-w-60 border-white/10 bg-background/60 backdrop-blur-2xl rounded-[24px] p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                    <div className="px-3 py-2 mb-1">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Amallar</p>
+                    </div>
+                    <DropdownMenuItem 
+                      onClick={() => setIsEditMode(true)}
+                      className="rounded-[14px] focus:bg-primary/10 focus:text-primary cursor-pointer px-3 py-2.5 transition-colors gap-3"
+                    >
+                      <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/5">
+                        <Edit2 className="h-4 w-4" />
+                      </div>
+                      <span className="font-semibold text-sm">Taxrirlash</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setShowRingtoneSelector(true)}>
-                      <Music className="h-4 w-4 mr-2" />
-                      Video chat uchun musiqa
+                    <DropdownMenuItem 
+                      onClick={() => setShowRingtoneSelector(true)}
+                      className="rounded-[14px] focus:bg-primary/10 focus:text-primary cursor-pointer px-3 py-2.5 transition-colors gap-3"
+                    >
+                      <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/5">
+                        <Music className="h-4 w-4" />
+                      </div>
+                      <span className="font-semibold text-sm">Rington sozlamalari</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleNewGroup}>
-                      <Users className="h-4 w-4 mr-2" />
-                      Yangi guruh
+                    
+                    <div className="h-px bg-white/5 my-2 mx-2" />
+                    
+                    <div className="px-3 py-2 mb-1">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Yangi chat</p>
+                    </div>
+                    
+                    <DropdownMenuItem 
+                      onClick={handleNewGroup}
+                      className="rounded-[14px] focus:bg-primary/10 focus:text-primary cursor-pointer px-3 py-2.5 transition-colors gap-3"
+                    >
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/10 text-primary">
+                        <Users className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-sm">Yangi guruh</span>
+                        <span className="text-[10px] opacity-60">Do'stlar va oila uchun</span>
+                      </div>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleNewChannel}>
-                      <Megaphone className="h-4 w-4 mr-2" />
-                      Yangi kanal
+                    
+                    <DropdownMenuItem 
+                      onClick={handleNewChannel}
+                      className="rounded-[14px] focus:bg-primary/10 focus:text-primary cursor-pointer px-3 py-2.5 transition-colors gap-3"
+                    >
+                      <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/10 text-indigo-400">
+                        <Megaphone className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-sm">Yangi kanal</span>
+                        <span className="text-[10px] opacity-60">Muhim yangiliklar uchun</span>
+                      </div>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

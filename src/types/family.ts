@@ -14,6 +14,7 @@ export interface FamilyMember {
   deathYear?: number;
   gender: 'male' | 'female';
   photoUrl?: string;
+  coverUrl?: string;
   spouseId?: string;
   parentIds?: string[];
   childrenIds?: string[];
@@ -32,6 +33,7 @@ export interface AddMemberData {
   deathYear?: number;
   gender: 'male' | 'female';
   photoUrl?: string;
+  coverUrl?: string;
 }
 
 export type AddMemberType = 'parents' | 'spouse' | 'child';

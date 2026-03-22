@@ -24,9 +24,9 @@ export const RelativeConnectionSheet = ({
   targetUserId,
   targetUserName,
 }: RelativeConnectionSheetProps) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'their' | 'mine'>('mine');
+  const [activeTab, setActiveTab] = useState<'their' | 'mine'>('their');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedFromTab, setSelectedFromTab] = useState<'their' | 'mine' | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -71,27 +71,30 @@ export const RelativeConnectionSheet = ({
   }, [selectedNodeId, selectedFromTab, theirMembers, myMembers]);
 
   const handleNodeSelect = useCallback((member: FamilyMember, fromTab: 'their' | 'mine') => {
-    if (fromTab === 'their') {
-      toast({ title: "Xato", description: "Siz faqat O'z daraxtingizdan (Sizning daraxtingiz bo'limidan) profil tanlashingiz va bog'lashingiz mumkin.", variant: 'default' });
-      return;
-    }
-    
-    if (targetGender && member.gender && targetGender !== member.gender) {
-      toast({ title: "Jinsi mos emas", description: `Foydalanuvchi jinsi (${targetGender === 'male' ? 'Erkak' : 'Ayol'}) tanlangan joy jinsiga (${member.gender === 'male' ? 'Erkak' : 'Ayol'}) mos tushmayapti.`, variant: 'destructive' });
-      return;
+    if (fromTab === 'mine') {
+      if (targetGender && member.gender && targetGender !== member.gender) {
+        toast({ title: "Jinsi mos emas", description: `Foydalanuvchi jinsi (${targetGender === 'male' ? 'Erkak' : 'Ayol'}) tanlangan joy jinsiga (${member.gender === 'male' ? 'Erkak' : 'Ayol'}) mos tushmayapti.`, variant: 'destructive' });
+        return;
+      }
+    } else {
+      // In their tree, I want to take a spot matching MY gender
+      const myGender = profile?.gender;
+      if (myGender && member.gender && myGender !== member.gender) {
+        toast({ title: "Jinsi mos emas", description: `Sizning jinsingiz (${myGender === 'male' ? 'Erkak' : 'Ayol'}) tanlangan joy jinsiga (${member.gender === 'male' ? 'Erkak' : 'Ayol'}) mos tushmayapti.`, variant: 'destructive' });
+        return;
+      }
     }
 
     setSelectedNodeId(prevNodeId => {
       setSelectedFromTab(prevFromTab => {
         if (prevNodeId === member.id && prevFromTab === fromTab) {
-          // Unselect if same node clicked
           return null;
         }
         return fromTab;
       });
       return prevNodeId === member.id ? null : member.id;
     });
-  }, [targetGender, toast]);
+  }, [targetGender, toast, profile]);
 
   const handleNodeSelectTheir = useCallback((m: FamilyMember) => handleNodeSelect(m, 'their'), [handleNodeSelect]);
   const handleNodeSelectMine = useCallback((m: FamilyMember) => handleNodeSelect(m, 'mine'), [handleNodeSelect]);
@@ -120,19 +123,21 @@ export const RelativeConnectionSheet = ({
         return;
       }
 
-      // Send family invitation (same as existing flow)
+      const relationType = selectedFromTab === 'their' ? 'join_request' : 'family_member';
+
+      // Send family invitation (or join request)
       await supabase.from('family_invitations').insert({
         sender_id: user.id,
-        receiver_id: targetUserId,
+        receiver_id: targetUserId, // They always receive the request
         member_id: memberId,
-        relation_type: 'family_member',
+        relation_type: relationType,
       });
 
       // Notify
       await supabase.from('notifications').insert({
         user_id: targetUserId,
         actor_id: user.id,
-        type: 'family_invitation',
+        type: relationType === 'join_request' ? 'join_request' : 'family_invitation',
       });
 
       toast({
@@ -140,7 +145,6 @@ export const RelativeConnectionSheet = ({
         description: `${targetUserName} ga qo'shilish so'rovi yuborildi`,
       });
 
-      window.dispatchEvent(new CustomEvent('family-tree-reload'));
       setSelectedNodeId(null);
       setSelectedFromTab(null);
       onOpenChange(false);

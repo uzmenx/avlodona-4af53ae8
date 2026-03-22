@@ -310,36 +310,35 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
           }
         </div>
         
-        {/* Name and year display - clicking opens profile */}
         <div
-          className="text-center mt-2 cursor-pointer relative"
+          className="text-center mt-2 cursor-pointer relative flex flex-col items-center gap-1"
           onClick={handleNameClick}>
           
           <div className={cn(
-            "font-medium text-sm px-3 py-1 rounded-full inline-flex items-center gap-2",
+            "font-medium text-[13px] px-3 py-0.5 rounded-full inline-flex items-center gap-2 max-w-[120px] justify-center",
             member.linkedUserId ? 
               "bg-emerald-100 dark:bg-green-900/40 border border-emerald-300 dark:border-green-500/50 text-emerald-950 dark:text-green-50 backdrop-blur-sm shadow-[0_0_10px_rgba(34,197,94,0.2)] dark:shadow-[0_0_15px_rgba(34,197,94,0.15)]" :
               isMale ? "bg-sky-900/80 text-sky-100" : "bg-pink-900/80 text-pink-100"
           )}>
             {member.linkedUserId && (
-              <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+              <span className="relative flex h-2 w-2 flex-shrink-0">
                 {isOnline && (
                   <span className="animate-pulse-green absolute inline-flex h-full w-full rounded-full bg-green-500 dark:bg-green-400 opacity-75"></span>
                 )}
                 <span className={cn(
-                  "relative inline-flex rounded-full h-2.5 w-2.5",
+                  "relative inline-flex rounded-full h-2 w-2",
                   isOnline ? "bg-green-600 dark:bg-green-500" : "bg-emerald-300 dark:bg-white/60"
                 )}></span>
               </span>
             )}
-            <span className="truncate max-w-[120px]">{member.name || 'Ism kiriting'}</span>
+            <span className="truncate">{member.name || 'Ism kiriting'}</span>
           </div>
           {yearDisplay &&
           <span className={cn(
-            "text-xs mt-1 inline-block px-2 py-0.5 rounded-full",
+            "text-[10px] inline-flex px-2 py-0.5 rounded-md font-medium tracking-tight whitespace-nowrap",
             isMale ?
-            "bg-sky-800/60 text-sky-200" :
-            "bg-pink-800/60 text-pink-200"
+            "bg-sky-800/80 text-sky-100" :
+            "bg-pink-800/80 text-pink-100"
           )}>
               {yearDisplay}
             </span>

@@ -139,14 +139,26 @@ export const useFamilyInvitations = () => {
         await refreshProfile?.();
       }
 
+      const isJoinRequest = invitation.relation_type === 'join_request';
+      const userToLink = isJoinRequest ? invitation.sender_id : user.id;
+      
+      // Need profile of the user being linked
+      let linkProfile = profile;
+      if (isJoinRequest) {
+        const { data: senderData } = await supabase.from('profiles').select('*').eq('id', invitation.sender_id).single();
+        if (senderData) {
+          linkProfile = senderData;
+        }
+      }
+
       const { error: linkError } = await supabase
         .from('family_tree_members')
         .update({ 
-          linked_user_id: user.id,
-          member_name: profile.name || profile.username || 'Foydalanuvchi',
-          avatar_url: profile.avatar_url,
+          linked_user_id: userToLink,
+          member_name: linkProfile.name || linkProfile.username || 'Foydalanuvchi',
+          avatar_url: linkProfile.avatar_url,
           is_placeholder: false,
-          gender: profile.gender || undefined,
+          gender: linkProfile.gender || undefined,
         })
         .eq('id', invitation.member_id);
 
@@ -155,23 +167,23 @@ export const useFamilyInvitations = () => {
       await supabase.from('notifications').insert({
         user_id: invitation.sender_id,
         actor_id: user.id,
-        type: 'family_invitation_accepted',
+        type: isJoinRequest ? 'join_request_accepted' : 'family_invitation_accepted',
       });
 
       // CRITICAL: Find merge candidates BEFORE self-merge
       // Otherwise receiver's self node gets merged_into set and findMergeCandidates can't find it
       const result = await findMergeCandidates(
-        invitation.sender_id,
-        user.id,
-        invitation.member_id
+        isJoinRequest ? user.id : invitation.sender_id, // sender of tree
+        userToLink, // profile linking to tree
+        invitation.member_id 
       );
 
       // NOW do the self-merge AFTER finding candidates
       const { data: receiverSelfNode } = await supabase
         .from('family_tree_members')
         .select('id')
-        .eq('owner_id', user.id)
-        .eq('linked_user_id', user.id)
+        .eq('owner_id', userToLink)
+        .eq('linked_user_id', userToLink)
         .is('merged_into', null)
         .single();
 
@@ -179,8 +191,8 @@ export const useFamilyInvitations = () => {
         await executeParentMerge([{
           sourceId: invitation.member_id,
           targetId: receiverSelfNode.id,
-          sourceName: profile.name || '',
-          targetName: profile.name || '',
+          sourceName: linkProfile.name || '',
+          targetName: linkProfile.name || '',
           relationship: 'self',
         }]);
       }

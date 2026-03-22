@@ -4,11 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Check } from 'lucide-react';
+import { Search, Check, ArrowLeft, Users, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { StarUsername } from '@/components/user/StarUsername';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface FollowUser {
   id: string;
@@ -33,6 +36,7 @@ export const AddMembersDialog = ({
   type
 }: AddMembersDialogProps) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [followers, setFollowers] = useState<FollowUser[]>([]);
   const [following, setFollowing] = useState<FollowUser[]>([]);
@@ -45,7 +49,6 @@ export const AddMembersDialog = ({
     const fetchUsers = async () => {
       setIsLoading(true);
       try {
-        // Fetch followers
         const { data: followersData } = await supabase
           .from('follows')
           .select('follower_id')
@@ -62,7 +65,6 @@ export const AddMembersDialog = ({
           }
         }
 
-        // Fetch following
         const { data: followingData } = await supabase
           .from('follows')
           .select('following_id')
@@ -88,7 +90,6 @@ export const AddMembersDialog = ({
     fetchUsers();
   }, [user?.id, open]);
 
-  // Combine followers and following, removing duplicates
   const allUsers = [...followers, ...following].filter((user, index, self) =>
     index === self.findIndex(u => u.id === user.id)
   );
@@ -129,80 +130,129 @@ export const AddMembersDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>A'zolar qo'shish</span>
-            <span className="text-sm font-normal text-muted-foreground">
-              {selectedIds.size} / {allUsers.length}
-            </span>
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[85vh] border-white/10 bg-background/60 backdrop-blur-2xl p-0 overflow-hidden rounded-[32px] shadow-2xl flex flex-col">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent blur-sm" />
+        
+        <div className="px-6 pt-6 pb-4">
+          <DialogHeader>
+            <div className="flex items-center justify-between mb-2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onBack}
+                className="h-8 w-8 rounded-full bg-white/5 hover:bg-white/10"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <DialogTitle className="text-xl font-extrabold tracking-tight">
+                {t('members') || "A'zolar qo'shish"}
+              </DialogTitle>
+              <div className="h-8 w-8" /> {/* Spacer */}
+            </div>
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold">
+                {selectedIds.size} tanlandi
+              </div>
+            </div>
+          </DialogHeader>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Qidirish..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+          <div className="relative group/search">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within/search:text-primary transition-colors" />
+            <Input
+              placeholder={t('searchChats') || "Qidirish..."}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-11 bg-white/5 border-white/10 rounded-2xl focus:ring-primary/20 focus:border-primary/40 transition-all"
+            />
+          </div>
         </div>
 
-        {/* Users list */}
-        <ScrollArea className="flex-1 -mx-6 px-6">
-          <div className="space-y-1">
+        <ScrollArea className="flex-1 px-4">
+          <div className="space-y-1 pb-4">
             {isLoading ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">Yuklanmoqda...</p>
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+                <p className="text-sm text-muted-foreground">{t('loading') || 'Yuklanmoqda...'}</p>
               </div>
             ) : filteredUsers.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  {searchQuery ? 'Hech kim topilmadi' : 'Kuzatuvchi yoki kuzatilayotganlar yo\'q'}
+              <div className="text-center py-12 px-6">
+                <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/5">
+                  <Users className="h-6 w-6 text-muted-foreground/40" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {searchQuery ? 'Hech kim topilmadi' : 'Hozircha kuzatuvchilar yo\'q'}
                 </p>
               </div>
             ) : (
-              filteredUsers.map((user) => (
-                <div
-                  key={user.id}
-                  onClick={() => toggleUser(user.id)}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                >
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={user.avatar_url || undefined} />
-                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">
-                      {user.name || 'Foydalanuvchi'}
-                    </p>
-                    <div className="truncate">
-                      <StarUsername username={user.username || 'username'} textClassName="text-sm" />
+              <AnimatePresence initial={false}>
+                {filteredUsers.map((u, idx) => (
+                  <motion.div
+                    key={u.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0, transition: { delay: idx * 0.03 } }}
+                    onClick={() => toggleUser(u.id)}
+                    className={cn(
+                      "group flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all border border-transparent",
+                      selectedIds.has(u.id) 
+                        ? "bg-primary/10 border-primary/20" 
+                        : "hover:bg-white/5 hover:border-white/5"
+                    )}
+                  >
+                    <div className="relative">
+                      <Avatar className="h-11 w-11 border border-white/10">
+                        <AvatarImage src={u.avatar_url || undefined} className="object-cover" />
+                        <AvatarFallback className="bg-gradient-to-br from-primary/10 to-violet-500/10 text-xs">
+                          {getInitials(u.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {selectedIds.has(u.id) && (
+                        <motion.div 
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-2 border-background"
+                        >
+                          <Check className="h-3 w-3" />
+                        </motion.div>
+                      )}
                     </div>
-                  </div>
-                  <Checkbox
-                    checked={selectedIds.has(user.id)}
-                    onCheckedChange={() => toggleUser(user.id)}
-                    className="h-5 w-5"
-                  />
-                </div>
-              ))
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">
+                        {u.name || 'Foydalanuvchi'}
+                      </p>
+                      <div className="truncate opacity-70">
+                        <StarUsername username={u.username || 'username'} textClassName="text-[11px]" />
+                      </div>
+                    </div>
+
+                    <Checkbox
+                      checked={selectedIds.has(u.id)}
+                      onCheckedChange={() => toggleUser(u.id)}
+                      className="h-5 w-5 rounded-lg border-white/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             )}
           </div>
         </ScrollArea>
 
-        <div className="flex justify-between gap-2 pt-4 border-t">
-          <Button variant="ghost" onClick={onBack}>
-            Orqaga
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={handleCancel}>
-              Bekor qilish
+        <div className="p-6 bg-black/10 backdrop-blur-md border-t border-white/5">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              onClick={handleCancel}
+              className="flex-1 h-12 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors"
+            >
+              {t('cancel') || 'Bekor qilish'}
             </Button>
-            <Button onClick={handleComplete}>
-              Yaratish
+            <Button 
+              onClick={handleComplete} 
+              disabled={selectedIds.size === 0}
+              className="flex-[1.5] h-12 rounded-2xl bg-gradient-to-r from-primary to-violet-600 text-white shadow-lg shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
+            >
+              <span>{t('addNav') || 'Yaratish'}</span>
+              <Check className="h-4 w-4 group-hover:scale-110 transition-transform" />
             </Button>
           </div>
         </div>

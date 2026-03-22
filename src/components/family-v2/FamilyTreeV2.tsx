@@ -47,6 +47,7 @@ export const FamilyTreeV2 = () => {
   const { user, profile, refreshProfile } = useAuth();
   const {
     members, rootId, isLoading,
+    totalCount, activeCount,
     addInitialCouple, addParents, addSpouse, addChild,
     updateMember, updatePosition, removeMember, createSelfNode,
     reorderMergedProfiles, detachNetwork, isSharedNetwork
@@ -401,10 +402,11 @@ export const FamilyTreeV2 = () => {
       {/* Tree Post Header */}
       {!isMergeMode && (
         <TreePostHeader
-          onOpenRelativeSearch={() => setIsRelativeSearchOpen(true)}
           onSave={handleSaveTree}
           onPublish={handlePublish}
-          memberCount={Object.values(members || {}).reduce((count, m) => count + (m.linkedUserId ? 1 : 0) + (m.mergedProfiles?.filter(mp => !!mp.linkedUserId).length || 0), 0)}
+          members={members}
+          totalCount={totalCount}
+          activeCount={activeCount}
           isSaving={isSaving}
           hasCurrentPost={!!currentPostId}
           searchQuery={searchQuery}

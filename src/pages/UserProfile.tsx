@@ -4,12 +4,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Sparkles, Grid3X3, Bookmark, Users, AtSign, ChevronDown, ChevronUp, Grid2X2, LayoutList, Columns2, ShieldBan, ShieldCheck, MoreVertical, Link2, Search, Heart, Eye, ArrowLeftRight, Plus, Image, Video, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Sparkles, Grid3X3, Bookmark, Users, AtSign, ChevronDown, ChevronUp, Grid2X2, LayoutList, Columns2, ShieldBan, ShieldCheck, MoreVertical, Link2, Search, Heart, Eye, ArrowLeftRight, Plus, Image, Video, Loader2, X, Edit2, Camera } from 'lucide-react';
 import { useMemorialPosts } from '@/hooks/useMemorialPosts';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Icon } from '@iconify/react';
-import { FamilyMembersSheet, FollowHubDrawer, SocialLinksList } from '@/components/profile';
+import { compressImage, uploadToR2 } from '@/lib/r2Upload';
+import { FamilyMembersSheet, FollowHubDrawer, SocialLinksList, ImageCropper } from '@/components/profile';
 import { SocialLink } from '@/components/profile/SocialLinksEditor';
 import { useStoryHighlights } from '@/hooks/useStoryHighlights';
 import { usePostCollections } from '@/hooks/usePostCollections';
@@ -105,6 +109,12 @@ interface UserProfile {
   hide_mentions?: boolean;
   hide_saved_posts?: boolean;
   last_seen?: string | null;
+  // added for unlinked/memorial profiles
+  birth_year?: string | null;
+  death_year?: string | null;
+  owner_id?: string | null;
+  linked_user_id?: string | null;
+  gender?: string | null;
 }
 
 const PremiumStarsIcon = ({ className, active, size = 'default' }: {className?: string;active?: boolean;size?: 'default' | 'sm';}) =>
@@ -175,8 +185,7 @@ export const UserProfilePage = () => {
       comments_count: mp.comments_count || 0,
       views_count: mp.views_count || 0,
       author: mp.author as any,
-      is_memorial: true,
-      comments_count: (mp as any).comments_count || 0
+      is_memorial: true
     })) as Post[];
   }, [memorialPosts]);
 
@@ -202,6 +211,18 @@ export const UserProfilePage = () => {
   const [bioExpanded, setBioExpanded] = useState(false);
   const [needsMoreButton, setNeedsMoreButton] = useState(false);
   const bioRef = useRef<HTMLDivElement>(null);
+  
+  // Profile edit states
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editBirthYear, setEditBirthYear] = useState('');
+  const [editDeathYear, setEditDeathYear] = useState('');
+  const [editCoverUrl, setEditCoverUrl] = useState('');
+  const [editAvatarUrl, setEditAvatarUrl] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const avatarEditInputRef = useRef<HTMLInputElement>(null);
+  const [editCropperState, setEditCropperState] = useState<{isOpen: boolean; imageUrl: string; cropType: 'avatar' | 'cover'}>({isOpen: false, imageUrl: '', cropType: 'cover'});
 
   const { highlights } = useStoryHighlights(userId);
   const { collections, selectedCollectionId, setSelectedCollectionId, collectionPosts } = usePostCollections(userId);
@@ -386,6 +407,10 @@ export const UserProfilePage = () => {
           avatar_url?: string | null;
           birth_year?: string | null;
           death_year?: string | null;
+          cover_url?: string | null;
+          owner_id?: string | null;
+          linked_user_id?: string | null;
+          gender?: string | null;
         } | null = null;
         {
           const { data, error } = await supabase.
@@ -427,10 +452,15 @@ export const UserProfilePage = () => {
             bio: deathYear ?
             `${birthYear ? birthYear + ' ' : ''}- ${deathYear}\nXotirasiga bag'ishlanadi` :
             "Xotira sahifasi",
-            cover_url: null,
+            cover_url: memberRow.cover_url ?? null,
             social_links: null,
             theme_mode: null,
-            bg_theme: null
+            bg_theme: null,
+            birth_year: birthYear,
+            death_year: deathYear,
+            owner_id: memberRow.owner_id ?? null,
+            linked_user_id: memberRow.linked_user_id ?? null,
+            gender: memberRow.gender ?? null,
           });
         } else {
           setProfile(null);
@@ -509,6 +539,72 @@ export const UserProfilePage = () => {
     return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+
+  const handleSaveEdit = async () => {
+    if (!profile || !userId) return;
+    setIsSavingEdit(true);
+    try {
+      const updates: Record<string, string | number | null> = {
+        member_name: editName,
+        birth_year: editBirthYear ? parseInt(editBirthYear) : null,
+        death_year: editDeathYear ? parseInt(editDeathYear) : null,
+      };
+
+      if (editCoverUrl && !editCoverUrl.startsWith('blob:')) {
+        updates.cover_url = editCoverUrl;
+      }
+      if (editAvatarUrl && !editAvatarUrl.startsWith('blob:')) {
+        updates.photo_url = editAvatarUrl;
+      }
+
+      await supabase
+        .from('family_tree_members')
+        .update(updates)
+        .eq('id', userId)
+        .eq('owner_id', currentUser?.id);
+
+      toast({ title: 'Profil muvaffaqiyatli saqlandi' });
+      setEditModalOpen(false);
+      fetchProfile();
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Xatolik yuz berdi', variant: 'destructive' });
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleEditFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setEditCropperState({ isOpen: true, imageUrl: reader.result as string, cropType: type });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleCropComplete = async (croppedUrl: string) => {
+    try {
+      const response = await fetch(croppedUrl);
+      const blob = await response.blob();
+      const type = editCropperState.cropType;
+      const filename = type === 'cover'
+        ? `memorial_cover_${userId}_${Date.now()}.jpg`
+        : `memorial_avatar_${userId}_${Date.now()}.jpg`;
+      const file = new File([blob], filename, { type: 'image/jpeg' });
+      const compressed = await compressImage(file);
+      const url = await uploadToR2(compressed, type === 'cover' ? `memorial-covers/${userId}` : `memorial-avatars/${userId}`);
+      if (type === 'cover') {
+        setEditCoverUrl(url);
+      } else {
+        setEditAvatarUrl(url);
+      }
+    } finally {
+      URL.revokeObjectURL(croppedUrl);
+    }
+  };
 
   const displayPosts = selectedCollectionId ? collectionPosts : posts;
   const filteredPosts = useMemo(() => {
@@ -683,7 +779,25 @@ export const UserProfilePage = () => {
 
         {/* Memorial "add post" button (top-right) */}
         {isMemorial && profile &&
-        <div className="absolute top-4 right-4 z-10">
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
+            {!profile.linked_user_id && profile.owner_id === currentUser?.id && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setEditName(profile.name || '');
+                  setEditBirthYear(profile.birth_year || '');
+                  setEditDeathYear(profile.death_year || '');
+                  setEditCoverUrl(profile.cover_url || '');
+                  setEditModalOpen(true);
+                }}
+                className="h-10 w-10 rounded-full text-white"
+                style={{ backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}
+                aria-label="Tahrirlash"
+              >
+                <Edit2 className="h-5 w-5" />
+              </Button>
+            )}
             <Button
             variant="ghost"
             size="icon"
@@ -783,29 +897,49 @@ export const UserProfilePage = () => {
               })()}
             </div>
 
-            {/* RIGHT: Oila a'zolari */}
-            <button
-              type="button"
-              onClick={() => setFamilyMembersOpen(true)}
-              className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0 relative">
-              
-              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                Oila a'zolari
-              </span>
-              <span className="text-lg font-extrabold text-foreground leading-none">
-                {formatCount(familyMemberCount)}
-              </span>
+            {/* RIGHT: Oila a'zolari yoki Yili */}
+            {profile.birth_year ? (
+              <div
+                className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0 relative">
+                <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                  Yili
+                </span>
+                {profile.death_year ? (
+                  <div className="flex items-center gap-1 leading-none">
+                    <span className="text-sm font-extrabold text-foreground">{profile.birth_year}</span>
+                    <span className="text-muted-foreground text-xs font-medium">—</span>
+                    <span className="text-sm font-extrabold text-foreground">{profile.death_year}</span>
+                  </div>
+                ) : (
+                  <span className="text-lg font-extrabold text-foreground leading-none">{profile.birth_year}</span>
+                )}
+              </div>
+            ) : isMemorial ? (
+              <div className="flex-1" />
+            ) : (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowPostsStats(!showPostsStats);
-                }}
-                className="absolute -bottom-2 right-2 h-5 w-5 bg-muted rounded-full flex items-center justify-center hover:bg-muted-foreground/20 transition-all"
-                style={{ transform: showPostsStats ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>
+                type="button"
+                onClick={() => setFamilyMembersOpen(true)}
+                className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0 relative">
                 
-                <ChevronDown className="h-3 w-3 text-foreground" />
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                  Oila a'zolari
+                </span>
+                <span className="text-lg font-extrabold text-foreground leading-none">
+                  {formatCount(familyMemberCount)}
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowPostsStats(!showPostsStats);
+                  }}
+                  className="absolute -bottom-2 right-2 h-5 w-5 bg-muted rounded-full flex items-center justify-center hover:bg-muted-foreground/20 transition-all"
+                  style={{ transform: showPostsStats ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>
+                  
+                  <ChevronDown className="h-3 w-3 text-foreground" />
+                </button>
               </button>
-            </button>
+            )}
           </div>
 
           {/* ROW 2: Qarindoshim | Name & Username | Xabar */}
@@ -1452,6 +1586,148 @@ export const UserProfilePage = () => {
             persistKey={`userprofile:${userId || 'unknown'}`}
             onClose={() => setStoryViewerOpen(false)} />
           )}
+
+        {/* Profile Edit Dialog */}
+        <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+          <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden rounded-3xl border border-white/10 bg-background/95 backdrop-blur-2xl shadow-2xl">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Profilni tahrirlash</DialogTitle>
+            </DialogHeader>
+
+            {/* Cover section - acts as header */}
+            <div
+              className="relative h-36 bg-gradient-to-br from-slate-700 to-slate-900 cursor-pointer group"
+              onClick={() => coverInputRef.current?.click()}
+            >
+              {editCoverUrl && <img src={editCoverUrl} alt="Cover" className="w-full h-full object-cover" />}
+              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                <div className="bg-black/50 text-white text-xs px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-sm font-medium flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="w-3.5 h-3.5" />
+                  Fon rasmini o'zgartirish
+                </div>
+              </div>
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleEditFileSelect(e, 'cover')}
+              />
+            </div>
+
+            {/* Avatar overlapping cover */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-[102px] z-20">
+              <div
+                className="w-24 h-24 rounded-full ring-4 ring-background overflow-hidden cursor-pointer group/av shadow-xl bg-gradient-to-br from-primary to-accent"
+                onClick={() => avatarEditInputRef.current?.click()}
+              >
+                {(editAvatarUrl || profile?.avatar_url) && (
+                  <img src={editAvatarUrl || profile?.avatar_url || ''} alt="Avatar" className="w-full h-full object-cover" />
+                )}
+                {!editAvatarUrl && !profile?.avatar_url && (
+                  <span className="w-full h-full flex items-center justify-center text-3xl font-bold text-white">
+                    {(editName || profile?.name || '?')[0]?.toUpperCase()}
+                  </span>
+                )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/av:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+                  <Camera className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <input
+                ref={avatarEditInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleEditFileSelect(e, 'avatar')}
+              />
+            </div>
+
+            {/* Form body */}
+            <div className="px-5 pb-5 pt-16 flex flex-col gap-4">
+              {/* Name */}
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ism</Label>
+                <div className="relative">
+                  <Input
+                    value={editName}
+                    maxLength={25}
+                    onChange={(e) => setEditName(e.target.value.slice(0, 25))}
+                    placeholder="Ismini kiriting"
+                    className="rounded-2xl h-12 bg-muted/30 border-muted/50 focus:border-primary/50 text-center text-base font-medium pr-14"
+                  />
+                  <span className={cn(
+                    "absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium tabular-nums",
+                    editName.length >= 23 ? "text-rose-400" : "text-muted-foreground/50"
+                  )}>{editName.length}/25</span>
+                </div>
+              </div>
+
+              {/* Years */}
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Yillar</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] text-muted-foreground font-medium text-center">Tug'ilgan</span>
+                    <Input
+                      type="number"
+                      value={editBirthYear}
+                      onChange={(e) => setEditBirthYear(e.target.value)}
+                      placeholder="1980"
+                      min="1800"
+                      max={new Date().getFullYear()}
+                      className="rounded-2xl h-11 bg-muted/30 border-muted/50 focus:border-primary/50 text-center text-base font-semibold"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] text-muted-foreground font-medium text-center">Vafot etgan</span>
+                    <Input
+                      type="number"
+                      value={editDeathYear}
+                      onChange={(e) => setEditDeathYear(e.target.value)}
+                      placeholder="2020"
+                      min="1800"
+                      max={new Date().getFullYear()}
+                      className="rounded-2xl h-11 bg-muted/30 border-muted/50 focus:border-primary/50 text-center text-base font-semibold"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview of years */}
+              {(editBirthYear || editDeathYear) && (
+                <div className="flex items-center justify-center gap-2 bg-muted/20 rounded-2xl py-2 px-4 border border-muted/30">
+                  <span className="text-sm font-medium text-foreground/80">
+                    {editBirthYear && <span>{editBirthYear}</span>}
+                    {editBirthYear && editDeathYear && <span className="mx-1 text-muted-foreground">—</span>}
+                    {editDeathYear && <span>{editDeathYear}</span>}
+                  </span>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-1">
+                <Button variant="outline" onClick={() => setEditModalOpen(false)} className="flex-1 rounded-2xl h-11 border-muted/60">
+                  Bekor
+                </Button>
+                <Button onClick={handleSaveEdit} disabled={isSavingEdit} className="flex-1 rounded-2xl h-11">
+                  {isSavingEdit && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Saqlash
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Crop modal for edit dialog */}
+        <ImageCropper
+          isOpen={editCropperState.isOpen}
+          onClose={() => setEditCropperState(prev => ({ ...prev, isOpen: false }))}
+          imageUrl={editCropperState.imageUrl}
+          aspectRatio={editCropperState.cropType === 'cover' ? 16 / 7 : 1}
+          shape={editCropperState.cropType === 'cover' ? 'rect' : 'circle'}
+          title={editCropperState.cropType === 'cover' ? 'Fon rasmini kesish' : 'Profil rasmini kesish'}
+          onCropComplete={handleCropComplete}
+        />
 
         {/* Relative connection sheet */}
         <RelativeConnectionSheet

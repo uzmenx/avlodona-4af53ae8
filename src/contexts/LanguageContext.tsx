@@ -206,6 +206,11 @@ const translations = {
   delete: { uz: "O'chirish", ru: "Удалить", en: "Delete" },
   send: { uz: "Yuborish", ru: "Отправить", en: "Send" },
   back: { uz: "Orqaga", ru: "Назад", en: "Back" },
+  next: { uz: "Keyingisi", ru: "Далее", en: "Next" },
+  newGroup: { uz: "Yangi guruh", ru: "Новая группа", en: "New group" },
+  newChannel: { uz: "Yangi kanal", ru: "Новый канал", en: "New channel" },
+  channelName: { uz: "Kanal nomi", ru: "Название канала", en: "Channel name" },
+  namePlaceholder: { uz: "Nomini kiriting", ru: "Введите название", en: "Enter name" },
 } as const;
 
 type TranslationKey = keyof typeof translations;
