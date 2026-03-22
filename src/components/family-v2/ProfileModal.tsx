@@ -1,10 +1,12 @@
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useRef, useState, useEffect, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Baby,
   Edit2,
   ImagePlus,
   Link,
+  Link2Off,
   MessageCircle,
   MoreVertical,
   Send,
@@ -38,6 +40,7 @@ interface MergedProfileData {
   name: string;
   photoUrl?: string;
   gender: 'male' | 'female';
+  linkedUserId?: string;
 }
 
 interface ProfileModalProps {
@@ -50,7 +53,7 @@ interface ProfileModalProps {
   onAddSpouse?: (id: string) => void;
   onAddChild?: (id: string) => void;
   onSendInvitation?: (member: FamilyMember) => void;
-  onReorderMergedProfiles?: (profiles: MergedProfileData[]) => void;
+  onReorderMergedProfiles?: (profiles: MergedProfileData[]) => Promise<void> | void;
   hasParents?: boolean;
   hasSpouse?: boolean;
   canAddChild?: boolean;
@@ -58,6 +61,8 @@ interface ProfileModalProps {
   // Spouse lock props
   isSpouseLocked?: boolean;
   onToggleSpouseLock?: () => void;
+  onDetachNetwork?: () => Promise<boolean>;
+  isSharedNetwork?: boolean;
 }
 
 export const ProfileModal = ({
@@ -77,6 +82,8 @@ export const ProfileModal = ({
   mergedProfiles = [],
   isSpouseLocked = true,
   onToggleSpouseLock,
+  onDetachNetwork,
+  isSharedNetwork = false,
 }: ProfileModalProps) => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -94,6 +101,24 @@ export const ProfileModal = ({
     imageUrl: '',
   });
 
+  const [memorialPostsCount, setMemorialPostsCount] = useState<number>(0);
+  const [localMergedProfiles, setLocalMergedProfiles] = useState<MergedProfileData[]>([]);
+  const [isSavingReorder, setIsSavingReorder] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchMemorialCount = async () => {
+      const { count } = await supabase
+        .from('memorial_posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('family_member_id', member.id);
+        
+      setMemorialPostsCount(count || 0);
+    };
+    
+    fetchMemorialCount();
+  }, [isOpen, member.id]);
+
   // Check if this member is linked to the current user (protected)
   const isCurrentUserProfile = member.linkedUserId === user?.id;
   const isLiveProfile = !!member.linkedUserId;
@@ -102,7 +127,7 @@ export const ProfileModal = ({
   const showAddParents = !hasParents && !!onAddParents;
   const showAddSpouse = !hasSpouse && !!onAddSpouse;
   const showAddChild = canAddChild && !!onAddChild;
-  const showInvite = !!(member.name && !member.linkedUserId && onSendInvitation);
+  const showInvite = !!(!member.linkedUserId && onSendInvitation);
   const showProfileView = true;
   const actionCount = [showAddParents, showAddSpouse, showAddChild, canMessage, showInvite, showProfileView].filter(Boolean).length;
 
@@ -113,6 +138,31 @@ export const ProfileModal = ({
     birthYear !== (member.birthYear?.toString() || '') ||
     deathYear !== (member.deathYear?.toString() || '') ||
     photoUrl !== (member.photoUrl || '');
+
+  // Birlashgan profillarni yig'ish (Asosiy va boshqalar)
+  const allMergedProfiles: MergedProfileData[] = [
+    { 
+      id: member.id, 
+      name: member.name, 
+      photoUrl: member.photoUrl, 
+      gender: member.gender,
+      linkedUserId: member.linkedUserId
+    },
+    ...(member.mergedProfiles || []).map(mp => ({
+      id: mp.id,
+      name: mp.name,
+      photoUrl: mp.photoUrl,
+      gender: mp.gender,
+      linkedUserId: mp.linkedUserId 
+    }))
+  ];
+
+  const mergedProfilesKey = member.mergedProfiles?.map(p => p.id).join(',') ?? '';
+
+  useEffect(() => {
+    setLocalMergedProfiles(allMergedProfiles);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [member.id, mergedProfilesKey]);
 
   const handleSave = () => {
     onUpdate(member.id, {
@@ -133,14 +183,29 @@ export const ProfileModal = ({
   };
 
   const handleDelete = () => {
-    // Don't allow deleting own profile
     if (isCurrentUserProfile) {
       return;
     }
-    if (confirm("Ushbu a'zoni o'chirmoqchimisiz?")) {
-      onDelete(member.id);
-      onClose();
-    }
+    
+    const msg = memorialPostsCount > 0 
+      ? `Haqiqatdan ushbu a'zoni o'chirmoqchimisiz? Bu profil va unga tegishli ${memorialPostsCount} ta xotira posti butunlay yo'qoladi.`
+      : "Ushbu a'zoni o'chirmoqchimisiz?";
+      
+    handleAction(() => {
+      if (confirm(msg)) {
+        onDelete(member.id);
+      }
+    });
+  };
+
+  const handleDetach = () => {
+    handleAction(() => {
+      if (confirm("Ushbu profil bilan aloqani uzmoqchimisiz? Daraxt ikki mustaqil nusxaga bo'linadi va keyingi o'zgarishlar bir-biriga ta'sir qilmaydi.")) {
+        onDetachNetwork?.().then(ok => {
+          if (!ok) alert("Aloqani uzishda xatolik yuz berdi.");
+        });
+      }
+    });
   };
 
   const handleAction = (action: () => void) => {
@@ -239,7 +304,7 @@ export const ProfileModal = ({
         </div>
 
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+        <div className="relative z-50 flex items-center justify-between px-4 pt-3 pb-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -269,7 +334,17 @@ export const ProfileModal = ({
                   <ShieldCheck className="h-4 w-4 mr-2 text-emerald-500" />
                   Himoyalangan
                 </DropdownMenuItem>
+              ) : isLiveProfile && isSharedNetwork ? (
+                // In a shared tree, live profiles can only be unlinked, never deleted
+                <DropdownMenuItem
+                  onClick={handleDetach}
+                  className="text-amber-500 focus:text-amber-500 rounded-xl"
+                >
+                  <Link2Off className="h-4 w-4 mr-2" />
+                  Aloqani uzish
+                </DropdownMenuItem>
               ) : (
+                // Detached tree OR non-live profile: allow delete
                 <DropdownMenuItem
                   onClick={handleDelete}
                   className="text-destructive focus:text-destructive rounded-xl"
@@ -341,13 +416,15 @@ export const ProfileModal = ({
               </div>
 
               {mergedProfiles.length > 0 && onReorderMergedProfiles && (
-                <MergedProfilesManager
-                  profiles={[
-                    { id: member.id, name: member.name, photoUrl: member.photoUrl, gender: member.gender },
-                    ...mergedProfiles,
-                  ]}
-                  onReorder={onReorderMergedProfiles}
-                />
+                <div className="rounded-2xl bg-muted/30 px-1 py-2 mt-4">
+                  <MergedProfilesManager
+                    profiles={[
+                      { id: member.id, name: member.name, photoUrl: member.photoUrl, gender: member.gender, linkedUserId: member.linkedUserId },
+                      ...mergedProfiles,
+                    ]}
+                    onReorder={onReorderMergedProfiles}
+                  />
+                </div>
               )}
 
               <div className="flex gap-2 pt-1">
@@ -378,46 +455,20 @@ export const ProfileModal = ({
               ) : null}
 
               {/* Merged profiles section */}
-              {member.mergedProfiles && member.mergedProfiles.length > 0 && (
-                <div className="rounded-2xl bg-muted/30 px-3 py-2.5">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <Users className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-[11px] font-medium text-muted-foreground">
-                      Birlashgan profillar ({member.mergedProfiles.length + 1})
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                    {/* Primary profile */}
-                    <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                      <div className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center ring-2 ring-primary/50",
-                        isMale ? "bg-sky-500" : "bg-pink-500"
-                      )}>
-                        {member.photoUrl ? (
-                          <img src={member.photoUrl} alt={member.name} className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                          <span className="text-sm font-bold text-white">{(member.name || '?')[0]?.toUpperCase()}</span>
-                        )}
-                      </div>
-                      <span className="text-[9px] text-primary font-medium max-w-[50px] truncate">Asosiy</span>
-                    </div>
-                    {/* Merged profiles */}
-                    {member.mergedProfiles.map((mp) => (
-                      <div key={mp.id} className="flex flex-col items-center gap-1 flex-shrink-0">
-                        <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center opacity-80",
-                          mp.gender === 'male' ? "bg-sky-500" : "bg-pink-500"
-                        )}>
-                          {mp.photoUrl ? (
-                            <img src={mp.photoUrl} alt={mp.name} className="w-full h-full rounded-full object-cover" />
-                          ) : (
-                            <span className="text-sm font-bold text-white">{(mp.name || '?')[0]?.toUpperCase()}</span>
-                          )}
-                        </div>
-                        <span className="text-[9px] text-muted-foreground max-w-[50px] truncate">{mp.name || '?'}</span>
-                      </div>
-                    ))}
-                  </div>
+              {allMergedProfiles.length > 1 && (
+                <div className="rounded-2xl bg-muted/30 px-1 py-1">
+                  <MergedProfilesManager
+                    profiles={localMergedProfiles}
+                    isSaving={isSavingReorder}
+                    onReorder={async (newOrder) => {
+                      setLocalMergedProfiles(newOrder);
+                      if (onReorderMergedProfiles) {
+                        setIsSavingReorder(true);
+                        await onReorderMergedProfiles(newOrder);
+                        setIsSavingReorder(false);
+                      }
+                    }}
+                  />
                 </div>
               )}
 

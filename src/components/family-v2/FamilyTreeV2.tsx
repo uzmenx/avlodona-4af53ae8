@@ -48,7 +48,8 @@ export const FamilyTreeV2 = () => {
   const {
     members, rootId, isLoading,
     addInitialCouple, addParents, addSpouse, addChild,
-    updateMember, updatePosition, removeMember, createSelfNode
+    updateMember, updatePosition, removeMember, createSelfNode,
+    reorderMergedProfiles, detachNetwork, isSharedNetwork
   } = useLocalFamilyTree();
 
   const {
@@ -554,6 +555,9 @@ export const FamilyTreeV2 = () => {
           canAddChild={!!modal.member.spouseId}
           isSpouseLocked={isPairLocked(modal.member.id, modal.member.spouseId)}
           onToggleSpouseLock={() => toggleLock(modal.member!.id, modal.member!.spouseId)}
+          onReorderMergedProfiles={async (profiles) => reorderMergedProfiles(profiles.map(p => p.id))}
+          onDetachNetwork={detachNetwork}
+          isSharedNetwork={isSharedNetwork}
         />
       )}
 

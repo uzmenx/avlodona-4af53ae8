@@ -8,16 +8,19 @@ interface MergedProfile {
   name: string;
   photoUrl?: string;
   gender: 'male' | 'female';
+  linkedUserId?: string;
 }
 
 interface MergedProfilesManagerProps {
   profiles: MergedProfile[];
   onReorder: (profiles: MergedProfile[]) => void;
+  isSaving?: boolean;
 }
 
 export const MergedProfilesManager = ({
   profiles,
   onReorder,
+  isSaving = false,
 }: MergedProfilesManagerProps) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -65,9 +68,17 @@ export const MergedProfilesManager = ({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted-foreground text-center">
-        Birlashgan profillar (birinchisi asosiy)
-      </p>
+      <div className="flex items-center justify-center gap-2">
+        <p className="text-xs text-muted-foreground">
+          Birlashgan profillar (birinchisi asosiy)
+        </p>
+        {isSaving && (
+          <div className="flex items-center text-xs text-amber-500 animate-pulse">
+            <span className="w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-1"></span>
+            Saqlanmoqda...
+          </div>
+        )}
+      </div>
       
       <ScrollArea className="w-full">
         <div className="flex items-center gap-2 pb-2 px-1">
@@ -98,23 +109,31 @@ export const MergedProfilesManager = ({
               >
                 <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                 
-                {/* Avatar */}
-                <div 
-                  className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
-                    isMale ? "bg-sky-500" : "bg-pink-500"
-                  )}
-                >
-                  {profile.photoUrl ? (
-                    <img 
-                      src={profile.photoUrl} 
-                      alt={profile.name}
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-sm font-bold text-white">
-                      {profile.name?.[0]?.toUpperCase() || '?'}
-                    </span>
+                <div className="relative">
+                  <div 
+                    className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                      isMale ? "bg-sky-500" : "bg-pink-500",
+                      "ring-2 ring-background shadow-sm"
+                    )}
+                  >
+                    {profile.photoUrl ? (
+                      <img 
+                        src={profile.photoUrl} 
+                        alt={profile.name}
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-white">
+                        {profile.name?.[0]?.toUpperCase() || '?'}
+                      </span>
+                    )}
+                  </div>
+                  {/* Status Indicator */}
+                  {profile.linkedUserId && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-[14px] h-[14px] bg-background rounded-full flex items-center justify-center">
+                      <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse-green shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                    </div>
                   )}
                 </div>
                 

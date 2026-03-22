@@ -72,10 +72,10 @@ const Settings = () => {
       const { error } = await supabase.from('profiles').update({ [field]: !current } as never).eq('id', user.id);
       if (error) throw error;
       await refreshProfile();
-      toast({ title: "Muvaffaqiyatli", description: "Sozlamalar yangilandi." });
+      toast({ title: t('success'), description: t('settingsUpdated') });
     } catch (e) {
       console.error(e);
-      toast({ title: "Xatolik", description: "Sozlamalarni yangilashda xatolik yuz berdi.", variant: "destructive" });
+      toast({ title: t('error'), description: t('settingsUpdateError'), variant: "destructive" });
     } finally {
       setIsUpdating(false);
     }
@@ -213,7 +213,7 @@ const Settings = () => {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <EyeOff className="h-4 w-4" />
-                Maxfiylik
+                {t('privacy')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -226,7 +226,7 @@ const Settings = () => {
                     <Shield className="h-4 w-4 text-primary" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">Maxfiylik</p>
+                    <p className="text-sm font-semibold">{t('privacy')}</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">{t('securityDesc')}</p>
                   </div>
                 </div>
@@ -238,8 +238,8 @@ const Settings = () => {
                         <Lock className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium">Yopiq akkaunt</p>
-                        <p className="text-xs text-muted-foreground">Faqat kuzatuvchilar postlaringizni ko'rsin</p>
+                        <p className="text-sm font-medium">{t('privateAccount')}</p>
+                        <p className="text-xs text-muted-foreground">{t('privateAccountDesc')}</p>
                       </div>
                     </div>
                     <Switch disabled={isUpdating} checked={isPrivate} onCheckedChange={() => toggleVisibility('is_private', isPrivate)} />
@@ -251,8 +251,8 @@ const Settings = () => {
                         <WifiOff className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium">Onlaynlikni yashirish</p>
-                        <p className="text-xs text-muted-foreground">Boshqalar online holatni ko'rmasin</p>
+                        <p className="text-sm font-medium">{t('hideOnline')}</p>
+                        <p className="text-xs text-muted-foreground">{t('hideOnlineDesc')}</p>
                       </div>
                     </div>
                     <Switch disabled={isUpdating} checked={hideOnlineStatus} onCheckedChange={() => toggleVisibility('hide_online_status', hideOnlineStatus)} />
@@ -264,8 +264,8 @@ const Settings = () => {
                         <BookOpen className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium">Hikoya lentani yashirish</p>
-                        <p className="text-xs text-muted-foreground">Profildan highlights ko'rinmasin</p>
+                        <p className="text-sm font-medium">{t('hideHighlights')}</p>
+                        <p className="text-xs text-muted-foreground">{t('hideHighlightsDesc')}</p>
                       </div>
                     </div>
                     <Switch disabled={isUpdating} checked={hideHighlights} onCheckedChange={() => toggleVisibility('hide_highlights', hideHighlights)} />
@@ -277,8 +277,8 @@ const Settings = () => {
                         <FolderLock className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium">Post ro'yxatlarni yashirish</p>
-                        <p className="text-xs text-muted-foreground">Collections boshqalarga ko'rinmasin</p>
+                        <p className="text-sm font-medium">{t('hideCollections')}</p>
+                        <p className="text-xs text-muted-foreground">{t('hideCollectionsDesc')}</p>
                       </div>
                     </div>
                     <Switch disabled={isUpdating} checked={hideCollections} onCheckedChange={() => toggleVisibility('hide_collections', hideCollections)} />
@@ -289,8 +289,8 @@ const Settings = () => {
                         <AtSign className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium">Belgilangan postlarni yashirish</p>
-                        <p className="text-xs text-muted-foreground">Profildan mentions ko'rinmasin</p>
+                        <p className="text-sm font-medium">{t('hideMentions')}</p>
+                        <p className="text-xs text-muted-foreground">{t('hideMentionsDesc')}</p>
                       </div>
                     </div>
                     <Switch disabled={isUpdating} checked={hideMentions} onCheckedChange={() => toggleVisibility('hide_mentions', hideMentions)} />
@@ -302,8 +302,8 @@ const Settings = () => {
                         <Bookmark className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium">Saqlangan postlarni yashirish</p>
-                        <p className="text-xs text-muted-foreground">Profildan saqlanganlar ko'rinmasin</p>
+                        <p className="text-sm font-medium">{t('hideSaved')}</p>
+                        <p className="text-xs text-muted-foreground">{t('hideSavedDesc')}</p>
                       </div>
                     </div>
                     <Switch disabled={isUpdating} checked={hideSavedPosts} onCheckedChange={() => toggleVisibility('hide_saved_posts', hideSavedPosts)} />

@@ -14,6 +14,7 @@ export const useLocalFamilyTree = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [networkId, setNetworkId] = useState<string | null>(null);
+  const [isSharedNetwork, setIsSharedNetwork] = useState(false);
   
   // Prevent updates while dragging
   const isDraggingRef = useRef(false);
@@ -83,6 +84,7 @@ export const useLocalFamilyTree = () => {
         .eq('family_network_id', userNetworkId);
       
       const userIds = networkUsers?.map(u => u.id) || [user.id];
+      setIsSharedNetwork((networkUsers?.length || 1) > 1);
       
       // Load members from ALL users in the network
       const [membersRes, positionsRes] = await Promise.all([
@@ -107,29 +109,34 @@ export const useLocalFamilyTree = () => {
       const mergedMap = new Map<string, string>(); // sourceId -> targetId (merged into)
       const mergedProfilesMap = new Map<string, MergedProfileInfo[]>(); // primaryId -> merged profiles
       
-      // First, identify merged members and collect their data
+      // Pass 1a: Build mergedMap ONLY
       dbMembers.forEach((m: any) => {
         const relType = m.relation_type || '';
         const mergedMatch = relType.match(/merged_into_([a-f0-9-]+)/);
         if (mergedMatch) {
           mergedMap.set(m.id, mergedMatch[1]);
-          const targetId = mergedMatch[1];
-          const existing = mergedProfilesMap.get(targetId) || [];
-          existing.push({
-            id: m.id,
-            name: m.member_name || '',
-            photoUrl: m.avatar_url || undefined,
-            gender: (m.gender as 'male' | 'female') || 'male',
-            ownerName: undefined, // will fill from profiles
-            linkedUserId: m.linked_user_id || undefined,
-          });
-          mergedProfilesMap.set(targetId, existing);
         }
-        // Also check merged_into column
         if (m.merged_into) {
           mergedMap.set(m.id, m.merged_into);
-          const targetId = m.merged_into;
-          // Avoid duplicates
+        }
+      });
+
+      // Helper to resolve merged IDs to their ultimate primary profile
+      // Follows the full merge chain (A -> B -> C) to find the root.
+      const resolveId = (id: string): string => {
+        let current = id;
+        const visited = new Set<string>();
+        while (mergedMap.has(current) && !visited.has(current)) {
+          visited.add(current);
+          current = mergedMap.get(current)!;
+        }
+        return current;
+      };
+
+      // Pass 1b: Collect merged profiles data into the ULTIMATE primary node
+      dbMembers.forEach((m: any) => {
+        if (mergedMap.has(m.id)) {
+          const targetId = resolveId(m.id);
           const existing = mergedProfilesMap.get(targetId) || [];
           if (!existing.some(p => p.id === m.id)) {
             existing.push({
@@ -137,6 +144,7 @@ export const useLocalFamilyTree = () => {
               name: m.member_name || '',
               photoUrl: m.avatar_url || undefined,
               gender: (m.gender as 'male' | 'female') || 'male',
+              ownerName: undefined, // will fill from profiles
               linkedUserId: m.linked_user_id || undefined,
             });
             mergedProfilesMap.set(targetId, existing);
@@ -144,13 +152,15 @@ export const useLocalFamilyTree = () => {
         }
       });
       
-      // Create members, skipping merged ones
+      // Pass 1c: Create members, skipping merged ones
       dbMembers.forEach((m: any) => {
         // Skip members that are merged into another
         if (mergedMap.has(m.id)) return;
         
         const pos = posMap.get(m.id);
         const mergedInfos = mergedProfilesMap.get(m.id) || [];
+        const liveUserId = m.linked_user_id || mergedInfos.find(i => i.linkedUserId)?.linkedUserId;
+        
         membersMap[m.id] = {
           id: m.id,
           name: m.member_name || '',
@@ -161,22 +171,16 @@ export const useLocalFamilyTree = () => {
           position: pos || { x: 0, y: 0 },
           childrenIds: [],
           parentIds: [],
-          linkedUserId: m.linked_user_id || undefined,
+          linkedUserId: liveUserId || undefined,
           supabaseId: m.id,
           mergedProfiles: mergedInfos.length > 0 ? mergedInfos : undefined,
         };
       });
 
-      // Helper to resolve merged IDs to their source (munosabatlar saqlanadi)
-      // Har bir bola o'z ota-onasi bilan qoladi; yetim faqat ikki tomonda ham ota-ona yo'q bo'lsa.
-      const resolveId = (id: string): string => {
-        return mergedMap.get(id) || id;
-      };
-
       // Second pass: establish ALL relationships from relation_type
       // IMPORTANT: Process ALL members including merged ones to preserve their relationships
       dbMembers.forEach((m: any) => {
-        const effectiveId = mergedMap.has(m.id) ? mergedMap.get(m.id)! : m.id;
+        const effectiveId = resolveId(m.id);
         // Skip if the effective (resolved) member doesn't exist in our map
         if (!membersMap[effectiveId]) return;
         
@@ -498,7 +502,18 @@ export const useLocalFamilyTree = () => {
 
       // Set root (self member)
       const selfMember = dbMembers.find((m: any) => m.linked_user_id === user.id);
-      setRootId(selfMember?.id || dbMembers[0]?.id || null);
+      
+      let newRootId = null;
+      if (selfMember) {
+        newRootId = resolveId(selfMember.id);
+      } else if (dbMembers.length > 0) {
+        newRootId = resolveId(dbMembers[0].id);
+      }
+      
+      setRootId(newRootId);
+
+      // Make sure we never lose our own node
+      // If our linked member doesn't exist but used to, the tree may have detached - it's fine
 
     } catch (error) {
       console.error('Error loading family tree:', error);
@@ -1007,11 +1022,188 @@ export const useLocalFamilyTree = () => {
     }
   }, [user?.id, members, loadData]);
 
+  // Reorder merged profiles
+  const reorderMergedProfiles = useCallback(async (newOrderIds: string[]) => {
+    if (!user?.id || newOrderIds.length < 2) return;
+    
+    // newOrderIds[0] is the new primary. The rest should merge into it.
+    const newPrimaryId = newOrderIds[0];
+    const newMergedIds = newOrderIds.slice(1);
+
+    try {
+      // 1. Un-merge the new primary if it was merged into something else (make it the master)
+      await supabase
+        .from('family_tree_members')
+        .update({ merged_into: null })
+        .eq('id', newPrimaryId);
+
+      // 2. Point all others to the new primary
+      if (newMergedIds.length > 0) {
+        await supabase
+          .from('family_tree_members')
+          .update({ merged_into: newPrimaryId })
+          .in('id', newMergedIds);
+      }
+      
+      // Reload the tree
+      await loadData(false);
+    } catch (error) {
+      console.error('Error reordering merged profiles:', error);
+    }
+  }, [user?.id, loadData]);
+
+  // Detach (fork) network - creates an independent copy of the shared tree
+  const detachNetwork = useCallback(async (): Promise<boolean> => {
+    if (!user?.id || !networkId) return false;
+
+    try {
+      // 1. Get all users in current network
+      const { data: networkUsers } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('family_network_id', networkId);
+
+      const otherUserIds = (networkUsers || [])
+        .map(u => u.id)
+        .filter(id => id !== user.id);
+
+      if (otherUserIds.length === 0) return false; // Nothing to detach from
+
+      // 2. Load ALL members from other users in the network
+      const { data: otherMembers } = await supabase
+        .from('family_tree_members')
+        .select('*')
+        .in('owner_id', otherUserIds);
+
+      if (!otherMembers || otherMembers.length === 0) {
+        // Just leave network — create new one
+        const { data: newNet } = await supabase
+          .from('family_networks')
+          .insert({})
+          .select('id')
+          .single();
+        if (newNet) {
+          await supabase.from('profiles').update({ family_network_id: newNet.id }).eq('id', user.id);
+        }
+        await loadData(false);
+        return true;
+      }
+
+      // 3. Build ID remapping: old other-user member ID -> new cloned ID
+      const idMap = new Map<string, string>();
+      for (const m of otherMembers) {
+        idMap.set(m.id, generateId());
+      }
+
+      // Helper to remap an ID in a relation_type string
+      const remapRelationType = (relType: string): string => {
+        let result = relType;
+        idMap.forEach((newId, oldId) => {
+          result = result.split(oldId).join(newId);
+        });
+        return result;
+      };
+
+      // 4. Clone records for other users with new IDs, remapped relations, current owner
+      const clonedInserts = otherMembers.map(m => ({
+        id: idMap.get(m.id as string)!,
+        owner_id: user.id,
+        member_name: (m.member_name as string) || '',
+        gender: (m.gender as string) || 'male',
+        avatar_url: (m.avatar_url as string) || null,
+        is_placeholder: (m.is_placeholder as boolean) || false,
+        merged_into: m.merged_into ? (idMap.get(m.merged_into as string) ?? null) : null,
+        relation_type: remapRelationType((m.relation_type as string) || ''),
+        linked_user_id: (m.linked_user_id as string) || null,
+      }));
+
+      // 5. Current user's own members also need their relation_type remapped (where they reference other members)
+      const { data: myMembers } = await supabase
+        .from('family_tree_members')
+        .select('*')
+        .eq('owner_id', user.id);
+
+      const myMemberUpdates = (myMembers || []).map(m => ({
+        id: m.id as string,
+        relation_type: remapRelationType((m.relation_type as string) || ''),
+        merged_into: m.merged_into ? (idMap.get(m.merged_into as string) ?? (m.merged_into as string)) : null,
+      }));
+
+      // MUTUAL CLONING for remaining network members:
+      // We pick the first other user to own the clones of myMembers in the old network
+      const targetOtherId = otherUserIds[0];
+      
+      const myIdMap = new Map<string, string>();
+      for (const m of (myMembers || [])) {
+        myIdMap.set(m.id as string, generateId());
+      }
+      
+      const remapMyRelationType = (relType: string): string => {
+        let result = relType;
+        myIdMap.forEach((newId, oldId) => {
+          result = result.split(oldId).join(newId);
+        });
+        return result;
+      };
+
+      const clonedMyMembers = (myMembers || []).map(m => ({
+        id: myIdMap.get(m.id as string)!,
+        owner_id: targetOtherId,
+        member_name: (m.member_name as string) || '',
+        gender: (m.gender as string) || 'male',
+        avatar_url: (m.avatar_url as string) || null,
+        is_placeholder: (m.is_placeholder as boolean) || false,
+        merged_into: m.merged_into ? (myIdMap.get(m.merged_into as string) ?? (m.merged_into as string)) : null,
+        relation_type: remapMyRelationType((m.relation_type as string) || ''),
+        linked_user_id: (m.linked_user_id as string) || null,
+      }));
+      
+      const otherMemberUpdates = otherMembers.map(m => ({
+        id: m.id as string,
+        relation_type: remapMyRelationType((m.relation_type as string) || ''),
+        merged_into: m.merged_into ? (myIdMap.get(m.merged_into as string) ?? (m.merged_into as string)) : null,
+      }));
+
+      // 6. Create a new network for the current user
+      const { data: newNetwork } = await supabase
+        .from('family_networks')
+        .insert({})
+        .select('id')
+        .single();
+
+      if (!newNetwork) throw new Error('Failed to create new network');
+
+      // 7. Insert cloned members + update relations + update profile network
+      await Promise.all([
+        supabase.from('family_tree_members').insert(clonedInserts),
+        supabase.from('family_tree_members').insert(clonedMyMembers),
+        ...myMemberUpdates.map(u =>
+          supabase.from('family_tree_members')
+            .update({ relation_type: u.relation_type, merged_into: u.merged_into })
+            .eq('id', u.id)
+        ),
+        ...otherMemberUpdates.map(u =>
+          supabase.from('family_tree_members')
+            .update({ relation_type: u.relation_type, merged_into: u.merged_into })
+            .eq('id', u.id)
+        ),
+        supabase.from('profiles').update({ family_network_id: newNetwork.id }).eq('id', user.id),
+      ]);
+
+      await loadData(false);
+      return true;
+    } catch (error) {
+      console.error('Error detaching network:', error);
+      return false;
+    }
+  }, [user?.id, networkId, loadData]);
+
   return {
     members,
     rootId,
     isLoading,
     networkId,
+    isSharedNetwork,
     addInitialCouple,
     updateMember,
     updatePosition,
@@ -1020,6 +1212,8 @@ export const useLocalFamilyTree = () => {
     addChild,
     removeMember,
     createSelfNode,
+    reorderMergedProfiles,
+    detachNetwork,
     reload: loadData,
   };
 };

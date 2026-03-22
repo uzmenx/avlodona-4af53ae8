@@ -20,6 +20,43 @@ const translations = {
   loggedOut: { uz: "Chiqildi", ru: "Вы вышли", en: "Logged out" },
   loggedOutDesc: { uz: "Muvaffaqiyatli chiqdingiz", ru: "Вы успешно вышли", en: "Successfully logged out" },
   language: { uz: "Til", ru: "Язык", en: "Language" },
+  privacy: { uz: "Maxfiylik", ru: "Конфиденциальность", en: "Privacy" },
+  privateAccount: { uz: "Yopiq akkaunt", ru: "Закрытый аккаунт", en: "Private account" },
+  privateAccountDesc: {
+    uz: "Faqat kuzatuvchilar postlaringizni ko'rsin",
+    ru: "Только подписчики могут видеть ваши посты",
+    en: "Only followers can see your posts",
+  },
+  hideOnline: { uz: "Onlaynlikni yashirish", ru: "Скрыть онлайн-статус", en: "Hide online status" },
+  hideOnlineDesc: {
+    uz: "Boshqalar online holatni ko'rmasin",
+    ru: "Другие не увидят ваш онлайн-статус",
+    en: "Others won't see your online status",
+  },
+  hideHighlights: { uz: "Hikoya lentani yashirish", ru: "Скрыть хайлайты", en: "Hide highlights" },
+  hideHighlightsDesc: {
+    uz: "Profildan highlights ko'rinmasin",
+    ru: "Хайлайты не будут видны в профиле",
+    en: "Highlights won't be visible in profile",
+  },
+  hideCollections: { uz: "Post ro'yxatlarni yashirish", ru: "Скрыть подборки", en: "Hide collections" },
+  hideCollectionsDesc: {
+    uz: "Collections boshqalarga ko'rinmasin",
+    ru: "Подборки не будут видны другим",
+    en: "Collections won't be visible to others",
+  },
+  hideMentions: { uz: "Belgilangan postlarni yashirish", ru: "Скрыть упоминания", en: "Hide mentions" },
+  hideMentionsDesc: {
+    uz: "Profildan mentions ko'rinmasin",
+    ru: "Упоминания не будут видны в профиле",
+    en: "Mentions won't be visible in profile",
+  },
+  hideSaved: { uz: "Saqlangan postlarni yashirish", ru: "Скрыть сохранённые", en: "Hide saved posts" },
+  hideSavedDesc: {
+    uz: "Profildan saqlanganlar ko'rinmasin",
+    ru: "Сохранённые посты не будут видны в профиле",
+    en: "Saved posts won't be visible in profile",
+  },
 
   // Auth
   welcome: { uz: "Xush kelibsiz!", ru: "Добро пожаловать!", en: "Welcome!" },
@@ -57,6 +94,12 @@ const translations = {
   success: { uz: "Muvaffaqiyatli!", ru: "Успешно!", en: "Success!" },
   loggedInMsg: { uz: "Tizimga kirdingiz", ru: "Вы вошли", en: "Logged in" },
   registeredMsg: { uz: "Ro'yxatdan o'tdingiz", ru: "Вы зарегистрировались", en: "Registered" },
+  settingsUpdated: { uz: "Sozlamalar yangilandi", ru: "Настройки обновлены", en: "Settings updated" },
+  settingsUpdateError: {
+    uz: "Sozlamalarni yangilashda xatolik yuz berdi",
+    ru: "Ошибка при обновлении настроек",
+    en: "Error updating settings",
+  },
   loginError: { uz: "Tizimga kirishda xato", ru: "Ошибка входа", en: "Login error" },
   signupError: { uz: "Ro'yxatdan o'tishda xato", ru: "Ошибка регистрации", en: "Signup error" },
   googleError: { uz: "Google bilan kirishda xato", ru: "Ошибка входа через Google", en: "Google login error" },

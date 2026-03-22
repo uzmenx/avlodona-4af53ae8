@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,10 +26,20 @@ export const RelativeConnectionSheet = ({
 }: RelativeConnectionSheetProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'their' | 'mine'>('their');
+  const [activeTab, setActiveTab] = useState<'their' | 'mine'>('mine');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedFromTab, setSelectedFromTab] = useState<'their' | 'mine' | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [targetGender, setTargetGender] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open && targetUserId) {
+      supabase.from('profiles').select('gender').eq('id', targetUserId).single()
+        .then(({data}) => {
+          if (data?.gender) setTargetGender(data.gender);
+        });
+    }
+  }, [open, targetUserId]);
 
   // Load target user's tree
   const {
@@ -61,6 +71,16 @@ export const RelativeConnectionSheet = ({
   }, [selectedNodeId, selectedFromTab, theirMembers, myMembers]);
 
   const handleNodeSelect = useCallback((member: FamilyMember, fromTab: 'their' | 'mine') => {
+    if (fromTab === 'their') {
+      toast({ title: "Xato", description: "Siz faqat O'z daraxtingizdan (Sizning daraxtingiz bo'limidan) profil tanlashingiz va bog'lashingiz mumkin.", variant: 'default' });
+      return;
+    }
+    
+    if (targetGender && member.gender && targetGender !== member.gender) {
+      toast({ title: "Jinsi mos emas", description: `Foydalanuvchi jinsi (${targetGender === 'male' ? 'Erkak' : 'Ayol'}) tanlangan joy jinsiga (${member.gender === 'male' ? 'Erkak' : 'Ayol'}) mos tushmayapti.`, variant: 'destructive' });
+      return;
+    }
+
     setSelectedNodeId(prevNodeId => {
       setSelectedFromTab(prevFromTab => {
         if (prevNodeId === member.id && prevFromTab === fromTab) {
@@ -71,7 +91,7 @@ export const RelativeConnectionSheet = ({
       });
       return prevNodeId === member.id ? null : member.id;
     });
-  }, []);
+  }, [targetGender, toast]);
 
   const handleNodeSelectTheir = useCallback((m: FamilyMember) => handleNodeSelect(m, 'their'), [handleNodeSelect]);
   const handleNodeSelectMine = useCallback((m: FamilyMember) => handleNodeSelect(m, 'mine'), [handleNodeSelect]);
@@ -120,6 +140,7 @@ export const RelativeConnectionSheet = ({
         description: `${targetUserName} ga qo'shilish so'rovi yuborildi`,
       });
 
+      window.dispatchEvent(new CustomEvent('family-tree-reload'));
       setSelectedNodeId(null);
       setSelectedFromTab(null);
       onOpenChange(false);

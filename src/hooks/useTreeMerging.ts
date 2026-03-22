@@ -583,6 +583,58 @@ export const useTreeMerging = () => {
         }
       }
       
+      // === FARZANDLAR (Children of the linked member) ===
+      const senderChildren = findChildren(linkedMember, senderMembers);
+      const receiverChildren = findChildren(receiverSelf, receiverMembers);
+      
+      if (senderChildren.length > 0 || receiverChildren.length > 0) {
+        const sourceChildren = senderChildren.map(toChildProfile);
+        const targetChildren = receiverChildren.map(toChildProfile);
+        const childSuggestions = computeChildSuggestions(sourceChildren, targetChildren, false);
+        
+        result.allSourceChildren.push(...sourceChildren);
+        result.allTargetChildren.push(...targetChildren);
+        result.childSuggestions.push(...childSuggestions);
+        
+        result.coupleGroups.push({
+          label: 'Farzandlar',
+          parentMerges: [],
+          sourceChildren,
+          targetChildren,
+          childSuggestions,
+        });
+      }
+      
+      // === JUFTLAR (Spouses) ===
+      const getSpouses = (m: TreeMember, allMembers: TreeMember[]): TreeMember[] => {
+        const spouses: TreeMember[] = [];
+        const match = m.relation_type?.match(/spouse_of_([a-f0-9-]+)/);
+        if (match) {
+          const s = allMembers.find(x => x.id === match[1]);
+          if (s) spouses.push(s);
+        }
+        allMembers.forEach(x => {
+          if (x.relation_type === `spouse_of_${m.id}` && !spouses.find(s => s.id === x.id)) {
+            spouses.push(x);
+          }
+        });
+        return spouses;
+      };
+      
+      const sSpouses = getSpouses(linkedMember, senderMembers);
+      const rSpouses = getSpouses(receiverSelf, receiverMembers);
+      
+      for (const sSpouse of sSpouses) {
+        const matchingRSpouse = rSpouses.find(r => r.gender === sSpouse.gender);
+        if (matchingRSpouse) {
+          const merge = createMergeEntry(sSpouse, matchingRSpouse, 'self');
+          // Don't duplicate if already added
+          if (!result.parentMerges.some(m => m.sourceId === merge.sourceId && m.targetId === merge.targetId)) {
+            result.parentMerges.push(merge);
+          }
+        }
+      }
+
       return result;
     } catch (error) {
       console.error('findMergeCandidates error:', error);
