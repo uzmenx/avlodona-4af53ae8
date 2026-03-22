@@ -904,6 +904,12 @@ export type Database = {
           family_network_id: string | null
           full_name: string | null
           gender: string | null
+          hide_collections: boolean | null
+          hide_highlights: boolean | null
+          hide_mentions: boolean | null
+          hide_online_status: boolean | null
+          hide_saved_posts: boolean | null
+          is_private: boolean | null
           id: string
           instagram: string | null
           last_seen: string | null
@@ -922,6 +928,12 @@ export type Database = {
           family_network_id?: string | null
           full_name?: string | null
           gender?: string | null
+          hide_collections?: boolean | null
+          hide_highlights?: boolean | null
+          hide_mentions?: boolean | null
+          hide_online_status?: boolean | null
+          hide_saved_posts?: boolean | null
+          is_private?: boolean | null
           id?: string
           instagram?: string | null
           last_seen?: string | null
@@ -940,6 +952,12 @@ export type Database = {
           family_network_id?: string | null
           full_name?: string | null
           gender?: string | null
+          hide_collections?: boolean | null
+          hide_highlights?: boolean | null
+          hide_mentions?: boolean | null
+          hide_online_status?: boolean | null
+          hide_saved_posts?: boolean | null
+          is_private?: boolean | null
           id?: string
           instagram?: string | null
           last_seen?: string | null

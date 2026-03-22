@@ -11,9 +11,10 @@ import { lovable } from "@/integrations/lovable/index";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LangSwitcher } from "@/components/LangSwitcher";
 import { LegalFooter } from "@/components/legal/LegalFooter";
+import { generateBaseUsername, ensureUniqueUsername } from "@/utils/usernameUtils";
 
 const Signup = () => {
-  const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +27,7 @@ const Signup = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password || !username) {
+    if (!email || !password) {
       toast({ title: t("error"), description: t("fillAllFields"), variant: "destructive" });
       return;
     }
@@ -37,14 +38,17 @@ const Signup = () => {
 
     setIsLoading(true);
     try {
+      const baseUser = generateBaseUsername(email);
+      const uniqueUsername = await ensureUniqueUsername(supabase, baseUser);
+
       // Direct signup without OTP (Resend temporarily disabled)
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            username,
-            name: username,
+            username: uniqueUsername,
+            name: fullName.trim() || null,
             gender: gender || null,
           },
         },
@@ -54,19 +58,29 @@ const Signup = () => {
 
       if (data.user) {
         // Create/update profile
-        await supabase.from('profiles').upsert([{
-          user_id: data.user.id,
-          username,
-          name: username,
-          email,
+        const { error: profileError } = await supabase.from('profiles').upsert([{
+          id: data.user.id,
+          username: uniqueUsername,
+          name: fullName.trim() || null,
           gender: gender || null,
-        }], { onConflict: 'user_id' });
+        }], { onConflict: 'id' });
+
+        if (profileError) {
+          if (profileError.code === '23505') {
+            throw new Error("Ushbu foydalanuvchi nomi band qilingan, sahifani yangilab qayta urinib ko'ring.");
+          }
+          throw profileError;
+        }
 
         toast({ title: t("success"), description: "Ro'yxatdan o'tdingiz!" });
         navigate("/");
       }
     } catch (error: any) {
-      toast({ title: t("error"), description: error.message || t("signupError"), variant: "destructive" });
+      if (error.message?.includes('duplicate key') || error.code === '23505') {
+        toast({ title: t("error"), description: "Ushbu foydalanuvchi nomi band qilingan, iltimos boshqa email bilan qayta urinib ko'ring yoki birozdan so'ng xarakat qiling.", variant: "destructive" });
+      } else {
+        toast({ title: t("error"), description: error.message || t("signupError"), variant: "destructive" });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -121,19 +135,20 @@ const Signup = () => {
 
           <form onSubmit={handleSignup} className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="username" className="sr-only">
-                Username
-              </Label>
+              <div className="flex justify-between items-center px-1">
+                <Label htmlFor="fullName" className="text-[rgba(255,255,255,0.7)] text-sm">To'liq ism</Label>
+                <span className="text-xs text-[rgba(255,255,255,0.5)]">(Ixtiyoriy)</span>
+              </div>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
                 <Input
-                  id="username"
+                  id="fullName"
                   type="text"
-                  placeholder={t('username')}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Ismingiz"
+                  value={fullName}
+                  maxLength={25}
+                  onChange={(e) => setFullName(e.target.value)}
                   className="pl-12 h-12 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-2xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm"
-                  required
                 />
               </div>
             </div>

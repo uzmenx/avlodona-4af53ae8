@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, LogOut, Moon, Sun, Monitor, Shield, Mail, Globe, Palette, EyeOff, Lock, WifiOff, BookOpen, FolderLock } from 'lucide-react';
+import { ArrowLeft, LogOut, Moon, Sun, Monitor, Shield, Mail, Globe, Palette, EyeOff, Lock, WifiOff, BookOpen, FolderLock, AtSign, Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
 
 const langLabels: Record<Language, string> = {
   uz: "O'zbek",
@@ -56,18 +57,28 @@ const Settings = () => {
   const { mode, setMode, bgTheme, setBgTheme } = useTheme();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const hideHighlights = profile?.hide_highlights === true;
+  const hideCollections = profile?.hide_collections === true;
+  const isPrivate = profile?.is_private === true;
+  const hideOnlineStatus = profile?.hide_online_status === true;
+  const hideMentions = profile?.hide_mentions === true;
+  const hideSavedPosts = profile?.hide_saved_posts === true;
 
-  type ProfileData = { hide_highlights?: boolean; hide_collections?: boolean; is_private?: boolean; hide_online_status?: boolean; };
-  const profileData = profile as ProfileData | undefined;
-  const hideHighlights = profileData?.hide_highlights === true;
-  const hideCollections = profileData?.hide_collections === true;
-  const isPrivate = profileData?.is_private === true;
-  const hideOnlineStatus = profileData?.hide_online_status === true;
-
-  const toggleVisibility = async (field: 'hide_highlights' | 'hide_collections' | 'is_private' | 'hide_online_status', current: boolean) => {
-    if (!user) return;
-    await supabase.from('profiles').update({ [field]: !current } as never).eq('id', user.id);
-    window.location.reload();
+  const toggleVisibility = async (field: 'hide_highlights' | 'hide_collections' | 'is_private' | 'hide_online_status' | 'hide_mentions' | 'hide_saved_posts', current: boolean) => {
+    if (!user || isUpdating) return;
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.from('profiles').update({ [field]: !current } as never).eq('id', user.id);
+      if (error) throw error;
+      await refreshProfile();
+      toast({ title: "Muvaffaqiyatli", description: "Sozlamalar yangilandi." });
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Xatolik", description: "Sozlamalarni yangilashda xatolik yuz berdi.", variant: "destructive" });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const tt = (key: keyof typeof themeTranslations) => themeTranslations[key][lang];
@@ -90,7 +101,7 @@ const Settings = () => {
 
   return (
     <AppLayout showNav={false}>
-      <div className="p-4">
+      <div className="p-4 pb-20">
         <div className="flex items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4 min-w-0">
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -231,7 +242,7 @@ const Settings = () => {
                         <p className="text-xs text-muted-foreground">Faqat kuzatuvchilar postlaringizni ko'rsin</p>
                       </div>
                     </div>
-                    <Switch checked={isPrivate} onCheckedChange={() => toggleVisibility('is_private', isPrivate)} />
+                    <Switch disabled={isUpdating} checked={isPrivate} onCheckedChange={() => toggleVisibility('is_private', isPrivate)} />
                   </div>
 
                   <div className="px-3 py-3 flex items-center justify-between gap-3">
@@ -244,7 +255,7 @@ const Settings = () => {
                         <p className="text-xs text-muted-foreground">Boshqalar online holatni ko'rmasin</p>
                       </div>
                     </div>
-                    <Switch checked={hideOnlineStatus} onCheckedChange={() => toggleVisibility('hide_online_status', hideOnlineStatus)} />
+                    <Switch disabled={isUpdating} checked={hideOnlineStatus} onCheckedChange={() => toggleVisibility('hide_online_status', hideOnlineStatus)} />
                   </div>
 
                   <div className="px-3 py-3 flex items-center justify-between gap-3">
@@ -257,7 +268,7 @@ const Settings = () => {
                         <p className="text-xs text-muted-foreground">Profildan highlights ko'rinmasin</p>
                       </div>
                     </div>
-                    <Switch checked={hideHighlights} onCheckedChange={() => toggleVisibility('hide_highlights', hideHighlights)} />
+                    <Switch disabled={isUpdating} checked={hideHighlights} onCheckedChange={() => toggleVisibility('hide_highlights', hideHighlights)} />
                   </div>
 
                   <div className="px-3 py-3 flex items-center justify-between gap-3">
@@ -270,7 +281,32 @@ const Settings = () => {
                         <p className="text-xs text-muted-foreground">Collections boshqalarga ko'rinmasin</p>
                       </div>
                     </div>
-                    <Switch checked={hideCollections} onCheckedChange={() => toggleVisibility('hide_collections', hideCollections)} />
+                    <Switch disabled={isUpdating} checked={hideCollections} onCheckedChange={() => toggleVisibility('hide_collections', hideCollections)} />
+                  </div>
+                  <div className="px-3 py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="h-9 w-9 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
+                        <AtSign className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">Belgilangan postlarni yashirish</p>
+                        <p className="text-xs text-muted-foreground">Profildan mentions ko'rinmasin</p>
+                      </div>
+                    </div>
+                    <Switch disabled={isUpdating} checked={hideMentions} onCheckedChange={() => toggleVisibility('hide_mentions', hideMentions)} />
+                  </div>
+
+                  <div className="px-3 py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="h-9 w-9 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
+                        <Bookmark className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">Saqlangan postlarni yashirish</p>
+                        <p className="text-xs text-muted-foreground">Profildan saqlanganlar ko'rinmasin</p>
+                      </div>
+                    </div>
+                    <Switch disabled={isUpdating} checked={hideSavedPosts} onCheckedChange={() => toggleVisibility('hide_saved_posts', hideSavedPosts)} />
                   </div>
                 </div>
               </div>

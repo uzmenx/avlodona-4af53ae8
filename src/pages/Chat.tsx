@@ -53,6 +53,7 @@ interface UserProfile {
   username: string | null;
   avatar_url: string | null;
   last_seen: string | null;
+  hide_online_status?: boolean;
 }
 
 type InvitePreview = {
@@ -131,7 +132,7 @@ const Chat = () => {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, name, username, avatar_url, last_seen')
+        .select('id, name, username, avatar_url, last_seen, hide_online_status')
         .eq('id', userId)
         .maybeSingle();
 
@@ -314,7 +315,6 @@ const Chat = () => {
         media_urls: post.media_urls || [],
         author: profile ? {
           id: post.user_id,
-          email: profile.email || '',
           full_name: profile.name || 'Foydalanuvchi',
           username: profile.username || 'user',
           bio: profile.bio || '',
@@ -405,8 +405,13 @@ const Chat = () => {
         },
         (payload) => {
           const newLastSeen = payload.new?.last_seen;
-          if (newLastSeen) {
-            setOtherUser(prev => prev ? { ...prev, last_seen: newLastSeen } : prev);
+          const newHideStatus = payload.new?.hide_online_status;
+          if (newLastSeen !== undefined || newHideStatus !== undefined) {
+            setOtherUser(prev => prev ? { 
+              ...prev, 
+              ...(newLastSeen !== undefined && { last_seen: newLastSeen }),
+              ...(newHideStatus !== undefined && { hide_online_status: newHideStatus })
+            } : prev);
           }
         }
       )
@@ -527,6 +532,7 @@ const Chat = () => {
     const date = new Date(dateStr);
     const diffMs = Date.now() - date.getTime();
     if (diffMs < 2 * 60 * 1000) return null; // online — handled separately
+    if (otherUser?.hide_online_status) return "yaqinda onlayn edi";
     if (isToday(date)) return `${t('today')} ${format(date, 'HH:mm')} da`;
     if (isYesterday(date)) return `${t('yesterday')} ${format(date, 'HH:mm')} da`;
     return format(date, 'd MMMM HH:mm', { locale: uz }) + ' da';
@@ -535,6 +541,8 @@ const Chat = () => {
   const isOnline = otherUser?.last_seen 
     ? (Date.now() - new Date(otherUser.last_seen).getTime()) < 2 * 60 * 1000 
     : false;
+  
+  const displayOnline = isOnline && !otherUser?.hide_online_status;
 
   const formatDateSeparator = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -834,12 +842,12 @@ const Chat = () => {
             </div>
             <div className="flex-1 min-w-0" onClick={() => navigate(`/user/${userId}`)}>
               <h1 className="font-semibold text-sm truncate">{otherUser.name || t('user')}</h1>
-              {otherUserTyping ? (
+              {otherUserTyping && !otherUser.hide_online_status ? (
                 <p className="text-[11px] text-primary font-medium">{t('typing')}</p>
-              ) : isOnline ? (
+              ) : displayOnline ? (
                 <p className="text-[11px] text-green-500 font-medium">Online</p>
               ) : (
-                <p className="text-[11px] text-muted-foreground">{formatLastActivity(otherUser.last_seen)}</p>
+                <p className="text-[11px] text-muted-foreground">{otherUser.hide_online_status ? "yaqinda onlayn edi" : formatLastActivity(otherUser.last_seen)}</p>
               )}
             </div>
             <button 

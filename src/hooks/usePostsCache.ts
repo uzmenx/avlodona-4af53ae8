@@ -40,7 +40,6 @@ async function fetchPostsPage(from: number, pageSize: number): Promise<Post[]> {
         media_urls: post.media_urls || [],
         author: profile ? {
           id: post.user_id,
-          email: profile.email || '',
           full_name: profile.name || 'Foydalanuvchi',
           username: profile.username || 'user',
           bio: profile.bio || '',

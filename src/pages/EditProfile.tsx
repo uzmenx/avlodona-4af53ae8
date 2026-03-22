@@ -12,10 +12,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { ImageCropper, SocialLinksEditor, SocialLink } from '@/components/profile';
-import { ArrowLeft, Camera, Loader2, User, ImagePlus } from 'lucide-react';
+import { Loader2, Check, AlertCircle, Camera, User, ImagePlus, ArrowLeft } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2, compressImage } from '@/lib/r2Upload';
 import { cn } from '@/lib/utils';
+import { validateUsername } from '@/utils/usernameUtils';
 
 const EditProfile = () => {
   const { profile, user, refreshProfile } = useAuth();
@@ -24,6 +26,9 @@ const EditProfile = () => {
   const { toast } = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [usernameError, setUsernameError] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [originalUsername, setOriginalUsername] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -56,6 +61,7 @@ const EditProfile = () => {
         single();
 
         if (data) {
+          setOriginalUsername(data.username || '');
           setFormData({
             name: data.name || '',
             username: data.username || '',
@@ -72,9 +78,53 @@ const EditProfile = () => {
     fetchProfile();
   }, [user]);
 
+  useEffect(() => {
+    const checkUsername = async () => {
+      const val = formData.username;
+      if (!val) return;
+
+      const validation = validateUsername(val);
+      if (!validation.isValid) {
+        setUsernameStatus('idle');
+        setUsernameError(validation.error || "");
+        return;
+      }
+      setUsernameError(""); 
+
+      if (val === originalUsername) {
+        setUsernameStatus('idle');
+        return; 
+      }
+
+      setUsernameStatus('checking');
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', val)
+        .maybeSingle();
+        
+      if (data) {
+        setUsernameStatus('taken');
+        setUsernameError("Kechirasiz, bu username band qilingan");
+      } else {
+        setUsernameStatus('available');
+        setUsernameError("");
+      }
+    };
+
+    const handler = setTimeout(checkUsername, 500);
+    return () => clearTimeout(handler);
+  }, [formData.username, originalUsername]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    if (usernameError) {
+      toast({ title: t('error'), description: usernameError, variant: "destructive" });
+      return;
+    }
 
     setIsLoading(true);
 
@@ -100,11 +150,20 @@ const EditProfile = () => {
       toast({ title: t('saved'), description: t('profileUpdated') });
       navigate('/profile');
     } catch (error: any) {
-      toast({
-        title: t('error'),
-        description: error.message || t('updateError'),
-        variant: "destructive"
-      });
+      if (error.code === '23505' || error.message?.includes('duplicate key')) {
+        setUsernameError("Kechirasiz, ushbu username band qilingan.");
+        toast({
+          title: t('error'),
+          description: "Kechirasiz, ushbu username band qilingan.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: t('error'),
+          description: error.message || t('updateError'),
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -335,20 +394,68 @@ const EditProfile = () => {
 
               {/* Name */}
                <div className="space-y-2">
-                 <Label htmlFor="name">{t('fullName')}</Label>
+                 <div className="flex items-center justify-between">
+                   <Label htmlFor="name">{t('fullName')}</Label>
+                   <div className="flex items-center gap-2">
+                     {formData.name.length > 0 && (
+                       <span className={`text-[10px] ${formData.name.length >= 25 ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
+                         {formData.name.length}/25
+                       </span>
+                     )}
+                     <span className="text-[10px] text-muted-foreground">(Ixtiyoriy)</span>
+                   </div>
+                 </div>
                  <Input id="name" placeholder={t('yourName')} value={formData.name}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} />
+                      maxLength={25}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value.slice(0, 25) }))} />
               </div>
 
               {/* Username */}
-              <div className="space-y-2">
-                <Label htmlFor="username">{t('username')}</Label>
-                <Input
-                        id="username"
-                        placeholder="username"
-                        value={formData.username}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))} />
-                      
+              <div className="space-y-1">
+                <Label htmlFor="username">{t('userHandle')}</Label>
+                <div className="relative">
+                  <Input
+                    id="username"
+                    placeholder="username"
+                    value={formData.username}
+                    className={usernameError ? "border-destructive focus-visible:ring-destructive pr-10" : "pr-10"}
+                    onChange={(e) => {
+                      const val = e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, '');
+                      setFormData((prev) => ({ ...prev, username: val }));
+                    }} />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                    <AnimatePresence mode="wait">
+                      {usernameStatus === 'checking' && (
+                        <motion.div key="checking" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.2 }}>
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </motion.div>
+                      )}
+                      {usernameStatus === 'available' && !usernameError && (
+                        <motion.div key="available" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.2 }}>
+                          <Check className="h-4 w-4 text-emerald-500" />
+                        </motion.div>
+                      )}
+                      {(usernameStatus === 'taken' || usernameError) && (
+                        <motion.div key="taken" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.2 }}>
+                          <AlertCircle className="h-4 w-4 text-destructive" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+                
+                <AnimatePresence>
+                  {usernameError && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                      <p className="text-[11px] text-destructive mt-1">{usernameError}</p>
+                    </motion.div>
+                  )}
+                  {usernameStatus === 'available' && !usernameError && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                      <p className="text-[11px] text-emerald-500 mt-1">Bu username mavjud</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Bio */}

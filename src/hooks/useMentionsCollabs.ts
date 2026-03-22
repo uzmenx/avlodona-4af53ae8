@@ -151,7 +151,7 @@ export const useMentionsCollabs = (userId?: string, isMemorial?: boolean) => {
       const authorIds = [...new Set(posts.map(p => p.user_id))];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, name, username, avatar_url, email, bio')
+        .select('id, name, username, avatar_url, bio')
         .in('id', authorIds);
 
       const enriched = posts.map(post => ({
@@ -160,7 +160,6 @@ export const useMentionsCollabs = (userId?: string, isMemorial?: boolean) => {
         author: profiles?.find(p => p.id === post.user_id)
           ? {
               id: post.user_id,
-              email: profiles.find(p => p.id === post.user_id)?.email || '',
               full_name: profiles.find(p => p.id === post.user_id)?.name || '',
               username: profiles.find(p => p.id === post.user_id)?.username || '',
               bio: profiles.find(p => p.id === post.user_id)?.bio || '',
@@ -211,7 +210,7 @@ export const useMentionsCollabs = (userId?: string, isMemorial?: boolean) => {
       const authorIds = [...new Set(posts.map(p => p.user_id))];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, name, username, avatar_url, email, bio')
+        .select('id, name, username, avatar_url, bio')
         .in('id', authorIds);
 
       const enriched = posts.map(post => ({
@@ -220,7 +219,6 @@ export const useMentionsCollabs = (userId?: string, isMemorial?: boolean) => {
         author: profiles?.find(p => p.id === post.user_id)
           ? {
               id: post.user_id,
-              email: profiles.find(p => p.id === post.user_id)?.email || '',
               full_name: profiles.find(p => p.id === post.user_id)?.name || '',
               username: profiles.find(p => p.id === post.user_id)?.username || '',
               bio: profiles.find(p => p.id === post.user_id)?.bio || '',

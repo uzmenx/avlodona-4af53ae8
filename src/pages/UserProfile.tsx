@@ -18,6 +18,7 @@ import { CollectionsFilter } from '@/components/profile/CollectionsFilter';
 import { useUserPosts } from '@/hooks/useUserPosts';
 import { useFollow } from '@/hooks/useFollow';
 import { useMentionsCollabs } from '@/hooks/useMentionsCollabs';
+import { useSavedPosts } from '@/hooks/useSavedPosts';
 import { PostCard } from '@/components/feed/PostCard';
 import { MemorialPostCard } from '@/components/post/MemorialPostCard';
 import { FullScreenViewer } from '@/components/feed/FullScreenViewer';
@@ -97,6 +98,13 @@ interface UserProfile {
   social_links: SocialLink[] | null;
   theme_mode?: ThemeMode | null;
   bg_theme?: BackgroundTheme | null;
+  hide_highlights?: boolean;
+  hide_collections?: boolean;
+  is_private?: boolean;
+  hide_online_status?: boolean;
+  hide_mentions?: boolean;
+  hide_saved_posts?: boolean;
+  last_seen?: string | null;
 }
 
 const PremiumStarsIcon = ({ className, active, size = 'default' }: {className?: string;active?: boolean;size?: 'default' | 'sm';}) =>
@@ -152,6 +160,8 @@ export const UserProfilePage = () => {
   }, []);
   const lastPostsTabTapTsRef = useRef<number>(0);
 
+  const { savedPosts, savedMemorialPosts } = useSavedPosts(effectivePostsUserId);
+
   // Memorial posts
   const { posts: memorialPosts, loading: memorialLoading, addPost: addMemorialPost, refetch: refetchMemorial } = useMemorialPosts(resolvedMemorialMemberId);
   const mappedMemorialPosts: Post[] = useMemo(() => {
@@ -165,7 +175,8 @@ export const UserProfilePage = () => {
       comments_count: mp.comments_count || 0,
       views_count: mp.views_count || 0,
       author: mp.author as any,
-      is_memorial: true
+      is_memorial: true,
+      comments_count: (mp as any).comments_count || 0
     })) as Post[];
   }, [memorialPosts]);
 
@@ -814,9 +825,11 @@ export const UserProfilePage = () => {
             }
 
             <div className="min-w-0 flex-1 text-center">
-              <h1 className="text-lg font-extrabold text-foreground leading-tight truncate">
-                {profile.name || 'Foydalanuvchi'}
-              </h1>
+              {profile.name && (
+                <h1 className="text-lg font-extrabold text-foreground leading-tight truncate">
+                  {profile.name}
+                </h1>
+              )}
               <div className="mt-0.5 truncate">
                 <StarUsername username={profile.username ? profile.username : 'username'} />
               </div>
@@ -982,90 +995,83 @@ export const UserProfilePage = () => {
                                                                      TABS
                                                                   ═══════════════════════════════════════ */}
         <div className="px-4">
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            
+          {!isMemorial && (
+            <div className="flex border-b border-border/20 mb-2 mt-4 relative">
+              {/* Posts tab with layout toggle */}
+              <button
+                onClick={() => {
+                  if (activeTab === 'posts') {
+                    setPostsLayout(prev => prev === 'list' ? 'pinterest1' : 'list');
+                  } else {
+                    setActiveTab('posts');
+                  }
+                }}
+                className={cn(
+                  'flex-1 py-1.5 flex items-center justify-center border-b-2 transition-all duration-300',
+                  activeTab === 'posts' ? 'border-primary' : 'border-transparent'
+                )}>
+                <div
+                  className={cn(
+                    "relative w-16 h-8 bg-slate-100/90 dark:bg-slate-800/80 rounded-full border border-slate-200/60 dark:border-white/10 p-1 flex items-center shadow-md transition-all duration-500 overflow-hidden",
+                    activeTab !== 'posts' && "opacity-60 scale-90 grayscale-[0.5]"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "absolute inset-y-1 w-7 rounded-full bg-white dark:bg-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.15)] flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform z-20",
+                      postsLayout === 'list' ? "left-1" : "left-8"
+                    )}
+                  >
+                    <Icon
+                      icon={postsLayout === 'list' ? "weui:transfer2-filled" : "mdi:stars"}
+                      className={cn(
+                        "h-4 w-4 transition-colors duration-300",
+                        postsLayout === 'list' ? "text-emerald-600" : "text-amber-500"
+                      )}
+                    />
+                  </div>
+                  <div className="flex w-full justify-between items-center px-1.5 opacity-30">
+                    <LayoutList className="h-4 w-4" />
+                    <PremiumStarsIcon active={activeTab === 'posts'} size="sm" />
+                  </div>
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 w-8 bg-gradient-to-r from-emerald-400/20 to-teal-400/20 blur-md transition-all duration-500",
+                      postsLayout === 'list' ? "left-0" : "left-8"
+                    )}
+                  />
+                </div>
+              </button>
+
+              {/* Saved tab — hidden when profile hides saved posts */}
+              {!profile?.hide_saved_posts && (
+                <button
+                  onClick={() => setActiveTab('saved')}
+                  className={cn(
+                    'flex-1 py-1.5 flex items-center justify-center border-b-2 transition-colors',
+                    activeTab === 'saved'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground'
+                  )}>
+                  <Bookmark className="h-5 w-5" />
+                </button>
+              )}
+
+              {/* Mentions tab — hidden when profile hides mentions */}
+              {!profile?.hide_mentions && (
+                <button
+                  onClick={() => setActiveTab('mentions')}
+                  className={cn(
+                    'flex-1 py-1.5 flex items-center justify-center border-b-2 transition-colors',
+                    activeTab === 'mentions'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground'
+                  )}>
+                  <AtSign className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Posts Grid / List */}
@@ -1227,32 +1233,52 @@ export const UserProfilePage = () => {
                   </div>
                   }
               </div>
-                }
-          </PullToRefresh>);
+              }
+          </PullToRefresh>)
 
           })()}
 
         {activeTab === 'saved' && (() => {
-            // We show both regular saved and memorial saved posts mixed together
-            const { isLoading: savedLoading, savedPosts: regSaved, savedMemorialPosts: memSaved } = {
-              isLoading: false,
-              savedPosts: [] as any[],
-              savedMemorialPosts: [] as any[]
-            };
-            // NOTE: savedPosts and savedMemorialPosts are already available from the hook in Profile.tsx
-            // Here on UserProfile we just show an informational empty state — viewing others' saved is private
-            return (
-              <div className="text-center py-12 px-4">
-              <Bookmark className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-              <p className="text-muted-foreground">Saqlangan postlar yopiq</p>
-            </div>);
-
+            if (profile?.hide_saved_posts) {
+              return (
+                <div className="text-center py-12 px-4">
+                  <Bookmark className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                  <p className="text-muted-foreground">Saqlangan postlar yopiq</p>
+                </div>
+              )
+            }
+            const allSaved = [...savedPosts, ...savedMemorialPosts].sort((a,b) => new Date((b as any).savedAt || b.created_at).getTime() - new Date((a as any).savedAt || a.created_at).getTime());
+            return allSaved.length === 0 ? (
+                <div className="text-center py-12 px-4">
+                <Bookmark className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                <p className="text-muted-foreground">Hozircha saqlangan postlar yo'q</p>
+              </div>
+            ) : (
+                <div className="columns-2 gap-2 sm:gap-4 pb-8 px-2 sm:px-4">
+                  {allSaved.map((post, index) =>
+                    <div key={post.id} onClick={() => openViewer(allSaved as Post[], index)} className="cursor-pointer mb-2 sm:mb-4 break-inside-avoid">
+                      {(post as any).isMemorial ?
+                        <MemorialPostCard post={post as any} /> :
+                        <PostCard post={post as any} />}
+                    </div>
+                  )}
+                </div>
+            )
           })()}
 
         {/* Mentions / Xotira postlari tab */}
-        {activeTab === 'mentions' &&
-          <div>
-            {isMemorial ? (
+        {activeTab === 'mentions' && (() => {
+            if (profile?.hide_mentions) {
+              return (
+                <div className="text-center py-12 px-4">
+                  <AtSign className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                  <p className="text-muted-foreground">Eslatmalar yopiq</p>
+                </div>
+              )
+            }
+            return (
+              <div>
+                {isMemorial ? (
             /* Memorial profile: show memorial_posts with layout toggle */
             <PullToRefresh onRefresh={refetchMemorial} useWindowScroll={true}>
                 {memorialLoading ?
@@ -1330,7 +1356,7 @@ export const UserProfilePage = () => {
                                     </div>
                                   </div>
                                 </div>
-                              </div>);
+                              </div>)
 
                       })}
                       </div>
@@ -1364,7 +1390,7 @@ export const UserProfilePage = () => {
                                     </div>
                                   </div>
                                 </div>
-                              </div>);
+                              </div>)
 
                       })}
                       </div>
@@ -1402,10 +1428,10 @@ export const UserProfilePage = () => {
               )}
                   <EndOfFeed />
                 </div>)
-
             }
           </div>
-          }
+            )
+          })()}
 
 
         {/* Full screen viewer */}
@@ -1418,15 +1444,14 @@ export const UserProfilePage = () => {
           }
 
         {/* Story Viewer for this profile only */}
-        {storyViewerOpen && profileStoryGroups.length > 0 &&
+        {storyViewerOpen && profileStoryGroups.length > 0 && (
           <StoryViewer
             storyGroups={profileStoryGroups}
             initialGroupIndex={0}
             initialStoryIndex={initialStoryIndex}
             persistKey={`userprofile:${userId || 'unknown'}`}
             onClose={() => setStoryViewerOpen(false)} />
-
-          }
+          )}
 
         {/* Relative connection sheet */}
         <RelativeConnectionSheet
@@ -1440,7 +1465,7 @@ export const UserProfilePage = () => {
           </>
         }
       </div>
-    </AppLayout>);
+    </AppLayout>)
 
 };
 

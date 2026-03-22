@@ -551,9 +551,11 @@ const Profile = () => {
 
             {/* ROW 2: Name & Username */}
             <div className="text-center mb-1.5">
-              <h1 className="text-lg font-extrabold text-foreground leading-tight break-words whitespace-normal">
-                {profile?.name || t('user')}
-              </h1>
+              {profile?.name && (
+                <h1 className="text-lg font-extrabold text-foreground leading-tight truncate">
+                  {profile.name}
+                </h1>
+              )}
               <div className="mt-0.5 break-words whitespace-normal my-0">
                 <StarUsername username={profile?.username || user?.email?.split('@')[0] || 'username'} />
               </div>

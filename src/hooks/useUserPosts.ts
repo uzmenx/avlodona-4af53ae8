@@ -101,7 +101,6 @@ export const useUserPosts = (userId: string | undefined, isMemorial: boolean = f
             media_urls: post.media_urls || [],
             author: profile ? {
               id: profile.id,
-              email: profile.email || '',
               full_name: profile.name || 'Foydalanuvchi',
               username: profile.username || 'user',
               bio: profile.bio || '',

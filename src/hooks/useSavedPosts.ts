@@ -27,15 +27,17 @@ export type SavedItem = Post | SavedMemorialPost;
 export const isMemorialSave = (item: SavedItem): item is SavedMemorialPost =>
   (item as SavedMemorialPost).isMemorial === true;
 
-export const useSavedPosts = () => {
+export const useSavedPosts = (targetUserId?: string) => {
   const { user } = useAuth();
+  const effectiveUserId = targetUserId || user?.id;
+  
   const [savedPosts, setSavedPosts] = useState<Post[]>([]);
   const [savedMemorialPosts, setSavedMemorialPosts] = useState<SavedMemorialPost[]>([]);
   const [savedPostIds, setSavedPostIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchSavedPosts = useCallback(async () => {
-    if (!user) {
+    if (!effectiveUserId) {
       setSavedPosts([]);
       setSavedMemorialPosts([]);
       setSavedPostIds(new Set());
@@ -49,7 +51,7 @@ export const useSavedPosts = () => {
       const { data: savedData, error: savedError } = await supabase
         .from('saved_posts')
         .select('post_id, created_at')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .order('created_at', { ascending: false });
 
       if (savedError) throw savedError;
@@ -104,7 +106,7 @@ export const useSavedPosts = () => {
       const { data: memSavedData } = await (supabase as any)
         .from('memorial_post_saves')
         .select('memorial_post_id, created_at')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .order('created_at', { ascending: false });
 
       const memPostIds: string[] = (memSavedData || []).map((s: any) => s.memorial_post_id);
@@ -156,7 +158,7 @@ export const useSavedPosts = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [effectiveUserId]);
 
   useEffect(() => {
     fetchSavedPosts();

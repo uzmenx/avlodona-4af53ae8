@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { generateBaseUsername, ensureUniqueUsername } from '@/utils/usernameUtils';
 
 interface Profile {
   id: string;
@@ -11,6 +12,12 @@ interface Profile {
   theme_mode?: string | null;
   bg_theme?: string | null;
   gender: string | null;
+  hide_highlights?: boolean | null;
+  hide_collections?: boolean | null;
+  is_private?: boolean | null;
+  hide_online_status?: boolean | null;
+  hide_mentions?: boolean | null;
+  hide_saved_posts?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -44,6 +51,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('Error fetching profile:', error);
         return null;
+      }
+
+      if (data && !data.username) {
+        // Generate a username for users who don't have one (e.g., Google login)
+        const { data: userData } = await supabase.auth.getUser();
+        const currentUserEmail = userData?.user?.email;
+        if (currentUserEmail) {
+          const baseUsername = generateBaseUsername(currentUserEmail);
+          const finalUsername = await ensureUniqueUsername(supabase, baseUsername);
+          
+          await supabase
+            .from('profiles')
+            .update({ username: finalUsername })
+            .eq('id', userId);
+            
+          data.username = finalUsername;
+        }
       }
 
       return data as Profile | null;
