@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.18.0";
 
@@ -15,10 +15,10 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     // Some basic CORS handling just in case, though webhook doesn't typically need it
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   const signature = req.headers.get("stripe-signature");
@@ -26,6 +26,7 @@ serve(async (req) => {
   if (!signature || !webhookSecret) {
     return new Response("Webhook secret and signature are required.", {
       status: 400,
+      headers: corsHeaders
     });
   }
 
@@ -42,7 +43,7 @@ serve(async (req) => {
     } catch (err) {
       const e = err as Error;
       console.error(`Webhook signature verification failed: ${e.message}`);
-      return new Response(`Webhook Error: ${e.message}`, { status: 400 });
+      return new Response(`Webhook Error: ${e.message}`, { status: 400, headers: corsHeaders });
     }
 
     const supabaseAdmin = createClient(
@@ -105,11 +106,11 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ received: true }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     const e = err as Error;
     console.error(`Unhandled webhook error: ${e.message}`);
-    return new Response("Internal Server Error", { status: 500 });
+    return new Response("Internal Server Error", { status: 500, headers: corsHeaders });
   }
 });
