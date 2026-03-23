@@ -68,10 +68,17 @@ export const GroupChatItem = ({ chat, onClick }: GroupChatItemProps) => {
               <span className="italic text-muted-foreground/40">{t('noMessagesYet')}</span>
             )}
           </p>
-          <div className="h-5 px-2 rounded-full border border-white/5 bg-white/5 flex items-center shrink-0">
-            <span className="text-[10px] font-bold text-muted-foreground/70">
-              {chat.memberCount} {t('members')}
-            </span>
+          <div className="flex items-center gap-2 shrink-0">
+            {chat.unreadCount !== undefined && chat.unreadCount > 0 && (
+              <div className="bg-primary text-primary-foreground min-w-[20px] h-5 rounded-full px-1.5 flex items-center justify-center text-[10px] font-bold shadow-sm shadow-primary/20">
+                {chat.unreadCount}
+              </div>
+            )}
+            <div className="h-5 px-2 rounded-full border border-white/5 bg-white/5 flex items-center shrink-0">
+              <span className="text-[10px] font-bold text-muted-foreground/70">
+                {chat.memberCount} {t('members')}
+              </span>
+            </div>
           </div>
         </div>
       </div>

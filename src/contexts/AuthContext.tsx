@@ -7,7 +7,6 @@ interface Profile {
   id: string;
   name: string | null;
   username: string | null;
-  email?: string | null;
   bio: string | null;
   avatar_url: string | null;
   theme_mode?: string | null;
@@ -43,7 +42,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb: any = supabase;
+      const { data, error } = await sb
         .from('profiles')
         .select('*')
         .eq('id', userId)
@@ -54,35 +55,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
-      if (data && (!data.username || !data.name || data.name === 'Foydalanuvchi' || !data.email)) {
+      // If profile row is missing OR incomplete, self-heal from OAuth metadata
+      if (!data || !data.username || !data.name || data.name === 'Foydalanuvchi' || !data.avatar_url) {
         // Generate a username for users who don't have one (e.g., Google login)
         // Also sync their name from OAuth metadata if missing
         const { data: userData } = await supabase.auth.getUser();
         const user = userData?.user;
         const currentUserEmail = user?.email;
         const currentFullName = user?.user_metadata?.full_name || user?.user_metadata?.name;
+        const currentAvatarUrl =
+          (user?.user_metadata as { avatar_url?: string; picture?: string } | undefined)?.avatar_url ||
+          (user?.user_metadata as { avatar_url?: string; picture?: string } | undefined)?.picture;
         
         const updates: Partial<Profile> = {};
 
-        if (!data.username && currentUserEmail) {
+        if ((!data || !data.username) && currentUserEmail) {
           const baseUsername = generateBaseUsername(currentUserEmail);
           const finalUsername = await ensureUniqueUsername(supabase, baseUsername, userId);
           updates.username = finalUsername;
         }
 
-        if ((!data.name || data.name === 'Foydalanuvchi') && currentFullName) {
+        if ((!data || !data.name || data.name === 'Foydalanuvchi') && currentFullName) {
           updates.name = currentFullName;
         }
 
-        if (!data.email && currentUserEmail) {
-          updates.email = currentUserEmail;
+        if ((!data || !data.avatar_url) && currentAvatarUrl) {
+          updates.avatar_url = currentAvatarUrl;
         }
         
         if (Object.keys(updates).length > 0) {
           console.log('Fixing profile data for user:', userId, updates);
-          const { data: updatedData, error: updateError } = await supabase
+          const { data: updatedData, error: updateError } = await sb
             .from('profiles')
-            .upsert({ id: userId, ...updates })
+            .upsert({ id: userId, ...updates }, { onConflict: 'id' })
             .select()
             .single();
             
@@ -114,7 +119,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     
     const updateLastSeen = () => {
-      supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', user.id).then();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb: any = supabase;
+      sb.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', user.id).then();
     };
     
     updateLastSeen(); // on mount

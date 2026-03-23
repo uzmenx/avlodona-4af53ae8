@@ -58,12 +58,16 @@ const Signup = () => {
 
       if (data.user) {
         // Create/update profile
-        const { error: profileError } = await supabase.from('profiles').upsert([{
-          id: data.user.id,
-          username: uniqueUsername,
-          name: fullName.trim() || null,
-          gender: gender || null,
-        }], { onConflict: 'id' });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sb: any = supabase;
+        const { error: profileError } = await sb.from('profiles').upsert([
+          {
+            id: data.user.id,
+            username: uniqueUsername,
+            name: fullName.trim() || null,
+            gender: gender || null,
+          },
+        ], { onConflict: 'id' });
 
         if (profileError) {
           if (profileError.code === '23505') {
@@ -92,7 +96,7 @@ const Signup = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: `${window.location.origin}/auth/callback`
         }
       });
       if (error) throw error;

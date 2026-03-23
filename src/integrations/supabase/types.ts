@@ -369,6 +369,8 @@ export type Database = {
           description: string | null
           id: string
           invite_link: string | null
+          last_message_at: string | null
+          last_message_content: string | null
           name: string
           owner_id: string | null
           type: string | null
@@ -382,6 +384,8 @@ export type Database = {
           description?: string | null
           id?: string
           invite_link?: string | null
+          last_message_at?: string | null
+          last_message_content?: string | null
           name: string
           owner_id?: string | null
           type?: string | null
@@ -395,6 +399,8 @@ export type Database = {
           description?: string | null
           id?: string
           invite_link?: string | null
+          last_message_at?: string | null
+          last_message_content?: string | null
           name?: string
           owner_id?: string | null
           type?: string | null
@@ -409,6 +415,7 @@ export type Database = {
           group_id: string | null
           id: string
           joined_at: string | null
+          last_read_at: string | null
           role: string | null
           user_id: string
         }
@@ -417,6 +424,7 @@ export type Database = {
           group_id?: string | null
           id?: string
           joined_at?: string | null
+          last_read_at?: string | null
           role?: string | null
           user_id: string
         }
@@ -425,6 +433,7 @@ export type Database = {
           group_id?: string | null
           id?: string
           joined_at?: string | null
+          last_read_at?: string | null
           role?: string | null
           user_id?: string
         }

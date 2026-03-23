@@ -144,7 +144,7 @@ const GroupChat = () => {
       const { count: memberCount } = await supabase
         .from('group_members').select('*', { count: 'exact', head: true }).eq('group_id', groupId);
 
-      setGroupInfo({ ...group, type: (group.type || 'group') as 'channel' | 'group', visibility: (group.visibility || 'private') as 'private' | 'public', memberCount: (memberCount || 0) + 1 } as any);
+      setGroupInfo({ ...group, type: (group.type || 'group') as 'channel' | 'group', visibility: (group.visibility || 'private') as 'private' | 'public', memberCount: (memberCount || 0) } as any);
 
       if (group.owner_id === user?.id) {
         setIsMember(true);
@@ -219,9 +219,23 @@ const GroupChat = () => {
     }
   }, [groupId]);
 
+  const markAsRead = useCallback(async () => {
+    if (!groupId || !user?.id) return;
+    try {
+      await supabase
+        .from('group_members')
+        .update({ last_read_at: new Date().toISOString() })
+        .eq('group_id', groupId)
+        .eq('user_id', user.id);
+    } catch (error) {
+      console.error('Error marking group as read:', error);
+    }
+  }, [groupId, user?.id]);
+
   useEffect(() => {
     fetchGroupInfo();
     fetchMessages();
+    markAsRead();
     const stored = localStorage.getItem(`deleted_group_messages_${groupId}`);
     if (stored) setDeletedMessageIds(new Set(JSON.parse(stored)));
 
@@ -230,7 +244,7 @@ const GroupChat = () => {
       const ts = Number(clearedRaw);
       if (Number.isFinite(ts) && ts > 0) setClearedAt(ts);
     }
-  }, [fetchGroupInfo, fetchMessages, groupId]);
+  }, [fetchGroupInfo, fetchMessages, markAsRead, groupId]);
 
   const clearHistoryForMe = useCallback(() => {
     if (!groupId) return;
@@ -273,6 +287,7 @@ const GroupChat = () => {
           const newMsg = payload.new as Record<string, unknown>;
           const { data: profile } = await supabase.from('profiles').select('id, name, username, avatar_url').eq('id', newMsg.sender_id as string).single();
           setMessages(prev => [...prev, { ...newMsg, sender: profile } as GroupMessage]);
+          markAsRead();
         })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'group_messages', filter: `group_id=eq.${groupId}` },
         (payload) => {
@@ -280,7 +295,7 @@ const GroupChat = () => {
         })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [groupId]);
+  }, [groupId, markAsRead]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;

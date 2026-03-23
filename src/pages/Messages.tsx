@@ -383,6 +383,13 @@ const Messages = () => {
     return name.includes(searchQuery.toLowerCase()) || username.includes(searchQuery.toLowerCase());
   });
 
+  // Combine and sort all chats for the "All" tab
+  const allChats = [
+    ...filteredConversations.map(conv => ({ ...conv, chatType: 'direct' as const, sortTime: conv.last_message_at || new Date(0).toISOString() })),
+    ...filteredGroups.map(group => ({ ...group, chatType: 'group' as const, sortTime: group.lastMessage?.created_at || group.created_at })),
+    ...filteredChannels.map(channel => ({ ...channel, chatType: 'channel' as const, sortTime: channel.lastMessage?.created_at || channel.created_at }))
+  ].sort((a, b) => new Date(b.sortTime).getTime() - new Date(a.sortTime).getTime());
+
   // Create group/channel handlers
   const handleNewGroup = () => {
     setCreateType("group");
@@ -814,133 +821,134 @@ const Messages = () => {
                   </div>
 
                   <div className="divide-y divide-border">
-                    {/* Groups */}
-                    {filteredGroups.map((group) =>
-                <GroupChatItem key={group.id} chat={group} onClick={() => handleGroupClick(group.id)} />
-                )}
-
-                    {/* Channels */}
-                    {filteredChannels.map((channel) =>
-                <GroupChatItem key={channel.id} chat={channel} onClick={() => handleGroupClick(channel.id)} />
-                )}
-
-                    {/* Conversations */}
-                    {filteredConversations.map((conv) =>
-                <div
-                  key={conv.id}
-                  onClick={() => {
-                    if (isEditMode) {
-                      setSelectedConvIds((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(conv.id)) next.delete(conv.id);else
-                        next.add(conv.id);
-                        return next;
-                      });
-                    } else {
-                      handleUserClick(conv.otherUser.id);
-                    }
-                  }}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-150 active:scale-[0.99] rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md',
-                    isEditMode && selectedConvIds.has(conv.id) ? 'bg-primary/10' : 'hover:bg-white/10'
-                  )}>
-
-                      {isEditMode &&
-                  <div className={cn(
-                    "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0",
-                    selectedConvIds.has(conv.id) ?
-                    "bg-primary border-primary" :
-                    "border-muted-foreground/40"
-                  )}>
-                          {selectedConvIds.has(conv.id) &&
-                    <CheckSquare className="h-3 w-3 text-primary-foreground" />
-                    }
-                        </div>
-                  }
-                      <div className="relative">
-                        {(() => {
-                      const storyInfo = getStoryInfo(conv.otherUser.id);
-                      if (storyInfo) {
-                        return (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openStoriesForUser(conv.otherUser.id);
-                            }}
-                            className="h-12 w-12 rounded-full p-[2px] flex items-center justify-center"
-                            style={{
-                              background: storyInfo.has_unviewed ?
-                              getStoryRingGradientFn(storyInfo.ring_id) :
-                              undefined
-                            }}
-                            aria-label="View story">
-                            
-                                {!storyInfo.has_unviewed &&
-                            <div className="absolute inset-0 rounded-full bg-muted-foreground/30 p-[2px]" />
-                            }
-                                <div className="w-full h-full rounded-full bg-background p-[1.5px]">
-                                  <Avatar className="h-full w-full">
-                                    <AvatarImage src={conv.otherUser.avatar_url || undefined} />
-                                    <AvatarFallback>{getInitials(conv.otherUser.name)}</AvatarFallback>
-                                  </Avatar>
+                    {activeTab === 'all' && (
+                      <>
+                        {allChats.map((item) => {
+                          if (item.chatType === 'direct') {
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => {
+                                  if (isEditMode) {
+                                    setSelectedConvIds((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(item.id)) next.delete(item.id); else
+                                      next.add(item.id);
+                                      return next;
+                                    });
+                                  } else {
+                                    handleUserClick(item.otherUser.id);
+                                  }
+                                }}
+                                className={cn(
+                                  'flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-150 active:scale-[0.99] rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md',
+                                  isEditMode && selectedConvIds.has(item.id) ? 'bg-primary/10' : 'hover:bg-white/10'
+                                )}>
+                                <div className="relative">
+                                  {(() => {
+                                    const storyInfo = getStoryInfo(item.otherUser.id);
+                                    if (storyInfo) {
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openStoriesForUser(item.otherUser.id);
+                                          }}
+                                          className="h-12 w-12 rounded-full p-[2px] flex items-center justify-center"
+                                          style={{
+                                            background: storyInfo.has_unviewed ?
+                                            getStoryRingGradientFn(storyInfo.ring_id) :
+                                            undefined
+                                          }}
+                                          aria-label="View story">
+                                          {!storyInfo.has_unviewed && <div className="absolute inset-0 rounded-full bg-muted-foreground/30 p-[2px]" />}
+                                          <div className="w-full h-full rounded-full bg-background p-[1.5px]">
+                                            <Avatar className="h-full w-full">
+                                              <AvatarImage src={item.otherUser.avatar_url || undefined} />
+                                              <AvatarFallback>{getInitials(item.otherUser.name)}</AvatarFallback>
+                                            </Avatar>
+                                          </div>
+                                        </button>
+                                      );
+                                    }
+                                    return (
+                                      <Avatar className="h-12 w-12">
+                                        <AvatarImage src={item.otherUser.avatar_url || undefined} />
+                                        <AvatarFallback>{getInitials(item.otherUser.name)}</AvatarFallback>
+                                      </Avatar>
+                                    );
+                                  })()}
                                 </div>
-                              </button>);
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <StarUsername name={item.otherUser.name || 'Foydalanuvchi'} />
+                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                      {item.last_message_at ? formatTime(item.last_message_at) : ''}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2 mt-0.5">
+                                    <p className={cn(
+                                      "text-sm truncate leading-snug",
+                                      item.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"
+                                    )}>
+                                      {item.lastMessage?.sender_id === user?.id ? `${t('you')}: ` : ""}
+                                      {item.last_message_content || t('noMessagesYet')}
+                                    </p>
+                                    {item.unreadCount > 0 && (
+                                      <div className="bg-primary text-primary-foreground min-w-[20px] h-5 rounded-full px-1.5 flex items-center justify-center text-[10px] font-bold shadow-sm shadow-primary/20 shrink-0">
+                                        {item.unreadCount}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return <GroupChatItem key={item.id} chat={item as any} onClick={() => handleGroupClick(item.id)} />;
+                        })}
 
-                      }
-                      return (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUserClick(conv.otherUser.id);
-                          }}
-                          aria-label="Open chat">
-                          
-                              <Avatar className="h-12 w-12">
-                                <AvatarImage src={conv.otherUser.avatar_url || undefined} />
-                                <AvatarFallback>{getInitials(conv.otherUser.name)}</AvatarFallback>
-                              </Avatar>
-                            </button>);
+                        {allChats.length === 0 && (
+                          <div className="text-center py-12 px-4">
+                            <MessageCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                            <p className="text-sm text-muted-foreground mt-1">{t('createGroupOrChannel')}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                        {/* Groups Tab */}
+                        {activeTab === 'groups' && filteredGroups.map((group) => (
+                          <GroupChatItem key={group.id} chat={group} onClick={() => handleGroupClick(group.id)} />
+                        ))}
 
-                    })()}
+                        {/* Channels Tab */}
+                        {activeTab === 'channels' && filteredChannels.map((channel) => (
+                          <GroupChatItem key={channel.id} chat={channel} onClick={() => handleGroupClick(channel.id)} />
+                        ))}
+
+                    {/* Followers/Following Tabs */}
+                    {(activeTab === 'followers' || activeTab === 'following') && (
+                      <div className="space-y-1">
+                        {(activeTab === 'followers' ? filteredFollowers : filteredFollowing).map((profile) => (
+                          <div
+                            key={profile.id}
+                            onClick={() => handleUserClick(profile.id)}
+                            className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/10 active:scale-[0.99] transition-all rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md"
+                          >
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={profile.avatar_url || undefined} />
+                              <AvatarFallback>{getInitials(profile.name)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold truncate">{profile.name || profile.username}</p>
+                              <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-semibold truncate">
-                            {conv.otherUser.name || conv.otherUser.username || t('user')}
-                          </h3>
-                          {conv.lastMessage &&
-                      <span className="text-xs text-muted-foreground">
-                              {formatTime(conv.lastMessage.created_at)}
-                            </span>
-                      }
-                        </div>
-                        {conv.lastMessage &&
-                    <p
-                      className={`text-sm truncate ${conv.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                    )}
 
-                            {conv.lastMessage.sender_id === user?.id ? `${t('you')}: ` : ""}
-                            {formatLastMessagePreview(conv.lastMessage.content)}
-                          </p>
-                    }
-                      </div>
-                      {/* Video call shortcut */}
-                      {!isEditMode && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/chat/${conv.otherUser.id}?startCall=true`);
-                          }}
-                          className="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors"
-                          aria-label="Video qo'ng'iroq"
-                        >
-                          <Icon icon="heroicons:video-camera-16-solid" className="h-5 w-5 text-foreground" />
-                        </button>
-                      )}
-                    </div>
-                )}
+                    {/* Empty search results handled above */}
 
                   </div>
 
