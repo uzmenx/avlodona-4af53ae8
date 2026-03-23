@@ -39,7 +39,7 @@ serve(async (req) => {
     }
 
     // Default price from user or a fallback one. This should be configured in Supabase Secrets as STRIPE_PRO_PRICE_ID
-    const PRICE_ID = Deno.env.get("STRIPE_PRO_PRICE_ID") || "price_1OwYYyB2..."; 
+    const PRICE_ID = Deno.env.get("STRIPE_PRO_PRICE_ID") || "price_1TECS00eSmNxLmIODV1D7ivA"; 
     
     const stripe = new Stripe(STRIPE_SECRET_KEY, {
       apiVersion: "2023-10-16",
