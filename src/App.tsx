@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { PushNotification } from "@/components/notifications/PushNotification";
+import { PlanOverlay } from "@/components/subscription/PlanOverlay";
 import { ErrorBoundary } from "react-error-boundary";
 import { ErrorFallback } from "@/components/ui/ErrorFallback";
 
@@ -95,6 +96,7 @@ const App = () => (
         <AuthProvider>
           <Toaster />
           <Sonner />
+          <PlanOverlay />
           <BrowserRouter>
             <PushNotification />
             <ErrorBoundary 

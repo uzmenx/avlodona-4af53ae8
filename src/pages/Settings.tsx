@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, LogOut, Moon, Sun, Monitor, Shield, Mail, Globe, Palette, EyeOff, Lock, WifiOff, BookOpen, FolderLock, AtSign, Bookmark } from 'lucide-react';
+import { ArrowLeft, LogOut, Moon, Sun, Monitor, Shield, Mail, Globe, Palette, EyeOff, Lock, WifiOff, BookOpen, FolderLock, AtSign, Bookmark, Star, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
@@ -146,6 +146,33 @@ const Settings = () => {
                   </Button>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Subscription */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-purple-500" />
+                  Obuna
+                </div>
+                {profile?.subscription_tier === 'pro' && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 px-2.5 py-1 rounded-full">
+                    PRO Plan
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                variant="outline" 
+                className="w-full justify-between hover:bg-purple-500/5 hover:text-purple-600 hover:border-purple-500/30 transition-all font-medium"
+                onClick={() => window.dispatchEvent(new Event('show-plan-overlay'))}
+              >
+                <span>{profile?.subscription_tier === 'pro' ? "Pro rejani ko'rish" : "Pro rejaga o'tish"}</span>
+                <Zap className="h-4 w-4" />
+              </Button>
             </CardContent>
           </Card>
 

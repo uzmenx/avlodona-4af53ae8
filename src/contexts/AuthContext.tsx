@@ -18,6 +18,7 @@ interface Profile {
   hide_online_status?: boolean | null;
   hide_mentions?: boolean | null;
   hide_saved_posts?: boolean | null;
+  subscription_tier?: 'free' | 'pro' | string;
   created_at: string;
   updated_at: string;
 }

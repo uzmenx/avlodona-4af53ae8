@@ -492,7 +492,7 @@ const Messages = () => {
   return (
     <AppLayout>
       <div ref={(n) => {topRef.current = n;}} />
-      <div className="min-h-screen pb-20">
+      <div className="h-[100dvh] overflow-y-auto pb-20 overscroll-contain">
 
         {/* Header */}
         <div className="sticky top-0 z-40 bg-gradient-to-b from-indigo-500/25 via-violet-500/20 to-background/10 backdrop-blur-xl">

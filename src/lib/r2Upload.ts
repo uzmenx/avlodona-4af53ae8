@@ -90,7 +90,12 @@ export async function uploadToR2(
         } else {
           try {
             const err = JSON.parse(xhr.responseText);
-            reject(new Error(err.error || `Upload failed: ${xhr.status}`));
+            if (xhr.status === 403 && err.limit_reached) {
+              window.dispatchEvent(new Event('show-plan-overlay'));
+              reject(new Error(err.error || 'Xotira limiti tugadi. Pro rejaga o\'ting!'));
+            } else {
+              reject(new Error(err.error || `Upload failed: ${xhr.status}`));
+            }
           } catch (e) {
             reject(new Error(`Upload failed: ${xhr.status}`));
           }

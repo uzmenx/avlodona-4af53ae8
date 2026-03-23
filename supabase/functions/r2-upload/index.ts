@@ -51,6 +51,55 @@ serve(async (req) => {
 
       console.log(`Uploading: key=${path}, size=${body.length}, type=${file.type}`);
 
+      // Authenticate and Check limits via Supabase
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+      const supabaseClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
+      );
+
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+
+      if (!userError && user) {
+        const supabaseAdmin = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+        );
+
+        const { data: usageData } = await supabaseAdmin
+          .from("user_usage")
+          .select("total_storage_bytes")
+          .eq("user_id", user.id)
+          .single();
+
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("subscription_tier")
+          .eq("id", user.id)
+          .single();
+
+        const currentStorage = usageData?.total_storage_bytes || 0;
+        const tier = profile?.subscription_tier || 'free';
+        
+        const FREE_LIMIT = 200 * 1024 * 1024; // 200MB
+        const PRO_LIMIT = 2 * 1024 * 1024 * 1024; // 2GB
+
+        const limit = tier === 'pro' ? PRO_LIMIT : FREE_LIMIT;
+        
+        if (currentStorage + body.length > limit) {
+          return new Response(
+            JSON.stringify({ 
+              error: `Xotira hajmi yetarli emas (${tier} plan uchu ${tier === 'pro' ? '2GB' : '200MB'} limit)`,
+              limit_reached: true 
+            }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // We will update the storage afterwards
+      }
+
       // Use aws4fetch for lightweight AWS v4 signing
       const { AwsClient } = await import("https://esm.sh/aws4fetch@1.0.20");
       
@@ -83,6 +132,28 @@ serve(async (req) => {
         : `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${path}`;
 
       console.log("Upload success:", publicUrl);
+
+      // Update the user usage storage
+      if (user) {
+        const supabaseAdmin = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+        );
+        
+        // Let's do a fast update via a simple RPC or just fetching and updating since we are inside Edge Function
+        const { data: usageData } = await supabaseAdmin
+          .from("user_usage")
+          .select("total_storage_bytes")
+          .eq("user_id", user.id)
+          .single();
+          
+        const currentStorage = usageData?.total_storage_bytes || 0;
+        
+        await supabaseAdmin
+          .from("user_usage")
+          .update({ total_storage_bytes: currentStorage + body.length })
+          .eq("user_id", user.id);
+      }
 
       return new Response(
         JSON.stringify({ url: publicUrl, path }),

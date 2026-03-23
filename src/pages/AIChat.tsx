@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState, useRef, useCallback, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Wand2, Mic, Sparkles, Menu, SquarePen, X } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Wand2, Sparkles, Menu, SquarePen, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { addSwipeGestures } from '@/utils/scrollBehavior';
 import AIChatView from '@/components/ai/AIChatView';
 import AIImageView from '@/components/ai/AIImageView';
-import AIVoiceView from '@/components/ai/AIVoiceView';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -259,16 +258,15 @@ const AIChat = () => {
     );
   };
 
-  const tabs: {id: AITab; label: string; icon: ReactNode;}[] = [
-    { id: 'chat', label: 'Chat', icon: <MessageSquare className="h-3.5 w-3.5" /> },
-    { id: 'image', label: 'Studio', icon: <Wand2 className="h-3.5 w-3.5" /> },
-    { id: 'voice', label: 'Voice', icon: <Mic className="h-3.5 w-3.5" /> },
+  const tabs = [
+    { id: 'chat' as const, label: 'Chat', icon: MessageSquare },
+    { id: 'image' as const, label: 'Studio', icon: Wand2 },
   ];
 
   useEffect(() => {
     const el = swipeTabRef.current;
     if (!el) return;
-    const order: AITab[] = ['chat', 'image', 'voice'];
+    const order: AITab[] = ['chat', 'image'];
     const idx = order.indexOf(activeTab);
     if (idx < 0) return;
 
@@ -297,10 +295,10 @@ const AIChat = () => {
           <motion.button
             type="button"
             onClick={() => navigate('/messages')}
-            whileTap={{ scale: 0.92 }}
-            whileHover={{ scale: 1.03 }}
-            className="h-10 w-10 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center shadow-[0_10px_30px_-20px_rgba(0,0,0,0.7)]">
-            <ArrowLeft className="h-5 w-5" />
+            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.05 }}
+            className="h-10 w-10 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] backdrop-blur-xl border border-white/5 flex items-center justify-center shadow-2xl transition-all">
+            <ArrowLeft className="h-5 w-5 opacity-80" />
           </motion.button>
           <div className="relative">
             <div className="h-9 w-9 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 p-[1.5px] shadow-lg shadow-purple-500/30">
@@ -314,60 +312,61 @@ const AIChat = () => {
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-background" />
           </div>
-          <div className="flex-1">
-            <h1 className="font-bold text-foreground text-sm">AI Do'stim</h1>
-            <div className="flex items-center gap-1">
-              <Sparkles className="h-2.5 w-2.5 text-purple-400" />
-              <span className="text-[10px] text-purple-400">Doim online</span>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-bold text-foreground text-sm tracking-tight truncate">AI Do'stim</h1>
+            <div className="flex items-center gap-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Online</span>
             </div>
           </div>
-          <motion.button
-            type="button"
-            onClick={createNewChat}
-            whileTap={{ scale: 0.92 }}
-            whileHover={{ scale: 1.03 }}
-            className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-500/30 via-purple-500/25 to-pink-500/30 hover:from-indigo-500/40 hover:to-pink-500/40 border border-white/10 flex items-center justify-center shadow-[0_16px_40px_-24px_rgba(168,85,247,0.9)]">
-            <SquarePen className="h-5 w-5" />
-          </motion.button>
         </div>
 
-        {/* Tab Bar */}
-        <div className="flex justify-center px-4 pb-2">
-          <div className="max-w-[360px] w-full flex items-center gap-2">
+        <div className="flex justify-center px-4 pb-3">
+          <div className="max-w-[400px] w-full flex items-center gap-2.5">
             <motion.button
               type="button"
               onClick={() => setSidebarOpen((v) => !v)}
-              whileTap={{ scale: 0.92 }}
-              whileHover={{ scale: 1.03 }}
-              className="h-10 w-10 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center shadow-[0_10px_30px_-20px_rgba(0,0,0,0.7)]"
+              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.05 }}
+              className="h-11 w-11 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 flex items-center justify-center shadow-xl backdrop-blur-xl transition-all"
               aria-label="History"
               title="History">
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5 opacity-70" />
             </motion.button>
-
-            <div className="flex-1 bg-white/5 backdrop-blur-2xl p-1 rounded-full flex items-center border border-white/10 justify-between shadow-[0_18px_40px_-28px_rgba(0,0,0,0.7)]">
-              {tabs.map((tab) =>
+            <div className="flex-1 bg-white/[0.03] backdrop-blur-3xl p-1.5 rounded-[22px] flex items-center border border-white/5 shadow-2xl relative overflow-hidden">
+              {tabs.map((tab) => (
                 <motion.button
                   type="button"
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  whileTap={{ scale: 0.97 }}
+                  whileTap={{ scale: 0.98 }}
                   className={cn(
-                    'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold transition-all duration-300',
-                    activeTab === tab.id ?
-                    'bg-foreground text-background shadow-md' :
-                    'text-muted-foreground hover:text-foreground opacity-80 hover:opacity-100'
-                  )}>
-                  <motion.span
-                    animate={activeTab === tab.id ? { rotate: [0, -8, 0], scale: [1, 1.05, 1] } : { rotate: 0, scale: 1 }}
-                    transition={{ duration: 0.35 }}
-                    className="inline-flex">
-                    {tab.icon}
-                  </motion.span>
+                    'relative flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all duration-300 z-10',
+                    activeTab === tab.id ? 'text-background' : 'text-muted-foreground hover:text-foreground opacity-70 hover:opacity-100'
+                  )}
+                >
+                  {activeTab === tab.id && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute inset-0 bg-foreground rounded-[14px] -z-10 shadow-lg shadow-white/5"
+                      transition={{ type: 'spring', bounce: 0.22, duration: 0.6 }}
+                    />
+                  )}
+                  <tab.icon className={cn("h-3.5 w-3.5", activeTab === tab.id ? "animate-pulse" : "")} />
                   {tab.label}
                 </motion.button>
-              )}
+              ))}
             </div>
+            <motion.button
+              type="button"
+              onClick={createNewChat}
+              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.05, y: -1 }}
+              className="h-11 w-11 rounded-2xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 hover:from-indigo-500/30 hover:to-pink-500/30 border border-white/10 flex items-center justify-center shadow-xl backdrop-blur-xl transition-all"
+              aria-label="New Chat"
+              title="New Chat">
+              <SquarePen className="h-5 w-5 text-purple-300" />
+            </motion.button>
           </div>
         </div>
       </div>
@@ -439,12 +438,6 @@ const AIChat = () => {
               setMessages={setMessagesForActive} />
           }
           {activeTab === 'image' && <AIImageView />}
-          {activeTab === 'voice' && 
-            <AIVoiceView 
-              messages={activeSession?.messages || []} 
-              setMessages={setMessagesForActive} 
-            />
-          }
         </main>
       </div>
 

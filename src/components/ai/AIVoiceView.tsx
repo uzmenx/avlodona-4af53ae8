@@ -124,6 +124,13 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
         body: JSON.stringify(body),
       });
 
+      if (resp.status === 429) {
+        toast.error("Limit tugadi! Pro rejaga o'ting");
+        window.dispatchEvent(new Event('show-plan-overlay'));
+        setAppState('idle');
+        return;
+      }
+      
       if (!resp.ok) throw new Error('API xatosi');
 
       const reader = resp.body!.getReader();

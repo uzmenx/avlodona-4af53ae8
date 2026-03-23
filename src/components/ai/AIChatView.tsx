@@ -105,7 +105,12 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
         body: JSON.stringify({ messages: allMessages })
       });
 
-      if (resp.status === 429) {toast.error("So'rovlar limiti oshdi");setIsLoading(false);return;}
+      if (resp.status === 429) {
+        toast.error("Limit qoldi! Pro rejaga o'ting");
+        window.dispatchEvent(new Event('show-plan-overlay'));
+        setIsLoading(false);
+        return;
+      }
       if (resp.status === 402) {toast.error("Kredit yetarli emas");setIsLoading(false);return;}
       if (!resp.ok || !resp.body) {
         // Fallback: Groq failed, try Gemini
