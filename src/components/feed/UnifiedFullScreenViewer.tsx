@@ -447,47 +447,10 @@ export const UnifiedFullScreenViewer = ({
     };
   }, [smoothNavigate, isTransitioning]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    ensureAmbientPlayback();
-    touchMoved.current = false;
-    touchStartY.current = e.touches[0].clientY;
-    touchStartX.current = e.touches[0].clientX;
-    touchStartTime.current = Date.now();
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const diffY = Math.abs(touchStartY.current - e.touches[0].clientY);
-    const diffX = Math.abs(touchStartX.current - e.touches[0].clientX);
-    if (diffY > 8 || diffX > 8) touchMoved.current = true;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const diffY = touchStartY.current - e.changedTouches[0].clientY;
-    const diffX = touchStartX.current - e.changedTouches[0].clientX;
-    const elapsed = Date.now() - touchStartTime.current;
-    const velocityY = Math.abs(diffY) / Math.max(elapsed, 1);
-    // Lower threshold for faster swipes — feels more responsive
-    const threshold = velocityY > 0.25 ? 16 : 34;
-
-    // Tap detection for play/pause
-    if (!touchMoved.current && Math.abs(diffY) < 8 && Math.abs(diffX) < 8 && elapsed < 300) {
-      if (activeTab === 'shorts') {
-        lastShortsTouchTapTs.current = Date.now();
-        handleShortsTap();
-      }
-      return;
-    }
-
-    if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > threshold) {
-      smoothNavigate(diffY > 0 ? 'down' : 'up');
-    }
-  };
-
   const handleShortsTap = useCallback(() => {
     setShortsPlaying((p) => {
       const next = !p;
       sendYouTubeCommand(next ? 'playVideo' : 'pauseVideo');
-      // Show play/pause indicator briefly
       setShowPlayIndicator(true);
       if (playIndicatorTimeout.current) clearTimeout(playIndicatorTimeout.current);
       playIndicatorTimeout.current = setTimeout(() => setShowPlayIndicator(false), 800);
@@ -645,7 +608,7 @@ export const UnifiedFullScreenViewer = ({
               <iframe
                 key={s.id}
                 ref={isCurrent ? shortsIframeRef : undefined}
-                src={`https://www.youtube.com/embed/${s.id}?rel=0&autoplay=${isCurrent ? '1' : '0'}&controls=1&modestbranding=0&playsinline=1&loop=1&playlist=${s.id}&iv_load_policy=3&fs=0&enablejsapi=1&origin=${encodeURIComponent(ytOrigin)}`}
+                src={`https://www.youtube.com/embed/${s.id}?rel=0&autoplay=${isCurrent ? '1' : '0'}&controls=0&modestbranding=1&playsinline=1&loop=1&playlist=${s.id}&iv_load_policy=3&fs=0&enablejsapi=1&origin=${encodeURIComponent(ytOrigin)}`}
                 className={cn(
                   "absolute inset-0 w-full h-full transition-opacity duration-150",
                   isCurrent ? "opacity-100 z-[2]" : "opacity-0 z-[1]"
@@ -655,17 +618,55 @@ export const UnifiedFullScreenViewer = ({
                 allowFullScreen
                 title={s.title} />);
           })}
+
+          {/* Touch-intercepting overlay — cross-origin iframes never bubble touch/swipe
+              events to parents. This transparent div sits above the iframe (z-[3]) and
+              captures the full touch sequence. Tap → play/pause; vertical swipe → navigate. */}
+          <div
+            className="absolute inset-0 z-[3]"
+            style={{ touchAction: 'pan-y', background: 'transparent' }}
+            onTouchStart={(e) => {
+              ensureAmbientPlayback();
+              touchMoved.current = false;
+              touchStartY.current = e.touches[0].clientY;
+              touchStartX.current = e.touches[0].clientX;
+              touchStartTime.current = Date.now();
+            }}
+            onTouchMove={(e) => {
+              const diffY = Math.abs(touchStartY.current - e.touches[0].clientY);
+              const diffX = Math.abs(touchStartX.current - e.touches[0].clientX);
+              if (diffY > 8 || diffX > 8) touchMoved.current = true;
+            }}
+            onTouchEnd={(e) => {
+              const diffY = touchStartY.current - e.changedTouches[0].clientY;
+              const diffX = touchStartX.current - e.changedTouches[0].clientX;
+              const elapsed = Date.now() - touchStartTime.current;
+              const velocityY = Math.abs(diffY) / Math.max(elapsed, 1);
+              const threshold = velocityY > 0.25 ? 16 : 34;
+
+              if (!touchMoved.current && Math.abs(diffY) < 8 && Math.abs(diffX) < 8 && elapsed < 300) {
+                lastShortsTouchTapTs.current = Date.now();
+                handleShortsTap();
+                return;
+              }
+
+              if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > threshold) {
+                smoothNavigate(diffY > 0 ? 'down' : 'up');
+              }
+            }}
+          />
+
         </div>
 
-          {/* Play/Pause indicator */}
+          {/* Play/Pause indicator — shown briefly on tap */}
           <div className={cn(
             "absolute inset-0 z-[4] flex items-center justify-center pointer-events-none transition-opacity duration-300",
             showPlayIndicator ? "opacity-100" : "opacity-0"
           )}>
             <div className="p-4 rounded-full bg-black/35 backdrop-blur-sm border border-white/10">
-              {shortsPlaying ?
-              <Play className="h-8 w-8 text-white" /> :
-              <Pause className="h-8 w-8 text-white" />}
+              {shortsPlaying
+                ? <Pause className="h-8 w-8 text-white" />
+                : <Play className="h-8 w-8 text-white" />}
             </div>
           </div>
 
@@ -687,8 +688,22 @@ export const UnifiedFullScreenViewer = ({
             </div>
           </div>
 
-        {/* Shorts Share */}
-        <div className="absolute right-3 top-20 z-[6]">
+        {/* Shorts action buttons — z-[6] to sit above the touch overlay */}
+        <div className="absolute right-3 top-20 z-[6] flex flex-col gap-2">
+          {/* Open in YouTube */}
+          <a
+            href={`https://www.youtube.com/shorts/${currentShort.id}`}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors flex items-center justify-center"
+            title="YouTube da ochish">
+            <svg viewBox="0 0 24 24" className="w-5 h-5 text-red-400 fill-current">
+              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z" />
+              <path d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z" fill="white" />
+            </svg>
+          </a>
+          {/* Share */}
           <button
             type="button"
             onClick={(e) => {
@@ -696,7 +711,6 @@ export const UnifiedFullScreenViewer = ({
               setShowShortShare(true);
             }}
             className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors">
-
             <Send className="h-5 w-5 text-white" />
           </button>
         </div>
@@ -931,14 +945,11 @@ export const UnifiedFullScreenViewer = ({
     <>
       <div
         ref={containerRef}
-        className="fixed inset-0 z-[60] flex flex-col overflow-hidden touch-none"
+        className="fixed inset-0 z-[60] flex flex-col overflow-hidden"
         style={{
           backgroundColor: '#000',
           ...bgStyle
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}>
 
