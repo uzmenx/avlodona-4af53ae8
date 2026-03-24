@@ -107,10 +107,14 @@ const Chat = () => {
     micOn,
     callObject,
     remoteParticipant,
+    lastRoomUrl,
+    wasInCall,
     startCall,
     answerCall,
+    rejoinCall,
     declineCall,
     leaveCall,
+    endCallPermanently,
     toggleCamera,
     toggleMic,
   } = useVideoCall(userId || null);
@@ -880,8 +884,40 @@ const Chat = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
         </div>
+        </div>
+
+        {/* Rejoin Call UI - visible when user is in chat but disconnected from active call */}
+        {!isInCall && wasInCall && lastRoomUrl && (
+          <div className="mx-4 mt-2 p-3 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-between animate-in slide-in-from-top duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <Video className="h-5 w-5 text-primary animate-pulse" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[11px] font-semibold text-primary uppercase tracking-wider">Video qo'ng'iroq</p>
+                <p className="text-[10px] text-muted-foreground">Siz suhbatdan chiqdingiz</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="h-8 text-[11px] font-medium hover:bg-black/5" 
+                onClick={endCallPermanently}
+              >
+                Yopish
+              </Button>
+              <Button 
+                size="sm" 
+                className="h-8 text-[11px] font-bold rounded-full px-4 shadow-sm" 
+                onClick={rejoinCall}
+              >
+                Qaytish
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Messages */}
         <div 

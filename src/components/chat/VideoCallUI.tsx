@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Video, VideoOff, Mic, MicOff, PhoneOff, Maximize2, Minimize2, SwitchCamera } from 'lucide-react';
 import { DailyCall, DailyParticipant } from '@daily-co/daily-js';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 type LayoutMode = 'pip' | 'split';
 
@@ -51,7 +52,7 @@ export const VideoCallUI = ({
   useEffect(() => {
     resetHideTimer();
     return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); };
-  }, []);
+  }, [resetHideTimer]);
 
   // Attach local video track
   useEffect(() => {
@@ -71,13 +72,14 @@ export const VideoCallUI = ({
 
     attachLocal();
     
-    const handler = (evt: any) => {
-      if (evt?.participant?.local) attachLocal();
+    const handler = (evt: unknown) => {
+      const p = (evt as { participant?: { local?: boolean } } | null)?.participant;
+      if (p?.local) attachLocal();
     };
     
     callObject.on('participant-updated', handler);
     return () => { callObject.off('participant-updated', handler); };
-  }, [callObject]);
+  }, [callObject, layoutMode, swapped]);
 
   // Attach remote video + audio tracks
   useEffect(() => {
@@ -102,7 +104,7 @@ export const VideoCallUI = ({
       const el = document.getElementById('remote-audio');
       if (el) el.remove();
     };
-  }, [remoteParticipant?.videoTrack, remoteParticipant?.audioTrack]);
+  }, [remoteParticipant?.videoTrack, remoteParticipant?.audioTrack, layoutMode, swapped]);
 
   // PiP Drag
   const handlePipPointerDown = (e: React.PointerEvent) => {
@@ -132,19 +134,11 @@ export const VideoCallUI = ({
     e.stopPropagation();
     if (!callObject) return;
     try {
-      // Daily.co cycleCamera switches between front/back
-      const devices = await callObject.enumerateDevices();
-      const videoDevices = devices?.devices?.filter((d: any) => d.kind === 'videoinput') || [];
-      if (videoDevices.length < 2) return;
-      
-      const currentDevice = callObject.getInputDevices?.() as any;
-      const currentCamId = currentDevice?.camera?.deviceId || '';
-      const nextCam = videoDevices.find((d: any) => d.deviceId !== currentCamId) || videoDevices[0];
-      if (nextCam) {
-        await callObject.setInputDevicesAsync({ videoDeviceId: nextCam.deviceId });
-      }
+      // Use Daily.co's built-in cycleCamera() which is more reliable for front/back switching
+      await callObject.cycleCamera();
     } catch (err) {
       console.error('Camera flip error:', err);
+      toast.error("Kamerani almashtirishda xatolik");
     }
   }, [callObject]);
 

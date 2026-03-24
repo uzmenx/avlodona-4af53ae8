@@ -18,6 +18,8 @@ export const useVideoCall = (otherUserId: string | null) => {
   const { user } = useAuth();
   const [callObject, setCallObject] = useState<DailyCall | null>(null);
   const [isInCall, setIsInCall] = useState(false);
+  const [wasInCall, setWasInCall] = useState(false);
+  const [partnerLeft, setPartnerLeft] = useState(false);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [currentCall, setCurrentCall] = useState<Call | null>(null);
@@ -28,6 +30,8 @@ export const useVideoCall = (otherUserId: string | null) => {
   const callObjectRef = useRef<DailyCall | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 3;
+
+  const [lastRoomUrl, setLastRoomUrl] = useState<string | null>(null);
 
   // Keep ref in sync
   useEffect(() => {
@@ -67,7 +71,13 @@ export const useVideoCall = (otherUserId: string | null) => {
           
           if (call.status === 'ended') {
             if (currentCall?.id === call.id || incomingCall?.id === call.id) {
-              leaveCall();
+              // Don't call leaveCall() directly to avoid clearing everything if we want to show "Call Ended" UI
+              // But for now, let's keep it simple
+              if (callObjectRef.current) {
+                callObjectRef.current.leave().catch(() => undefined);
+              }
+              setIsInCall(false);
+              setRemoteParticipant(null);
               toast.info("Qo'ng'iroq tugadi");
             }
             setIncomingCall(null);
@@ -93,7 +103,9 @@ export const useVideoCall = (otherUserId: string | null) => {
         try {
           co.leave();
           co.destroy();
-        } catch {}
+        } catch {
+          // ignore
+        }
       }
     };
   }, []);
@@ -111,6 +123,7 @@ export const useVideoCall = (otherUserId: string | null) => {
       if (error) throw error;
       
       setCurrentCall(data.call);
+      setLastRoomUrl(data.room_url);
       callHistorySavedRef.current = false;
       
       await joinRoom(data.room_url);
@@ -133,6 +146,7 @@ export const useVideoCall = (otherUserId: string | null) => {
         .eq('id', incomingCall.id);
 
       setCurrentCall(incomingCall);
+      setLastRoomUrl(incomingCall.room_url);
       callHistorySavedRef.current = false;
       await joinRoom(incomingCall.room_url);
       setIncomingCall(null);
@@ -142,6 +156,11 @@ export const useVideoCall = (otherUserId: string | null) => {
       toast.error("Qo'ng'iroqqa javob berishda xatolik");
     }
   }, [incomingCall]);
+
+  const rejoinCall = useCallback(async () => {
+    if (!lastRoomUrl) return;
+    await joinRoom(lastRoomUrl);
+  }, [lastRoomUrl]);
 
   const declineCall = useCallback(async () => {
     if (!incomingCall) return;
@@ -167,7 +186,9 @@ export const useVideoCall = (otherUserId: string | null) => {
         try {
           await callObjectRef.current.leave();
           callObjectRef.current.destroy();
-        } catch {}
+        } catch {
+          // ignore
+        }
         setCallObject(null);
         callObjectRef.current = null;
       }
@@ -181,44 +202,53 @@ export const useVideoCall = (otherUserId: string | null) => {
 
       newCallObject.on('joined-meeting', () => {
         setIsInCall(true);
+        setWasInCall(true);
+        setPartnerLeft(false);
         reconnectAttemptsRef.current = 0;
       });
 
       newCallObject.on('left-meeting', () => {
         setIsInCall(false);
         setRemoteParticipant(null);
+        setPartnerLeft(false);
       });
 
       newCallObject.on('participant-joined', (event: DailyEventObject) => {
         if (event?.participant && !event.participant.local) {
           setRemoteParticipant(event.participant);
+          setPartnerLeft(false);
         }
       });
 
       newCallObject.on('participant-updated', (event: DailyEventObject) => {
         if (event?.participant && !event.participant.local) {
           setRemoteParticipant(event.participant);
+          setPartnerLeft(false);
         }
       });
 
       newCallObject.on('participant-left', (event: DailyEventObject) => {
         if (event?.participant && !event.participant.local) {
           setRemoteParticipant(null);
+          setPartnerLeft(true);
+          toast.info("Suhbatdosh chiqib ketdi");
         }
       });
 
       // Handle network quality and reconnection
-      newCallObject.on('network-quality-change', (event: any) => {
-        if (event?.quality === 'very-low') {
+      newCallObject.on('network-quality-change', (event: DailyEventObject) => {
+        const quality = (event as unknown as { quality?: string } | null)?.quality;
+        if (quality === 'very-low') {
           toast.warning("Internet aloqasi yomon", { duration: 2000 });
         }
       });
 
-      newCallObject.on('network-connection', (event: any) => {
-        if (event?.event === 'interrupted') {
+      newCallObject.on('network-connection', (event: DailyEventObject) => {
+        const evt = (event as unknown as { event?: string } | null)?.event;
+        if (evt === 'interrupted') {
           toast.warning("Internet uzildi, qayta ulanmoqda...", { duration: 3000 });
         }
-        if (event?.event === 'connected') {
+        if (evt === 'connected') {
           if (reconnectAttemptsRef.current > 0) {
             toast.success("Qayta ulandi!", { duration: 2000 });
           }
@@ -226,9 +256,13 @@ export const useVideoCall = (otherUserId: string | null) => {
         }
       });
 
-      newCallObject.on('error', (event: any) => {
+      newCallObject.on('error', (event: DailyEventObject) => {
         console.error('Daily error:', event);
-        const errorType = event?.errorMsg || event?.error?.type || '';
+        const errorType = String(
+          (event as unknown as { errorMsg?: unknown; error?: { type?: unknown } } | null)?.errorMsg ??
+            (event as unknown as { error?: { type?: unknown } } | null)?.error?.type ??
+            ''
+        );
         
         // Camera/mic permission errors
         if (errorType.includes('not-allowed') || errorType.includes('NotAllowed')) {
@@ -243,7 +277,9 @@ export const useVideoCall = (otherUserId: string | null) => {
           try {
             newCallObject.setLocalVideo(false);
             setCameraOn(false);
-          } catch {}
+          } catch {
+            // ignore
+          }
           return;
         }
 
@@ -258,9 +294,9 @@ export const useVideoCall = (otherUserId: string | null) => {
       });
 
       // Camera access error handling
-      newCallObject.on('camera-error', (event: any) => {
+      newCallObject.on('camera-error', (event: DailyEventObject) => {
         console.error('Camera error:', event);
-        const errType = event?.error?.type || '';
+        const errType = String((event as unknown as { error?: { type?: unknown } } | null)?.error?.type ?? '');
         if (errType === 'cam-in-use') {
           toast.error("Kamera boshqa ilova tomonidan ishlatilmoqda");
         } else if (errType === 'not-found') {
@@ -278,13 +314,14 @@ export const useVideoCall = (otherUserId: string | null) => {
 
       await newCallObject.join({ url: roomUrl });
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error joining room:', error);
+      const msg = String((error as { message?: unknown } | null)?.message ?? '');
       
       // Specific error messages
-      if (error?.message?.includes('permission')) {
+      if (msg.includes('permission')) {
         toast.error("Kamera va mikrofonga ruxsat bering");
-      } else if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+      } else if (msg.includes('network') || msg.includes('fetch')) {
         toast.error("Internet aloqasi yo'q");
       } else {
         toast.error("Xonaga qo'shilishda xatolik");
@@ -297,10 +334,14 @@ export const useVideoCall = (otherUserId: string | null) => {
       if (callObject) {
         try {
           await callObject.leave();
-        } catch {}
+        } catch {
+          // ignore
+        }
         try {
           callObject.destroy();
-        } catch {}
+        } catch {
+          // ignore
+        }
         setCallObject(null);
         callObjectRef.current = null;
       }
@@ -321,21 +362,21 @@ export const useVideoCall = (otherUserId: string | null) => {
         if (!callHistorySavedRef.current && user?.id) {
           callHistorySavedRef.current = true;
           try {
-            const otherUserId = currentCall.caller_id === user.id 
+            const otherUserToSaveId = currentCall.caller_id === user.id 
               ? currentCall.receiver_id 
               : currentCall.caller_id;
             
             const { data: existing } = await supabase
               .from('conversations')
               .select('id')
-              .or(`and(participant1_id.eq.${user.id},participant2_id.eq.${otherUserId}),and(participant1_id.eq.${otherUserId},participant2_id.eq.${user.id})`)
+              .or(`and(participant1_id.eq.${user.id},participant2_id.eq.${otherUserToSaveId}),and(participant1_id.eq.${otherUserToSaveId},participant2_id.eq.${user.id})`)
               .maybeSingle();
 
             let convId = existing?.id;
             if (!convId) {
               const { data: newConv } = await supabase
                 .from('conversations')
-                .insert({ participant1_id: user.id, participant2_id: otherUserId })
+                .insert({ participant1_id: user.id, participant2_id: otherUserToSaveId })
                 .select('id')
                 .single();
               convId = newConv?.id;
@@ -363,8 +404,9 @@ export const useVideoCall = (otherUserId: string | null) => {
       }
 
       setIsInCall(false);
-      setCurrentCall(null);
+      // Don't clear currentCall or lastRoomUrl immediately so we can show Rejoin UI
       setRemoteParticipant(null);
+      setPartnerLeft(false);
       setCameraOn(true);
       setMicOn(true);
       
@@ -372,6 +414,12 @@ export const useVideoCall = (otherUserId: string | null) => {
       console.error('Error leaving call:', error);
     }
   }, [callObject, currentCall, user?.id]);
+
+  const endCallPermanently = useCallback(() => {
+    leaveCall();
+    setCurrentCall(null);
+    setLastRoomUrl(null);
+  }, [leaveCall]);
 
   const toggleCamera = useCallback(async () => {
     if (!callObject) return;
@@ -399,6 +447,8 @@ export const useVideoCall = (otherUserId: string | null) => {
 
   return {
     isInCall,
+    wasInCall,
+    partnerLeft,
     isCreatingRoom,
     incomingCall,
     currentCall,
@@ -406,10 +456,13 @@ export const useVideoCall = (otherUserId: string | null) => {
     micOn,
     callObject,
     remoteParticipant,
+    lastRoomUrl,
     startCall,
     answerCall,
+    rejoinCall,
     declineCall,
     leaveCall,
+    endCallPermanently,
     toggleCamera,
     toggleMic,
   };
