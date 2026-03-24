@@ -11,7 +11,22 @@
     <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="author" content="Avlodona" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Avlodona",
+      "url": "https://avlodona.com/",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://avlodona.com/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
 
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Avlodona">
