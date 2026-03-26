@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -97,7 +97,7 @@ const Chat = () => {
   const { isBlocked, isBlockedBy, isEitherBlocked } = useBlockedUsers();
   const isChatBlocked = !!(userId && isEitherBlocked(userId));
 
-  const { messages, isLoading, otherUserTyping, sendMessage, setTyping, refetch } = useMessages(conversationId);
+  const { messages, isLoading, isLoadingMore, hasMore, otherUserTyping, sendMessage, setTyping, loadOlder, refetch } = useMessages(conversationId);
   
   const {
     isInCall,
@@ -128,38 +128,37 @@ const Chat = () => {
 
   // Initialize conversation
   useEffect(() => {
-    const init = async () => {
-      if (!userId || !user?.id) return;
+    if (!userId || !user?.id) return;
 
-      const convId = await getOrCreateConversation(userId);
+    // Update own last_seen (fire-and-forget)
+    supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', user.id).then();
+
+    // Fetch other user's profile in background
+    supabase
+      .from('profiles')
+      .select('id, name, username, avatar_url, last_seen, hide_online_status')
+      .eq('id', userId)
+      .maybeSingle()
+      .then(({ data: profile }) => {
+        setOtherUser(profile as UserProfile | null);
+      });
+
+    // Create/get conversation id in background
+    getOrCreateConversation(userId).then((convId) => {
       setConversationId(convId);
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, name, username, avatar_url, last_seen, hide_online_status')
-        .eq('id', userId)
-        .maybeSingle();
-
-      // Update own last_seen
-      supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', user.id).then();
-
-      setOtherUser(profile as UserProfile | null);
-
-      // Load deleted messages from localStorage
-      if (convId) {
-        const stored = localStorage.getItem(`deleted_messages_${convId}`);
-        if (stored) {
-          setDeletedMessageIds(new Set(JSON.parse(stored)));
-        }
-
-        const clearedRaw = localStorage.getItem(`cleared_chat_${convId}`);
-        if (clearedRaw) {
-          const ts = Number(clearedRaw);
-          if (Number.isFinite(ts) && ts > 0) setClearedAt(ts);
-        }
+      if (!convId) return;
+      const stored = localStorage.getItem(`deleted_messages_${convId}`);
+      if (stored) {
+        setDeletedMessageIds(new Set(JSON.parse(stored)));
       }
-    };
-    init();
+
+      const clearedRaw = localStorage.getItem(`cleared_chat_${convId}`);
+      if (clearedRaw) {
+        const ts = Number(clearedRaw);
+        if (Number.isFinite(ts) && ts > 0) setClearedAt(ts);
+      }
+    });
   }, [userId, user?.id, getOrCreateConversation]);
 
   const clearHistoryForMe = useCallback(() => {
@@ -438,6 +437,31 @@ const Chat = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const chatSkeleton = useMemo(() => {
+    return (
+      <div className="space-y-3 py-2">
+        <div className="flex justify-start">
+          <div className="h-10 w-[68%] max-w-[360px] rounded-2xl bg-muted/40 animate-pulse" />
+        </div>
+        <div className="flex justify-end">
+          <div className="h-8 w-[52%] max-w-[320px] rounded-2xl bg-muted/30 animate-pulse" />
+        </div>
+        <div className="flex justify-start">
+          <div className="h-12 w-[74%] max-w-[420px] rounded-2xl bg-muted/40 animate-pulse" />
+        </div>
+        <div className="flex justify-end">
+          <div className="h-10 w-[62%] max-w-[380px] rounded-2xl bg-muted/30 animate-pulse" />
+        </div>
+        <div className="flex justify-start">
+          <div className="h-9 w-[46%] max-w-[280px] rounded-2xl bg-muted/40 animate-pulse" />
+        </div>
+        <div className="flex justify-end">
+          <div className="h-11 w-[70%] max-w-[420px] rounded-2xl bg-muted/30 animate-pulse" />
+        </div>
+      </div>
+    );
+  }, []);
 
   // If chat contains shared posts, fetch some posts so previews render
   useEffect(() => {
@@ -767,13 +791,17 @@ const Chat = () => {
     return created > clearedAt;
   });
 
-  if (!otherUser) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">{t('loading')}</p>
-      </div>
-    );
-  }
+  const pendingScrollAdjustRef = useRef<{ prevHeight: number; prevTop: number } | null>(null);
+
+  useEffect(() => {
+    const pending = pendingScrollAdjustRef.current;
+    const container = containerRef.current;
+    if (!pending || !container) return;
+    const newHeight = container.scrollHeight;
+    const diff = newHeight - pending.prevHeight;
+    container.scrollTop = pending.prevTop + diff;
+    pendingScrollAdjustRef.current = null;
+  }, [visibleMessages.length]);
 
   return (
     <>
@@ -837,21 +865,21 @@ const Chat = () => {
                 className="h-9 w-9 cursor-pointer ring-2 ring-primary/20" 
                 onClick={() => navigate(`/user/${userId}`)}
               >
-                <AvatarImage src={otherUser.avatar_url || undefined} />
-                <AvatarFallback className="text-xs">{getInitials(otherUser.name)}</AvatarFallback>
+                <AvatarImage src={otherUser?.avatar_url || undefined} />
+                <AvatarFallback className="text-xs">{getInitials(otherUser?.name)}</AvatarFallback>
               </Avatar>
               {isOnline && (
                 <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-background" />
               )}
             </div>
             <div className="flex-1 min-w-0" onClick={() => navigate(`/user/${userId}`)}>
-              <h1 className="font-semibold text-sm truncate">{otherUser.name || t('user')}</h1>
-              {otherUserTyping && !otherUser.hide_online_status ? (
+              <h1 className={cn("font-semibold text-sm truncate", !otherUser && "text-muted-foreground")}>{otherUser?.name || t('user')}</h1>
+              {otherUserTyping && !otherUser?.hide_online_status ? (
                 <p className="text-[11px] text-primary font-medium">{t('typing')}</p>
               ) : displayOnline ? (
                 <p className="text-[11px] text-green-500 font-medium">Online</p>
               ) : (
-                <p className="text-[11px] text-muted-foreground">{otherUser.hide_online_status ? "yaqinda onlayn edi" : formatLastActivity(otherUser.last_seen)}</p>
+                <p className="text-[11px] text-muted-foreground">{otherUser?.hide_online_status ? "yaqinda onlayn edi" : formatLastActivity(otherUser?.last_seen || null)}</p>
               )}
             </div>
             <button 
@@ -927,25 +955,38 @@ const Chat = () => {
             overscrollBehavior: 'contain',
             WebkitOverflowScrolling: 'touch'
           }}
+          onScroll={() => {
+            const el = containerRef.current;
+            if (!el) return;
+            if (el.scrollTop > 40) return;
+            if (!hasMore || isLoadingMore) return;
+            pendingScrollAdjustRef.current = { prevHeight: el.scrollHeight, prevTop: el.scrollTop };
+            void loadOlder();
+          }}
         >
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground text-sm">{t('loading')}</p>
+          {isLoading && visibleMessages.length === 0 ? (
+            <div className="h-full flex flex-col justify-end">
+              {chatSkeleton}
             </div>
           ) : visibleMessages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <Avatar className="h-16 w-16 mx-auto mb-3 ring-2 ring-primary/20">
-                  <AvatarImage src={otherUser.avatar_url || undefined} />
-                  <AvatarFallback className="text-xl">{getInitials(otherUser.name)}</AvatarFallback>
+                  <AvatarImage src={otherUser?.avatar_url || undefined} />
+                  <AvatarFallback className="text-xl">{getInitials(otherUser?.name)}</AvatarFallback>
                 </Avatar>
-                <h3 className="font-semibold text-sm">{otherUser.name || t('user')}</h3>
-                <StarUsername username={otherUser.username || 'username'} />
+                <h3 className="font-semibold text-sm">{otherUser?.name || t('user')}</h3>
+                <StarUsername username={otherUser?.username || 'username'} />
                 <p className="text-xs text-muted-foreground mt-3">{t('startChat')}</p>
               </div>
             </div>
           ) : (
             <div className="space-y-1">
+              {isLoadingMore && (
+                <div className="flex justify-center py-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
               {visibleMessages.map((msg, index) => {
                 const isMine = msg.sender_id === user?.id;
                 const prevMsg = visibleMessages[index - 1];
@@ -1110,7 +1151,7 @@ const Chat = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Tarixni tozalash</AlertDialogTitle>
             <AlertDialogDescription>
-              Telegram uslubida: xabarlar tarixini faqat siz uchun yashirish yoki barcha uchun butunlay o'chirish.
+              Uchirganingizdan keyin qaytarish funksiyasi yuq.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
