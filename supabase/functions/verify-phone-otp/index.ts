@@ -39,7 +39,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Create Supabase admin client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
@@ -89,9 +88,14 @@ const handler = async (req: Request): Promise<Response> => {
     const fakeEmail = `${cleanPhone}@phone.oilaviy.uz`;
     const tempPassword = crypto.randomUUID();
 
-    // Check if user exists
-    const { data: existingUsers } = await supabase.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(u => u.email === fakeEmail);
+    // Use targeted lookup instead of listUsers()
+    let existingUser: any = null;
+    try {
+      const { data } = await supabase.auth.admin.getUserByEmail(fakeEmail);
+      existingUser = data?.user || null;
+    } catch {
+      existingUser = null;
+    }
 
     let userId: string;
     let session: any;
@@ -152,8 +156,6 @@ const handler = async (req: Request): Promise<Response> => {
     // Clean up OTP
     await supabase.from("phone_otp_codes").delete().eq("phone_number", cleanPhone);
 
-    console.log(`User ${userId} authenticated via phone ${cleanPhone}`);
-
     return new Response(
       JSON.stringify({
         success: true,
@@ -164,9 +166,9 @@ const handler = async (req: Request): Promise<Response> => {
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
-    console.error("Error in verify-phone-otp:", error);
+    console.error("Error in verify-phone-otp:", error.message);
     return new Response(
-      JSON.stringify({ error: error.message || "Xato yuz berdi" }),
+      JSON.stringify({ error: "An error occurred. Please try again." }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

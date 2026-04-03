@@ -103,12 +103,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     await admin.from("email_otp_codes").update({ verified: true }).eq("id", storedOtp.id);
 
-    // Ensure user exists with confirmed email
-    const { data: listData, error: listErr } = await admin.auth.admin.listUsers();
-    if (listErr) throw listErr;
-    const existing = listData.users.find((u: { email?: string; user_metadata?: Record<string, unknown>; id: string }) =>
-      (u.email || "").toLowerCase() === normalizedEmail
-    );
+    // Use targeted lookup instead of listUsers()
+    let existing: any = null;
+    try {
+      const { data } = await admin.auth.admin.getUserByEmail(normalizedEmail);
+      existing = data?.user || null;
+    } catch {
+      existing = null;
+    }
 
     let userId: string;
 
@@ -175,9 +177,9 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error: any) {
-    console.error("Error in verify-otp function:", error);
+    console.error("Error in verify-otp function:", error.message);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "An error occurred. Please try again." }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,32 @@ serve(async (req) => {
   }
 
   try {
+    // --- Authentication: require valid JWT ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const userId = claimsData.claims.sub as string;
+
     const strip = (val: string, key: string) => {
       let v = val.trim();
       if (v.startsWith(`${key}=`)) v = v.slice(key.length + 1).trim();
@@ -26,7 +53,7 @@ serve(async (req) => {
     if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_ENDPOINT || !R2_BUCKET_NAME) {
       console.error("Missing R2 env vars");
       return new Response(
-        JSON.stringify({ error: "Server misconfiguration: missing R2 credentials" }),
+        JSON.stringify({ error: "Server misconfiguration" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -49,55 +76,39 @@ serve(async (req) => {
       const arrayBuffer = await file.arrayBuffer();
       const body = new Uint8Array(arrayBuffer);
 
-      console.log(`Uploading: key=${path}, size=${body.length}, type=${file.type}`);
-
-      // Authenticate and Check limits via Supabase
-      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
-      const supabaseClient = createClient(
+      // Check storage limits
+      const supabaseAdmin = createClient(
         Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-        { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
       );
 
-      const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+      const { data: usageData } = await supabaseAdmin
+        .from("user_usage")
+        .select("total_storage_bytes")
+        .eq("user_id", userId)
+        .single();
 
-      if (!userError && user) {
-        const supabaseAdmin = createClient(
-          Deno.env.get("SUPABASE_URL") ?? "",
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("subscription_tier")
+        .eq("id", userId)
+        .single();
+
+      const currentStorage = usageData?.total_storage_bytes || 0;
+      const tier = profile?.subscription_tier || 'free';
+      
+      const FREE_LIMIT = 200 * 1024 * 1024;
+      const PRO_LIMIT = 2 * 1024 * 1024 * 1024;
+      const limit = tier === 'pro' ? PRO_LIMIT : FREE_LIMIT;
+      
+      if (currentStorage + body.length > limit) {
+        return new Response(
+          JSON.stringify({ 
+            error: `Xotira hajmi yetarli emas (${tier} plan uchun ${tier === 'pro' ? '2GB' : '200MB'} limit)`,
+            limit_reached: true 
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
-
-        const { data: usageData } = await supabaseAdmin
-          .from("user_usage")
-          .select("total_storage_bytes")
-          .eq("user_id", user.id)
-          .single();
-
-        const { data: profile } = await supabaseAdmin
-          .from("profiles")
-          .select("subscription_tier")
-          .eq("id", user.id)
-          .single();
-
-        const currentStorage = usageData?.total_storage_bytes || 0;
-        const tier = profile?.subscription_tier || 'free';
-        
-        const FREE_LIMIT = 200 * 1024 * 1024; // 200MB
-        const PRO_LIMIT = 2 * 1024 * 1024 * 1024; // 2GB
-
-        const limit = tier === 'pro' ? PRO_LIMIT : FREE_LIMIT;
-        
-        if (currentStorage + body.length > limit) {
-          return new Response(
-            JSON.stringify({ 
-              error: `Xotira hajmi yetarli emas (${tier} plan uchu ${tier === 'pro' ? '2GB' : '200MB'} limit)`,
-              limit_reached: true 
-            }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        // We will update the storage afterwards
       }
 
       // Use aws4fetch for lightweight AWS v4 signing
@@ -123,37 +134,19 @@ serve(async (req) => {
 
       if (!response.ok) {
         const errText = await response.text();
-        console.error("R2 PUT failed:", response.status, errText);
-        throw new Error(`R2 upload failed: ${response.status} - ${errText}`);
+        console.error("R2 PUT failed:", response.status);
+        throw new Error(`R2 upload failed: ${response.status}`);
       }
 
       const publicUrl = R2_PUBLIC_URL
         ? `${R2_PUBLIC_URL}/${path}`
         : `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${path}`;
 
-      console.log("Upload success:", publicUrl);
-
-      // Update the user usage storage
-      if (user) {
-        const supabaseAdmin = createClient(
-          Deno.env.get("SUPABASE_URL") ?? "",
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-        );
-        
-        // Let's do a fast update via a simple RPC or just fetching and updating since we are inside Edge Function
-        const { data: usageData } = await supabaseAdmin
-          .from("user_usage")
-          .select("total_storage_bytes")
-          .eq("user_id", user.id)
-          .single();
-          
-        const currentStorage = usageData?.total_storage_bytes || 0;
-        
-        await supabaseAdmin
-          .from("user_usage")
-          .update({ total_storage_bytes: currentStorage + body.length })
-          .eq("user_id", user.id);
-      }
+      // Update user storage usage
+      await supabaseAdmin
+        .from("user_usage")
+        .update({ total_storage_bytes: currentStorage + body.length })
+        .eq("user_id", userId);
 
       return new Response(
         JSON.stringify({ url: publicUrl, path }),

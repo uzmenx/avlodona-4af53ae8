@@ -13,6 +13,8 @@ interface OtpRequest {
   email: string;
 }
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -26,7 +28,6 @@ async function hashOTP(otp: string): Promise<string> {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -36,7 +37,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!RESEND_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "RESEND_API_KEY is not configured" }),
+        JSON.stringify({ error: "Email service is not configured" }),
         {
           status: 500,
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -46,7 +47,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const normalizedEmail = (email || "").toLowerCase().trim();
 
-    if (!normalizedEmail || !normalizedEmail.includes("@")) {
+    if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
       return new Response(
         JSON.stringify({ error: "Valid email is required" }),
         {
@@ -131,8 +132,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!res.ok) {
       const errorData = await res.text();
-      console.error("Resend error:", errorData);
-      throw new Error(`Failed to send email: ${errorData}`);
+      console.error("Email sending failed");
+      throw new Error("Failed to send email");
     }
 
     await res.json();
@@ -145,9 +146,9 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error: any) {
-    console.error("Error in send-otp function:", error);
+    console.error("Error in send-otp function:", error.message);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "An error occurred. Please try again." }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
