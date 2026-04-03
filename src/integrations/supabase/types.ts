@@ -14,79 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_conversations: {
+        Row: {
+          created_at: string | null
+          id: string
+          title: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          title?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          title?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      ai_messages: {
+        Row: {
+          content: string | null
+          conversation_id: string | null
+          created_at: string | null
+          id: string
+          media_url: string | null
+          role: string | null
+        }
+        Insert: {
+          content?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          media_url?: string | null
+          role?: string | null
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          media_url?: string | null
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocked_users: {
         Row: {
           blocked_id: string
           blocker_id: string
-          created_at: string | null
+          created_at: string
           id: string
         }
         Insert: {
           blocked_id: string
           blocker_id: string
-          created_at?: string | null
+          created_at?: string
           id?: string
         }
         Update: {
           blocked_id?: string
           blocker_id?: string
-          created_at?: string | null
+          created_at?: string
           id?: string
         }
         Relationships: []
       }
       calls: {
         Row: {
-          call_type: string | null
-          callee_id: string
           caller_id: string
-          created_at: string | null
+          created_at: string
           ended_at: string | null
           id: string
-          room_name: string | null
-          started_at: string | null
-          status: string | null
+          receiver_id: string
+          room_name: string
+          room_url: string
+          status: string
         }
         Insert: {
-          call_type?: string | null
-          callee_id: string
           caller_id: string
-          created_at?: string | null
+          created_at?: string
           ended_at?: string | null
           id?: string
-          room_name?: string | null
-          started_at?: string | null
-          status?: string | null
+          receiver_id: string
+          room_name: string
+          room_url: string
+          status?: string
         }
         Update: {
-          call_type?: string | null
-          callee_id?: string
           caller_id?: string
-          created_at?: string | null
+          created_at?: string
           ended_at?: string | null
           id?: string
-          room_name?: string | null
-          started_at?: string | null
-          status?: string | null
+          receiver_id?: string
+          room_name?: string
+          room_url?: string
+          status?: string
         }
         Relationships: []
       }
       comment_likes: {
         Row: {
-          comment_id: string | null
-          created_at: string | null
+          comment_id: string
+          created_at: string
           id: string
           user_id: string
         }
         Insert: {
-          comment_id?: string | null
-          created_at?: string | null
+          comment_id: string
+          created_at?: string
           id?: string
           user_id: string
         }
         Update: {
-          comment_id?: string | null
-          created_at?: string | null
+          comment_id?: string
+          created_at?: string
           id?: string
           user_id?: string
         }
@@ -105,30 +158,40 @@ export type Database = {
           content: string
           created_at: string
           id: string
-          likes_count: number | null
+          likes_count: number
           parent_id: string | null
           post_id: string
+          updated_at: string
           user_id: string
         }
         Insert: {
           content: string
           created_at?: string
           id?: string
-          likes_count?: number | null
+          likes_count?: number
           parent_id?: string | null
           post_id: string
+          updated_at?: string
           user_id: string
         }
         Update: {
           content?: string
           created_at?: string
           id?: string
-          likes_count?: number | null
+          likes_count?: number
           parent_id?: string | null
           post_id?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "comments_post_id_fkey"
             columns: ["post_id"]
@@ -140,97 +203,94 @@ export type Database = {
       }
       conversations: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
           last_message_at: string | null
           participant1_id: string
           participant2_id: string
-          updated_at: string | null
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           last_message_at?: string | null
           participant1_id: string
           participant2_id: string
-          updated_at?: string | null
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           last_message_at?: string | null
           participant1_id?: string
           participant2_id?: string
-          updated_at?: string | null
         }
         Relationships: []
       }
       email_otp_codes: {
         Row: {
-          created_at: string | null
+          created_at: string
           email: string
           expires_at: string
           id: string
           otp_hash: string
-          verified: boolean | null
+          verified: boolean
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           email: string
           expires_at: string
           id?: string
           otp_hash: string
-          verified?: boolean | null
+          verified?: boolean
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           email?: string
           expires_at?: string
           id?: string
           otp_hash?: string
-          verified?: boolean | null
+          verified?: boolean
         }
         Relationships: []
       }
       family_events: {
         Row: {
-          created_at: string | null
+          created_at: string
           description: string | null
           event_date: string
-          event_type: string | null
+          event_type: string
           id: string
-          is_recurring: boolean | null
           member_id: string | null
-          notify: boolean | null
+          notify: boolean
           owner_id: string
-          recurring: boolean | null
+          recurring: boolean
           title: string
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           description?: string | null
           event_date: string
-          event_type?: string | null
+          event_type?: string
           id?: string
-          is_recurring?: boolean | null
           member_id?: string | null
-          notify?: boolean | null
+          notify?: boolean
           owner_id: string
-          recurring?: boolean | null
+          recurring?: boolean
           title: string
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           description?: string | null
           event_date?: string
-          event_type?: string | null
+          event_type?: string
           id?: string
-          is_recurring?: boolean | null
           member_id?: string | null
-          notify?: boolean | null
+          notify?: boolean
           owner_id?: string
-          recurring?: boolean | null
+          recurring?: boolean
           title?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -244,34 +304,34 @@ export type Database = {
       }
       family_invitations: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
-          member_id: string | null
+          member_id: string
           receiver_id: string
           relation_type: string
           sender_id: string
-          status: string | null
-          updated_at: string | null
+          status: string
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
-          member_id?: string | null
+          member_id: string
           receiver_id: string
           relation_type: string
           sender_id: string
-          status?: string | null
-          updated_at?: string | null
+          status?: string
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
-          member_id?: string | null
+          member_id?: string
           receiver_id?: string
           relation_type?: string
           sender_id?: string
-          status?: string | null
-          updated_at?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -283,17 +343,55 @@ export type Database = {
           },
         ]
       }
+      family_invites: {
+        Row: {
+          created_at: string
+          id: string
+          invited_by: string
+          relation_type: string | null
+          status: string | null
+          token: string
+          tree_node_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_by: string
+          relation_type?: string | null
+          status?: string | null
+          token?: string
+          tree_node_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_by?: string
+          relation_type?: string | null
+          status?: string | null
+          token?: string
+          tree_node_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       family_networks: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
         }
         Relationships: []
@@ -301,70 +399,198 @@ export type Database = {
       family_tree_members: {
         Row: {
           avatar_url: string | null
-          created_at: string | null
+          birth_year: number | null
+          cover_url: string | null
+          created_at: string
+          death_year: number | null
           gender: string | null
           id: string
-          is_placeholder: boolean | null
+          is_placeholder: boolean
           linked_user_id: string | null
           member_name: string
           merged_into: string | null
           owner_id: string
           relation_type: string
-          updated_at: string | null
+          updated_at: string
         }
         Insert: {
           avatar_url?: string | null
-          created_at?: string | null
+          birth_year?: number | null
+          cover_url?: string | null
+          created_at?: string
+          death_year?: number | null
           gender?: string | null
           id?: string
-          is_placeholder?: boolean | null
+          is_placeholder?: boolean
           linked_user_id?: string | null
           member_name: string
           merged_into?: string | null
           owner_id: string
           relation_type: string
-          updated_at?: string | null
+          updated_at?: string
         }
         Update: {
           avatar_url?: string | null
-          created_at?: string | null
+          birth_year?: number | null
+          cover_url?: string | null
+          created_at?: string
+          death_year?: number | null
           gender?: string | null
           id?: string
-          is_placeholder?: boolean | null
+          is_placeholder?: boolean
           linked_user_id?: string | null
           member_name?: string
           merged_into?: string | null
           owner_id?: string
           relation_type?: string
-          updated_at?: string | null
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "family_tree_members_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "family_tree_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       follows: {
         Row: {
-          created_at: string | null
+          created_at: string
           follower_id: string
           following_id: string
           id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           follower_id: string
           following_id: string
           id?: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           follower_id?: string
           following_id?: string
           id?: string
         }
         Relationships: []
       }
+      global_node_positions: {
+        Row: {
+          id: string
+          node_id: string
+          updated_at: string
+          user_id: string
+          x: number
+          y: number
+        }
+        Insert: {
+          id?: string
+          node_id: string
+          updated_at?: string
+          user_id: string
+          x?: number
+          y?: number
+        }
+        Update: {
+          id?: string
+          node_id?: string
+          updated_at?: string
+          user_id?: string
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_node_positions_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "global_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      global_nodes: {
+        Row: {
+          bio: string | null
+          birth_year: number | null
+          claimed_by_user_id: string | null
+          created_at: string
+          created_by: string | null
+          death_year: number | null
+          father_id: string | null
+          gender: string
+          id: string
+          is_public: boolean
+          mother_id: string | null
+          name: string
+          photo_url: string | null
+          spouse_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          birth_year?: number | null
+          claimed_by_user_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          death_year?: number | null
+          father_id?: string | null
+          gender?: string
+          id?: string
+          is_public?: boolean
+          mother_id?: string | null
+          name?: string
+          photo_url?: string | null
+          spouse_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          birth_year?: number | null
+          claimed_by_user_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          death_year?: number | null
+          father_id?: string | null
+          gender?: string
+          id?: string
+          is_public?: boolean
+          mother_id?: string | null
+          name?: string
+          photo_url?: string | null
+          spouse_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "global_nodes_father_id_fkey"
+            columns: ["father_id"]
+            isOneToOne: false
+            referencedRelation: "global_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_nodes_mother_id_fkey"
+            columns: ["mother_id"]
+            isOneToOne: false
+            referencedRelation: "global_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "global_nodes_spouse_id_fkey"
+            columns: ["spouse_id"]
+            isOneToOne: false
+            referencedRelation: "global_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_chats: {
         Row: {
           avatar_url: string | null
-          created_at: string | null
+          created_at: string
           created_by: string
           description: string | null
           id: string
@@ -372,14 +598,14 @@ export type Database = {
           last_message_at: string | null
           last_message_content: string | null
           name: string
-          owner_id: string | null
-          type: string | null
-          updated_at: string | null
-          visibility: string | null
+          owner_id: string
+          type: Database["public"]["Enums"]["chat_type"]
+          updated_at: string
+          visibility: Database["public"]["Enums"]["chat_visibility"]
         }
         Insert: {
           avatar_url?: string | null
-          created_at?: string | null
+          created_at?: string
           created_by: string
           description?: string | null
           id?: string
@@ -387,14 +613,14 @@ export type Database = {
           last_message_at?: string | null
           last_message_content?: string | null
           name: string
-          owner_id?: string | null
-          type?: string | null
-          updated_at?: string | null
-          visibility?: string | null
+          owner_id: string
+          type?: Database["public"]["Enums"]["chat_type"]
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["chat_visibility"]
         }
         Update: {
           avatar_url?: string | null
-          created_at?: string | null
+          created_at?: string
           created_by?: string
           description?: string | null
           id?: string
@@ -402,39 +628,36 @@ export type Database = {
           last_message_at?: string | null
           last_message_content?: string | null
           name?: string
-          owner_id?: string | null
-          type?: string | null
-          updated_at?: string | null
-          visibility?: string | null
+          owner_id?: string
+          type?: Database["public"]["Enums"]["chat_type"]
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["chat_visibility"]
         }
         Relationships: []
       }
       group_members: {
         Row: {
-          created_at: string | null
-          group_id: string | null
+          group_id: string
           id: string
-          joined_at: string | null
+          joined_at: string
           last_read_at: string | null
-          role: string | null
+          role: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
-          group_id?: string | null
+          group_id: string
           id?: string
-          joined_at?: string | null
+          joined_at?: string
           last_read_at?: string | null
-          role?: string | null
+          role?: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
-          group_id?: string | null
+          group_id?: string
           id?: string
-          joined_at?: string | null
+          joined_at?: string
           last_read_at?: string | null
-          role?: string | null
+          role?: string
           user_id?: string
         }
         Relationships: [
@@ -449,37 +672,34 @@ export type Database = {
       }
       group_messages: {
         Row: {
-          content: string | null
-          created_at: string | null
-          group_id: string | null
+          content: string
+          created_at: string
+          group_id: string
           id: string
-          is_forwarded: boolean | null
           media_type: string | null
           media_url: string | null
-          reply_to: string | null
           sender_id: string
+          updated_at: string
         }
         Insert: {
-          content?: string | null
-          created_at?: string | null
-          group_id?: string | null
+          content: string
+          created_at?: string
+          group_id: string
           id?: string
-          is_forwarded?: boolean | null
           media_type?: string | null
           media_url?: string | null
-          reply_to?: string | null
           sender_id: string
+          updated_at?: string
         }
         Update: {
-          content?: string | null
-          created_at?: string | null
-          group_id?: string | null
+          content?: string
+          created_at?: string
+          group_id?: string
           id?: string
-          is_forwarded?: boolean | null
           media_type?: string | null
           media_url?: string | null
-          reply_to?: string | null
           sender_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -491,139 +711,280 @@ export type Database = {
           },
         ]
       }
-      likes: {
-        Row: {
-          created_at: string
-          id: string
-          post_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          post_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          post_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "likes_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "posts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       media_hashes: {
         Row: {
-          created_at: string | null
+          created_at: string
           file_hash: string
+          file_size: number | null
           file_url: string
           id: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           file_hash: string
+          file_size?: number | null
           file_url: string
           id?: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           file_hash?: string
+          file_size?: number | null
           file_url?: string
           id?: string
           user_id?: string
         }
         Relationships: []
       }
+      memorial_post_comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorial_post_comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "memorial_post_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memorial_post_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          likes_count: number | null
+          memorial_post_id: string
+          parent_id: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          likes_count?: number | null
+          memorial_post_id: string
+          parent_id?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          likes_count?: number | null
+          memorial_post_id?: string
+          parent_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorial_post_comments_memorial_post_id_fkey"
+            columns: ["memorial_post_id"]
+            isOneToOne: false
+            referencedRelation: "memorial_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorial_post_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "memorial_post_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memorial_post_likes: {
+        Row: {
+          created_at: string | null
+          id: string
+          memorial_post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          memorial_post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          memorial_post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorial_post_likes_memorial_post_id_fkey"
+            columns: ["memorial_post_id"]
+            isOneToOne: false
+            referencedRelation: "memorial_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memorial_post_saves: {
+        Row: {
+          created_at: string | null
+          id: string
+          memorial_post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          memorial_post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          memorial_post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorial_post_saves_memorial_post_id_fkey"
+            columns: ["memorial_post_id"]
+            isOneToOne: false
+            referencedRelation: "memorial_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memorial_post_views: {
+        Row: {
+          created_at: string | null
+          id: string
+          memorial_post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          memorial_post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          memorial_post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorial_post_views_memorial_post_id_fkey"
+            columns: ["memorial_post_id"]
+            isOneToOne: false
+            referencedRelation: "memorial_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memorial_posts: {
         Row: {
           caption: string | null
+          comments_count: number | null
           created_at: string | null
           created_by: string
           family_member_id: string
           id: string
-          media_type: string | null
-          media_url: string | null
+          likes_count: number | null
+          media_type: string
+          media_url: string
+          views_count: number | null
         }
         Insert: {
           caption?: string | null
+          comments_count?: number | null
           created_at?: string | null
           created_by: string
           family_member_id: string
           id?: string
-          media_type?: string | null
-          media_url?: string | null
+          likes_count?: number | null
+          media_type: string
+          media_url: string
+          views_count?: number | null
         }
         Update: {
           caption?: string | null
+          comments_count?: number | null
           created_at?: string | null
           created_by?: string
           family_member_id?: string
           id?: string
-          media_type?: string | null
-          media_url?: string | null
+          likes_count?: number | null
+          media_type?: string
+          media_url?: string
+          views_count?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "memorial_posts_family_member_id_fkey"
-            columns: ["family_member_id"]
+            foreignKeyName: "memorial_posts_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "family_tree_members"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
       messages: {
         Row: {
-          content: string | null
-          conversation_id: string | null
-          created_at: string | null
+          content: string
+          conversation_id: string
+          created_at: string
           id: string
-          is_forwarded: boolean | null
+          is_listened: boolean | null
           media_type: string | null
           media_url: string | null
-          read: boolean | null
-          reply_to: string | null
           sender_id: string
-          status: string | null
-          updated_at: string | null
+          status: string
+          updated_at: string
+          waveform_data: Json | null
         }
         Insert: {
-          content?: string | null
-          conversation_id?: string | null
-          created_at?: string | null
+          content: string
+          conversation_id: string
+          created_at?: string
           id?: string
-          is_forwarded?: boolean | null
+          is_listened?: boolean | null
           media_type?: string | null
           media_url?: string | null
-          read?: boolean | null
-          reply_to?: string | null
           sender_id: string
-          status?: string | null
-          updated_at?: string | null
+          status?: string
+          updated_at?: string
+          waveform_data?: Json | null
         }
         Update: {
-          content?: string | null
-          conversation_id?: string | null
-          created_at?: string | null
+          content?: string
+          conversation_id?: string
+          created_at?: string
           id?: string
-          is_forwarded?: boolean | null
+          is_listened?: boolean | null
           media_type?: string | null
           media_url?: string | null
-          read?: boolean | null
-          reply_to?: string | null
           sender_id?: string
-          status?: string | null
-          updated_at?: string | null
+          status?: string
+          updated_at?: string
+          waveform_data?: Json | null
         }
         Relationships: [
           {
@@ -637,47 +998,49 @@ export type Database = {
       }
       node_positions: {
         Row: {
-          created_at: string | null
           id: string
           member_id: string
-          owner_id: string | null
-          updated_at: string | null
+          owner_id: string
+          updated_at: string
           updated_by: string | null
-          user_id: string | null
-          x: number | null
-          y: number | null
+          x: number
+          y: number
         }
         Insert: {
-          created_at?: string | null
           id?: string
           member_id: string
-          owner_id?: string | null
-          updated_at?: string | null
+          owner_id: string
+          updated_at?: string
           updated_by?: string | null
-          user_id?: string | null
-          x?: number | null
-          y?: number | null
+          x?: number
+          y?: number
         }
         Update: {
-          created_at?: string | null
           id?: string
           member_id?: string
-          owner_id?: string | null
-          updated_at?: string | null
+          owner_id?: string
+          updated_at?: string
           updated_by?: string | null
-          user_id?: string | null
-          x?: number | null
-          y?: number | null
+          x?: number
+          y?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "node_positions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "family_tree_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
           actor_id: string
           comment_id: string | null
-          created_at: string | null
+          created_at: string
           id: string
-          is_read: boolean | null
+          is_read: boolean
           message_id: string | null
           post_id: string | null
           type: string
@@ -686,9 +1049,9 @@ export type Database = {
         Insert: {
           actor_id: string
           comment_id?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
-          is_read?: boolean | null
+          is_read?: boolean
           message_id?: string | null
           post_id?: string | null
           type: string
@@ -697,9 +1060,9 @@ export type Database = {
         Update: {
           actor_id?: string
           comment_id?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
-          is_read?: boolean | null
+          is_read?: boolean
           message_id?: string | null
           post_id?: string | null
           type?: string
@@ -707,54 +1070,89 @@ export type Database = {
         }
         Relationships: []
       }
-      post_collabs: {
+      phone_otp_codes: {
         Row: {
-          created_at: string | null
+          created_at: string
+          expires_at: string
           id: string
-          post_id: string
-          status: string | null
-          updated_at: string | null
-          user_id: string
+          otp_hash: string
+          phone_number: string
+          verified: boolean
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
+          expires_at: string
           id?: string
-          post_id: string
-          status?: string | null
-          updated_at?: string | null
-          user_id: string
+          otp_hash: string
+          phone_number: string
+          verified?: boolean
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
+          expires_at?: string
           id?: string
-          post_id?: string
-          status?: string | null
-          updated_at?: string | null
-          user_id?: string
+          otp_hash?: string
+          phone_number?: string
+          verified?: boolean
         }
         Relationships: []
       }
-      post_collection_items: {
+      post_collabs: {
         Row: {
-          collection_id: string | null
-          created_at: string | null
+          created_at: string
           id: string
           post_id: string
-          sort_order: number | null
+          status: string
+          updated_at: string
+          user_id: string
         }
         Insert: {
-          collection_id?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
           post_id: string
-          sort_order?: number | null
+          status?: string
+          updated_at?: string
+          user_id: string
         }
         Update: {
-          collection_id?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
           post_id?: string
-          sort_order?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_collabs_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_collection_items: {
+        Row: {
+          collection_id: string
+          created_at: string
+          id: string
+          post_id: string
+          sort_order: number
+        }
+        Insert: {
+          collection_id: string
+          created_at?: string
+          id?: string
+          post_id: string
+          sort_order?: number
+        }
+        Update: {
+          collection_id?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          sort_order?: number
         }
         Relationships: [
           {
@@ -764,271 +1162,421 @@ export type Database = {
             referencedRelation: "post_collections"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "post_collection_items_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
         ]
       }
       post_collections: {
         Row: {
           cover_url: string | null
-          created_at: string | null
+          created_at: string
           id: string
           name: string
-          sort_order: number | null
-          theme: number | null
+          sort_order: number
+          updated_at: string
           user_id: string
         }
         Insert: {
           cover_url?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
           name: string
-          sort_order?: number | null
-          theme?: number | null
+          sort_order?: number
+          updated_at?: string
           user_id: string
         }
         Update: {
           cover_url?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
           name?: string
-          sort_order?: number | null
-          theme?: number | null
+          sort_order?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
       }
       post_likes: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
           post_id: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           post_id: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           post_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       post_mentions: {
         Row: {
-          created_at: string | null
+          created_at: string
           family_member_id: string | null
           id: string
-          mentioned_user_id: string
+          mentioned_user_id: string | null
           post_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           family_member_id?: string | null
           id?: string
-          mentioned_user_id: string
+          mentioned_user_id?: string | null
           post_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           family_member_id?: string | null
           id?: string
-          mentioned_user_id?: string
+          mentioned_user_id?: string | null
           post_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "post_mentions_family_member_id_fkey"
+            columns: ["family_member_id"]
+            isOneToOne: false
+            referencedRelation: "family_tree_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_mentions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       post_views: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
           post_id: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           post_id: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           post_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "post_views_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       posts: {
         Row: {
+          audio_artist: string | null
+          audio_title: string | null
+          audio_url: string | null
           comments_count: number | null
-          content: string
+          content: string | null
           created_at: string
           id: string
-          image_url: string | null
           likes_count: number | null
           media_urls: string[] | null
           target_member_id: string | null
+          updated_at: string
           user_id: string
           views_count: number | null
-          visibility: string | null
+          visibility: string
         }
         Insert: {
+          audio_artist?: string | null
+          audio_title?: string | null
+          audio_url?: string | null
           comments_count?: number | null
-          content: string
+          content?: string | null
           created_at?: string
           id?: string
-          image_url?: string | null
           likes_count?: number | null
           media_urls?: string[] | null
           target_member_id?: string | null
+          updated_at?: string
           user_id: string
           views_count?: number | null
-          visibility?: string | null
+          visibility?: string
         }
         Update: {
+          audio_artist?: string | null
+          audio_title?: string | null
+          audio_url?: string | null
           comments_count?: number | null
-          content?: string
+          content?: string | null
           created_at?: string
           id?: string
-          image_url?: string | null
           likes_count?: number | null
           media_urls?: string[] | null
           target_member_id?: string | null
+          updated_at?: string
           user_id?: string
           views_count?: number | null
-          visibility?: string | null
+          visibility?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "posts_target_member_id_fkey"
+            columns: ["target_member_id"]
+            isOneToOne: false
+            referencedRelation: "family_tree_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
           avatar_url: string | null
+          bg_theme: string | null
           bio: string | null
           cover_url: string | null
           created_at: string
           family_network_id: string | null
-          full_name: string | null
           gender: string | null
-          hide_collections: boolean | null
-          hide_highlights: boolean | null
-          hide_mentions: boolean | null
-          hide_online_status: boolean | null
-          hide_saved_posts: boolean | null
-          is_private: boolean | null
+          hide_collections: boolean
+          hide_highlights: boolean
+          hide_mentions: boolean
+          hide_online_status: boolean
+          hide_saved_posts: boolean
           id: string
-          instagram: string | null
+          is_private: boolean
+          last_image_gen_at: string | null
           last_seen: string | null
+          my_node_id: string | null
           name: string | null
           social_links: Json | null
-          telegram: string | null
-          updated_at: string | null
-          user_id: string
-          username: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_tier: string | null
+          theme_mode: string | null
+          updated_at: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
+          bg_theme?: string | null
           bio?: string | null
           cover_url?: string | null
           created_at?: string
           family_network_id?: string | null
-          full_name?: string | null
           gender?: string | null
-          hide_collections?: boolean | null
-          hide_highlights?: boolean | null
-          hide_mentions?: boolean | null
-          hide_online_status?: boolean | null
-          hide_saved_posts?: boolean | null
-          is_private?: boolean | null
-          id?: string
-          instagram?: string | null
+          hide_collections?: boolean
+          hide_highlights?: boolean
+          hide_mentions?: boolean
+          hide_online_status?: boolean
+          hide_saved_posts?: boolean
+          id: string
+          is_private?: boolean
+          last_image_gen_at?: string | null
           last_seen?: string | null
+          my_node_id?: string | null
           name?: string | null
           social_links?: Json | null
-          telegram?: string | null
-          updated_at?: string | null
-          user_id: string
-          username: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_tier?: string | null
+          theme_mode?: string | null
+          updated_at?: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
+          bg_theme?: string | null
           bio?: string | null
           cover_url?: string | null
           created_at?: string
           family_network_id?: string | null
-          full_name?: string | null
           gender?: string | null
-          hide_collections?: boolean | null
-          hide_highlights?: boolean | null
-          hide_mentions?: boolean | null
-          hide_online_status?: boolean | null
-          hide_saved_posts?: boolean | null
-          is_private?: boolean | null
+          hide_collections?: boolean
+          hide_highlights?: boolean
+          hide_mentions?: boolean
+          hide_online_status?: boolean
+          hide_saved_posts?: boolean
           id?: string
-          instagram?: string | null
+          is_private?: boolean
+          last_image_gen_at?: string | null
           last_seen?: string | null
+          my_node_id?: string | null
           name?: string | null
           social_links?: Json | null
-          telegram?: string | null
-          updated_at?: string | null
-          user_id?: string
-          username?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_tier?: string | null
+          theme_mode?: string | null
+          updated_at?: string
+          username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_family_network_id_fkey"
+            columns: ["family_network_id"]
+            isOneToOne: false
+            referencedRelation: "family_networks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_my_node_id_fkey"
+            columns: ["my_node_id"]
+            isOneToOne: false
+            referencedRelation: "global_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_posts: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
           post_id: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           post_id: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           post_id?: string
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_posts_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_tracks: {
+        Row: {
+          audio_artist: string | null
+          audio_title: string | null
+          audio_url: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          audio_artist?: string | null
+          audio_title?: string | null
+          audio_url: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          audio_artist?: string | null
+          audio_title?: string | null
+          audio_url?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      shorts_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          expires_at: string
+          id: string
+          next_page_token: string | null
+          shorts: Json
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          next_page_token?: string | null
+          shorts?: Json
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          next_page_token?: string | null
+          shorts?: Json
         }
         Relationships: []
       }
       stories: {
         Row: {
+          audio_artist: string | null
+          audio_title: string | null
+          audio_url: string | null
           caption: string | null
-          created_at: string | null
-          expires_at: string | null
+          created_at: string
+          expires_at: string
           id: string
-          media_type: string | null
+          media_type: string
           media_url: string
-          ring_id: string | null
+          ring_id: string
           user_id: string
         }
         Insert: {
+          audio_artist?: string | null
+          audio_title?: string | null
+          audio_url?: string | null
           caption?: string | null
-          created_at?: string | null
-          expires_at?: string | null
+          created_at?: string
+          expires_at?: string
           id?: string
-          media_type?: string | null
+          media_type?: string
           media_url: string
-          ring_id?: string | null
+          ring_id?: string
           user_id: string
         }
         Update: {
+          audio_artist?: string | null
+          audio_title?: string | null
+          audio_url?: string | null
           caption?: string | null
-          created_at?: string | null
-          expires_at?: string | null
+          created_at?: string
+          expires_at?: string
           id?: string
-          media_type?: string | null
+          media_type?: string
           media_url?: string
-          ring_id?: string | null
+          ring_id?: string
           user_id?: string
         }
         Relationships: []
@@ -1036,32 +1584,32 @@ export type Database = {
       story_highlight_items: {
         Row: {
           caption: string | null
-          created_at: string | null
-          highlight_id: string | null
+          created_at: string
+          highlight_id: string
           id: string
-          media_type: string | null
+          media_type: string
           media_url: string
-          sort_order: number | null
+          sort_order: number
           story_id: string
         }
         Insert: {
           caption?: string | null
-          created_at?: string | null
-          highlight_id?: string | null
+          created_at?: string
+          highlight_id: string
           id?: string
-          media_type?: string | null
+          media_type?: string
           media_url: string
-          sort_order?: number | null
+          sort_order?: number
           story_id: string
         }
         Update: {
           caption?: string | null
-          created_at?: string | null
-          highlight_id?: string | null
+          created_at?: string
+          highlight_id?: string
           id?: string
-          media_type?: string | null
+          media_type?: string
           media_url?: string
-          sort_order?: number | null
+          sort_order?: number
           story_id?: string
         }
         Relationships: [
@@ -1072,52 +1620,62 @@ export type Database = {
             referencedRelation: "story_highlights"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "story_highlight_items_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
         ]
       }
       story_highlights: {
         Row: {
           cover_url: string | null
-          created_at: string | null
+          created_at: string
           id: string
           name: string
-          sort_order: number | null
+          sort_order: number
+          updated_at: string
           user_id: string
         }
         Insert: {
           cover_url?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
           name: string
-          sort_order?: number | null
+          sort_order?: number
+          updated_at?: string
           user_id: string
         }
         Update: {
           cover_url?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
           name?: string
-          sort_order?: number | null
+          sort_order?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
       }
       story_likes: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
-          story_id: string | null
+          story_id: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
-          story_id?: string | null
+          story_id: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
-          story_id?: string | null
+          story_id?: string
           user_id?: string
         }
         Relationships: [
@@ -1133,20 +1691,20 @@ export type Database = {
       story_views: {
         Row: {
           id: string
-          story_id: string | null
-          viewed_at: string | null
+          story_id: string
+          viewed_at: string
           viewer_id: string
         }
         Insert: {
           id?: string
-          story_id?: string | null
-          viewed_at?: string | null
+          story_id: string
+          viewed_at?: string
           viewer_id: string
         }
         Update: {
           id?: string
-          story_id?: string | null
-          viewed_at?: string | null
+          story_id?: string
+          viewed_at?: string
           viewer_id?: string
         }
         Relationships: [
@@ -1161,21 +1719,21 @@ export type Database = {
       }
       tree_post_likes: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
-          tree_post_id: string | null
+          tree_post_id: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
-          tree_post_id?: string | null
+          tree_post_id: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
-          tree_post_id?: string | null
+          tree_post_id?: string
           user_id?: string
         }
         Relationships: [
@@ -1191,65 +1749,65 @@ export type Database = {
       tree_posts: {
         Row: {
           caption: string | null
-          created_at: string | null
+          created_at: string
           id: string
-          is_personal: boolean | null
-          is_published: boolean | null
-          overlays: Json | null
-          positions_data: Json | null
-          title: string
-          tree_data: Json | null
-          updated_at: string | null
+          is_personal: boolean
+          is_published: boolean
+          overlays: Json
+          positions_data: Json
+          title: string | null
+          tree_data: Json
+          updated_at: string
           user_id: string
         }
         Insert: {
           caption?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
-          is_personal?: boolean | null
-          is_published?: boolean | null
-          overlays?: Json | null
-          positions_data?: Json | null
-          title: string
-          tree_data?: Json | null
-          updated_at?: string | null
+          is_personal?: boolean
+          is_published?: boolean
+          overlays?: Json
+          positions_data?: Json
+          title?: string | null
+          tree_data?: Json
+          updated_at?: string
           user_id: string
         }
         Update: {
           caption?: string | null
-          created_at?: string | null
+          created_at?: string
           id?: string
-          is_personal?: boolean | null
-          is_published?: boolean | null
-          overlays?: Json | null
-          positions_data?: Json | null
-          title?: string
-          tree_data?: Json | null
-          updated_at?: string | null
+          is_personal?: boolean
+          is_published?: boolean
+          overlays?: Json
+          positions_data?: Json
+          title?: string | null
+          tree_data?: Json
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
       }
       typing_indicators: {
         Row: {
-          conversation_id: string | null
+          conversation_id: string
           id: string
-          is_typing: boolean | null
-          updated_at: string | null
+          is_typing: boolean
+          updated_at: string
           user_id: string
         }
         Insert: {
-          conversation_id?: string | null
+          conversation_id: string
           id?: string
-          is_typing?: boolean | null
-          updated_at?: string | null
+          is_typing?: boolean
+          updated_at?: string
           user_id: string
         }
         Update: {
-          conversation_id?: string | null
+          conversation_id?: string
           id?: string
-          is_typing?: boolean | null
-          updated_at?: string | null
+          is_typing?: boolean
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -1264,21 +1822,48 @@ export type Database = {
       }
       unfollow_history: {
         Row: {
-          created_at: string | null
+          created_at: string
           id: string
           unfollowed_user_id: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           unfollowed_user_id: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           id?: string
           unfollowed_user_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_usage: {
+        Row: {
+          ai_chat_count_daily: number | null
+          ai_image_count_daily: number | null
+          last_image_gen_at: string | null
+          last_reset_date: string | null
+          total_storage_bytes: number | null
+          user_id: string
+        }
+        Insert: {
+          ai_chat_count_daily?: number | null
+          ai_image_count_daily?: number | null
+          last_image_gen_at?: string | null
+          last_reset_date?: string | null
+          total_storage_bytes?: number | null
+          user_id: string
+        }
+        Update: {
+          ai_chat_count_daily?: number | null
+          ai_image_count_daily?: number | null
+          last_image_gen_at?: string | null
+          last_reset_date?: string | null
+          total_storage_bytes?: number | null
           user_id?: string
         }
         Relationships: []
@@ -1288,10 +1873,42 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_and_increment_chat: { Args: { p_user_id: string }; Returns: Json }
+      check_and_increment_image: { Args: { p_user_id: string }; Returns: Json }
+      get_group_invite_preview: {
+        Args: { invite: string }
+        Returns: {
+          avatar_url: string
+          description: string
+          id: string
+          invite_link: string
+          name: string
+          owner_id: string
+          type: Database["public"]["Enums"]["chat_type"]
+          visibility: Database["public"]["Enums"]["chat_visibility"]
+        }[]
+      }
+      is_group_admin: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_member: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_owner: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_owner_or_creator: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      reset_daily_usage: { Args: never; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      chat_type: "group" | "channel"
+      chat_visibility: "public" | "private"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1418,6 +2035,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      chat_type: ["group", "channel"],
+      chat_visibility: ["public", "private"],
+    },
   },
 } as const
