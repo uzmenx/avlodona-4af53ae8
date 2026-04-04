@@ -452,7 +452,7 @@ export const useTreeMerging = () => {
         const parentsSim = computeParentsSimilarity(linkedMember, receiverSelf, senderMembers, receiverMembers);
         const childrenSim = computeChildrenSimilarity(linkedMember, receiverSelf, senderMembers, receiverMembers);
         const score = computeMatchScore(nameSim, birthSim, parentsSim, childrenSim);
-        if (score >= 90) {
+        if (score >= 50) {
           result.parentMerges.push(createMergeEntry(linkedMember, receiverSelf, 'self'));
         }
       }

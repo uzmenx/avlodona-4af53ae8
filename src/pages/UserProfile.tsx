@@ -36,6 +36,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTheme, type ThemeMode, type BackgroundTheme } from '@/contexts/ThemeContext';
 import { formatCount } from '@/lib/formatCount';
 import { RelativeConnectionSheet } from '@/components/family/RelativeConnectionSheet';
+import { useFamilyInvitations } from '@/hooks/useFamilyInvitations';
+import { UnifiedMergeDialog } from '@/components/family-v2/UnifiedMergeDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useBlockedUsers } from '@/hooks/useBlockedUsers';
 import { useActiveStories } from '@/hooks/useActiveStories';
@@ -357,6 +359,12 @@ export const UserProfilePage = () => {
 
   // Family tree connection states
   const [relativeSheetOpen, setRelativeSheetOpen] = useState(false);
+
+  // Full merge flow (same as FamilyTreeV2)
+  const {
+    showMergeDialog, mergeData,
+    executeMerge: executeTreeMerge, closeMergeDialog, isMerging,
+  } = useFamilyInvitations();
 
   useEffect(() => {
     if (!userId) return;
@@ -1733,6 +1741,17 @@ export const UserProfilePage = () => {
             onOpenChange={setRelativeSheetOpen}
             targetUserId={userId}
             targetUserName={profile?.name || 'Foydalanuvchi'} />
+
+        {/* Merge dialog — same as FamilyTreeV2 */}
+        {mergeData !== null && (
+          <UnifiedMergeDialog
+            isOpen={showMergeDialog}
+            onClose={closeMergeDialog}
+            data={mergeData}
+            onConfirm={executeTreeMerge}
+            isProcessing={isMerging}
+          />
+        )}
           
 
 
