@@ -113,7 +113,7 @@ export function useMemorialPostSocial(memorialPostId: string) {
     try {
       await (supabase as any)
         .from('memorial_post_views')
-        .insert({ memorial_post_id: memorialPostId, user_id: user.id });
+        .upsert({ memorial_post_id: memorialPostId, user_id: user.id }, { onConflict: 'memorial_post_id,user_id', ignoreDuplicates: true });
     } catch {
       // Unique constraint violation means already viewed — ignore
     }

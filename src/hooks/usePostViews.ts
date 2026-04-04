@@ -43,7 +43,7 @@ export const usePostViews = (postId: string, initialCount?: number) => {
       }
       const { error } = await supabase
         .from('post_views')
-        .insert({ post_id: postId, user_id: user.id });
+        .upsert({ post_id: postId, user_id: user.id }, { onConflict: 'post_id,user_id', ignoreDuplicates: true });
       
       if (!error) {
         setViewsCount(prev => prev + 1);

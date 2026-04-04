@@ -83,12 +83,27 @@ let currentAudioContext: AudioContext | null = null;
 let ringtoneTimeout: ReturnType<typeof setTimeout> | null = null;
 let customAudioEl: HTMLAudioElement | null = null;
 
+export async function saveSubscription(subscription: PushSubscription, userId: string) {
+  try {
+    const subJSON = subscription.toJSON();
+    // @ts-expect-error: types are not updated yet
+    await supabase.from('push_subscriptions').upsert({
+      user_id: userId,
+      endpoint: subJSON.endpoint,
+      p256dh: subJSON.keys?.p256dh,
+      auth: subJSON.keys?.auth,
+      user_agent: navigator.userAgent
+    }, { onConflict: 'user_id,endpoint' });
+  } catch (err) {
+    console.error('Failed to save push subscription:', err);
+  }
+}
+
 export function playRingtone(ringtoneId?: string) {
   stopRingtone();
   
   const id = ringtoneId || getSelectedRingtone();
   
-  // Custom ringtone from local file
   if (id === 'custom') {
     const dataUrl = localStorage.getItem('custom_ringtone_data');
     if (dataUrl) {
@@ -96,6 +111,10 @@ export function playRingtone(ringtoneId?: string) {
       audio.loop = true;
       customAudioEl = audio;
       audio.play().catch(() => {});
+      // Simple generic vibration for custom file
+      if ('vibrate' in navigator) {
+        navigator.vibrate([1000, 500, 1000, 500, 1000]);
+      }
     }
     return;
   }
@@ -105,6 +124,11 @@ export function playRingtone(ringtoneId?: string) {
   try {
     const ctx = new AudioContext();
     currentAudioContext = ctx;
+    
+    // Start vibration matching pattern
+    if ('vibrate' in navigator) {
+      navigator.vibrate(ringtone.pattern);
+    }
     
     const time = ctx.currentTime;
     
@@ -117,14 +141,12 @@ export function playRingtone(ringtoneId?: string) {
         const duration = ringtone.pattern[i] / 1000;
         
         if (i % 2 === 0) {
-          // Tone
           const osc = currentAudioContext.createOscillator();
           const gain = currentAudioContext.createGain();
           
           osc.type = 'sine';
           osc.frequency.setValueAtTime(ringtone.frequency, t);
           
-          // Add slight frequency variation for melody
           if (ringtone.id === 'melody') {
             const noteOffset = [0, 2, 4, 5][Math.floor(i / 2) % 4];
             osc.frequency.setValueAtTime(ringtone.frequency * Math.pow(2, noteOffset / 12), t);
@@ -145,9 +167,13 @@ export function playRingtone(ringtoneId?: string) {
         t += duration;
       }
       
-      // Repeat after pattern completes
       const totalDuration = ringtone.pattern.reduce((a, b) => a + b, 0);
-      ringtoneTimeout = setTimeout(playPattern, totalDuration + 500);
+      ringtoneTimeout = setTimeout(() => {
+        if ('vibrate' in navigator) {
+          navigator.vibrate(ringtone.pattern);
+        }
+        playPattern();
+      }, totalDuration + 500);
     };
     
     playPattern();
@@ -169,6 +195,9 @@ export function stopRingtone() {
     customAudioEl.pause();
     customAudioEl.currentTime = 0;
     customAudioEl = null;
+  }
+  if ('vibrate' in navigator) {
+    navigator.vibrate(0); // Stop vibration
   }
 }
 

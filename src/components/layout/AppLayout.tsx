@@ -6,6 +6,7 @@ import { onPublishProgress } from '@/lib/backgroundPublish';
 import { Cloud } from 'lucide-react';
 import { LegalFooter } from '@/components/legal/LegalFooter';
 import { toast } from 'sonner';
+import { IncomingCallOverlay } from '@/components/chat/IncomingCallOverlay';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -111,6 +112,7 @@ export const AppLayout = ({ children, showNav = true }: AppLayoutProps) => {
 
   return (
     <div className={cn('min-h-screen relative w-full')}>
+      <IncomingCallOverlay />
       <div
         className={cn(
           'fixed inset-0 z-0 pointer-events-none transition-colors duration-500',

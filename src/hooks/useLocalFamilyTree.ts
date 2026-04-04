@@ -86,10 +86,10 @@ export const useLocalFamilyTree = () => {
       const userIds = networkUsers?.map(u => u.id) || [user.id];
       setIsSharedNetwork((networkUsers?.length || 1) > 1);
       
-      // Load members from ALL users in the network
+      // Load members and positions from ALL users in the network
       const [membersRes, positionsRes] = await Promise.all([
         supabase.from('family_tree_members').select('*').in('owner_id', userIds),
-        supabase.from('node_positions').select('*').eq('owner_id', user.id) // Positions are still per-user
+        supabase.from('node_positions').select('*').eq('network_id', userNetworkId)
       ]);
 
       if (membersRes.error) throw membersRes.error;
@@ -493,7 +493,7 @@ export const useLocalFamilyTree = () => {
             const BATCH_SIZE = 50;
             for (let i = 0; i < newPositions.length; i += BATCH_SIZE) {
               const batch = newPositions.slice(i, i + BATCH_SIZE);
-              await supabase.from('node_positions').upsert(batch, { onConflict: 'member_id' });
+              await supabase.from('node_positions').upsert(batch, { onConflict: 'member_id,owner_id' });
             }
           }
         }
@@ -607,12 +607,13 @@ export const useLocalFamilyTree = () => {
       .upsert({
         member_id: memberId,
         owner_id: user.id,
+        network_id: networkId,
         x: position.x,
         y: position.y,
         updated_by: CLIENT_ID,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'member_id' });
-  }, [user?.id]);
+      }, { onConflict: 'member_id,network_id' });
+  }, [user?.id, networkId]);
 
   // Add initial couple
   const addInitialCouple = useCallback(async () => {

@@ -104,40 +104,63 @@ export const RingtoneSelector = ({ open, onOpenChange }: RingtoneSelectorProps) 
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent side="bottom" className="h-[55vh]">
-        <SheetHeader>
-          <SheetTitle>🔔 Qo'ng'iroq ovozi</SheetTitle>
+      {/* Make sheet height adaptive but ensure safe bottom area */}
+      <SheetContent side="bottom" className="h-auto max-h-[70vh] pb-8 rounded-t-3xl border-t-0 bg-background/95 backdrop-blur-3xl shadow-2xl">
+        <SheetHeader className="mb-6">
+          <SheetTitle className="text-xl font-bold flex items-center justify-center gap-2">
+            🔔 Qo'ng'iroq ovozi
+          </SheetTitle>
         </SheetHeader>
-        <div className="mt-4 space-y-2 overflow-y-auto max-h-[calc(55vh-120px)]">
+        
+        <div className="space-y-3 overflow-y-auto max-h-[calc(70vh-140px)] pb-safe scrollbar-hide px-1">
           {allOptions.map((ringtone) => (
             <div
               key={ringtone.id}
               className={cn(
-                "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors",
+                "group relative flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300",
                 selected === ringtone.id
-                  ? "bg-primary/10 border border-primary/30"
-                  : "hover:bg-muted"
+                  ? "bg-primary/10 border border-primary/30 shadow-inner"
+                  : "bg-black/5 hover:bg-black/10 border border-transparent"
               )}
               onClick={() => handleSelect(ringtone.id)}
             >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-full flex-shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePreview(ringtone.id);
-                }}
-              >
-                {playing === ringtone.id ? (
-                  <Square className="h-4 w-4" />
-                ) : (
-                  <Play className="h-4 w-4" />
+              {/* Animated visualizer behind the button if playing */}
+              <div className="relative">
+                {playing === ringtone.id && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="absolute w-[180%] h-[180%] rounded-full border border-primary/40 animate-ping" style={{ animationDuration: '1.2s' }} />
+                    <span className="absolute w-[250%] h-[250%] rounded-full border border-primary/20 animate-ping" style={{ animationDuration: '1.2s', animationDelay: '0.2s' }} />
+                  </div>
                 )}
-              </Button>
-              <span className="flex-1 text-sm font-medium">{ringtone.name}</span>
-              {selected === ringtone.id && (
-                <Check className="h-5 w-5 text-primary flex-shrink-0" />
+                
+                <Button
+                  variant={playing === ringtone.id ? 'default' : 'ghost'}
+                  size="icon"
+                  className={cn(
+                    "relative z-10 h-10 w-10 rounded-full flex-shrink-0 transition-transform active:scale-95",
+                    playing === ringtone.id ? "bg-primary shadow-lg shadow-primary/30" : "bg-black/10"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePreview(ringtone.id);
+                  }}
+                >
+                  {playing === ringtone.id ? (
+                    <Square className="h-4 w-4" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+
+              <span className="flex-1 text-[15px] font-semibold">{ringtone.name}</span>
+              
+              {selected === ringtone.id ? (
+                <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center animate-in zoom-in duration-200">
+                  <Check className="h-4 w-4 text-primary font-bold" />
+                </div>
+              ) : (
+                <div className="h-6 w-6 rounded-full border-2 border-muted-foreground/20 group-hover:border-primary/40 transition-colors" />
               )}
             </div>
           ))}

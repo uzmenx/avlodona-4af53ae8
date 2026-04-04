@@ -32,7 +32,6 @@ import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { uz } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { VideoCallUI } from '@/components/chat/VideoCallUI';
-import { IncomingCallDialog } from '@/components/chat/IncomingCallDialog';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { VoiceMessage } from '@/components/chat/VoiceMessage';
 import { MediaMessage } from '@/components/chat/MediaMessage';
@@ -432,6 +431,14 @@ const Chat = () => {
       startCall();
     }
   }, [searchParams, otherUser, isInCall, isCreatingRoom, startCall, setSearchParams]);
+
+  // Auto-answer video call if ?answerCall=true
+  useEffect(() => {
+    if (searchParams.get('answerCall') === 'true' && incomingCall && !isInCall) {
+      setSearchParams({}, { replace: true });
+      answerCall();
+    }
+  }, [searchParams, incomingCall, isInCall, answerCall, setSearchParams]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -834,15 +841,6 @@ const Chat = () => {
           onToggleCamera={toggleCamera}
           onToggleMic={toggleMic}
           onEndCall={leaveCall}
-        />
-      )}
-
-      {/* Incoming Call Dialog */}
-      {incomingCall && (
-        <IncomingCallDialog
-          callerId={incomingCall.caller_id}
-          onAnswer={answerCall}
-          onDecline={declineCall}
         />
       )}
 

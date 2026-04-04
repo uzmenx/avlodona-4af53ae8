@@ -917,16 +917,13 @@ export const UserProfilePage = () => {
             ) : isMemorial ? (
               <div className="flex-1" />
             ) : (
-              <button
-                type="button"
-                onClick={() => setFamilyMembersOpen(true)}
+              <div
                 className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0 relative">
-                
                 <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                  Oila a'zolari
+                  Postlar
                 </span>
                 <span className="text-lg font-extrabold text-foreground leading-none">
-                  {formatCount(familyMemberCount)}
+                  {formatCount(postsCount)}
                 </span>
                 <button
                   onClick={(e) => {
@@ -938,7 +935,7 @@ export const UserProfilePage = () => {
                   
                   <ChevronDown className="h-3 w-3 text-foreground" />
                 </button>
-              </button>
+              </div>
             )}
           </div>
 
@@ -1016,18 +1013,19 @@ export const UserProfilePage = () => {
                   </div>
               }
 
-                
-
-
-
-
-
-
-
-
-
-
-              
+              {!isMemorial &&
+                <button
+                  type="button"
+                  onClick={() => setFamilyMembersOpen(true)}
+                  className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                    Oila a'zolari
+                  </span>
+                  <span className="text-lg font-extrabold text-foreground leading-none">
+                    {formatCount(familyMemberCount)}
+                  </span>
+                </button>
+              }
               </div>
             </div>
           }

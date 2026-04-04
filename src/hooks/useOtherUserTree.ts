@@ -35,7 +35,9 @@ export const useOtherUserTree = (userId: string | undefined) => {
       // Load members + positions (use the target user's positions)
       const [membersRes, posRes] = await Promise.all([
         supabase.from('family_tree_members').select('*').in('owner_id', userIds),
-        supabase.from('node_positions').select('*').eq('owner_id', userId),
+        prof?.family_network_id
+          ? supabase.from('node_positions').select('*').eq('network_id', prof.family_network_id)
+          : supabase.from('node_positions').select('*').eq('owner_id', userId),
       ]);
 
       const dbMembers = membersRes.data || [];
