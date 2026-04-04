@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TreeDeciduous, X, GitMerge, Search } from 'lucide-react';
+import { TreeDeciduous, X, GitMerge, Search, Plus, Users, UserPlus, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { FamilyTreeCanvas } from './FamilyTreeCanvas';
@@ -95,6 +95,38 @@ export const FamilyTreeV2 = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isFabOpen, setIsFabOpen] = useState(false);
+
+  // Computed variables for FAB functionality
+  const rootNode = rootId ? members[rootId] : null;
+  const hasParents = rootNode ? (rootNode.parentIds?.length || 0) > 0 : false;
+  const hasSpouse = rootNode ? !!rootNode.spouseId : false;
+  const canAddChild = rootNode ? !!rootNode.spouseId : false;
+
+  let fatherNode: FamilyMember | null = null;
+  let motherNode: FamilyMember | null = null;
+
+  if (rootNode?.parentIds) {
+    rootNode.parentIds.forEach(pid => {
+      const parent = members[pid];
+      if (parent) {
+        if (parent.gender === 'male') fatherNode = parent;
+        if (parent.gender === 'female') motherNode = parent;
+      }
+    });
+  }
+
+  const fatherHasParents = fatherNode ? (fatherNode.parentIds?.length || 0) > 0 : false;
+  const fatherCanAddChild = fatherNode ? !!fatherNode.spouseId : false;
+
+  const motherHasParents = motherNode ? (motherNode.parentIds?.length || 0) > 0 : false;
+  const motherCanAddChild = motherNode ? !!motherNode.spouseId : false;
+
+  const spouseNode = rootNode?.spouseId ? members[rootNode.spouseId] : null;
+  const spouseHasParents = spouseNode ? (spouseNode.parentIds?.length || 0) > 0 : false;
+  const spouseCanAddChild = spouseNode ? !!spouseNode.spouseId : false;
+
+  const shouldShowFab = rootNode && (!hasParents || !hasSpouse || canAddChild || fatherNode || motherNode || spouseNode);
 
   // Load overlays when current post changes
   useEffect(() => {
@@ -567,6 +599,163 @@ export const FamilyTreeV2 = () => {
 
       {mergeData !== null && (
         <UnifiedMergeDialog isOpen={showMergeDialog} onClose={closeMergeDialog} data={mergeData} onConfirm={executeTreeMerge} isProcessing={isMerging} />
+      )}
+
+      {/* Floating Action Button (FAB) for adding relatives */}
+      {shouldShowFab && !isMergeMode && !showPublish && !isRelativeSearchOpen && (
+        <div className="fixed bottom-[85px] right-4 z-[55] flex flex-col items-end">
+          {/* Default overlay for glass effect backdrop */}
+          {isFabOpen && (
+            <div 
+              className="fixed inset-0 bg-background/40 backdrop-blur-sm z-[-1] transition-all duration-500 animate-in fade-in" 
+              onClick={() => setIsFabOpen(false)}
+            />
+          )}
+
+          {/* FAB Grid Menu */}
+          <div 
+            className={cn(
+              "grid grid-cols-2 gap-3 transition-all duration-500 origin-bottom-right mb-6",
+              isFabOpen ? "opacity-100 scale-100 translate-y-0 pointer-events-auto" : "opacity-0 scale-[0.8] translate-y-8 pointer-events-none absolute right-0 bottom-14"
+            )}
+            style={{ width: '310px' }}
+          >
+            {/* Component generic classes for individual menu items */}
+            {/* Parent nodes first (Ota/Ona tomon) */}
+            {fatherNode && !fatherHasParents && (
+              <button 
+                onClick={() => { setIsFabOpen(false); handleAddParents(fatherNode.id); }} 
+                className="flex items-center gap-2.5 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800/80 active:scale-95 transition-all w-full p-1.5 pr-4 rounded-full border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/20"
+              >
+                <div className="shrink-0 h-11 w-11 rounded-full flex flex-col items-center justify-center text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-b from-blue-500 to-blue-700 ring-1 ring-black/5">
+                  <Users className="h-4.5 w-4.5" />
+                </div>
+                <div className="flex flex-col text-slate-800 dark:text-slate-200 text-[11px] font-bold leading-[1.2] text-left min-w-0 pr-1 tracking-wide">
+                  <span>Bobo</span><span>Momo</span>
+                </div>
+              </button>
+            )}
+
+            {motherNode && !motherHasParents && (
+              <button 
+                onClick={() => { setIsFabOpen(false); handleAddParents(motherNode.id); }} 
+                className="flex items-center gap-2.5 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800/80 active:scale-95 transition-all w-full p-1.5 pr-4 rounded-full border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/20"
+              >
+                <div className="shrink-0 h-11 w-11 rounded-full flex flex-col items-center justify-center text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-b from-purple-500 to-purple-700 ring-1 ring-black/5">
+                  <Users className="h-4.5 w-4.5" />
+                </div>
+                <div className="flex flex-col text-slate-800 dark:text-slate-200 text-[11px] font-bold leading-[1.2] text-left min-w-0 pr-1 tracking-wide">
+                  <span>Bobo</span><span>Momo</span>
+                </div>
+              </button>
+            )}
+
+            {/* Siblings of parents (Amaki/Amma, Tog'a/Xola) */}
+            {fatherNode && (
+              <button 
+                onClick={() => { setIsFabOpen(false); handleAddChild(fatherNode.id); }} 
+                className="flex items-center gap-2.5 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800/80 active:scale-95 transition-all w-full p-1.5 pr-4 rounded-full border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/20"
+              >
+                <div className="shrink-0 h-11 w-11 rounded-full flex flex-col items-center justify-center text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-b from-emerald-500 to-emerald-700 ring-1 ring-black/5">
+                  <Users className="h-4.5 w-4.5" />
+                </div>
+                <div className="flex flex-col text-slate-800 dark:text-slate-200 text-[11px] font-bold leading-[1.2] text-left min-w-0 pr-1 tracking-wide">
+                  <span>Amaki</span><span>Amma</span>
+                </div>
+              </button>
+            )}
+
+            {motherNode && (
+              <button 
+                onClick={() => { setIsFabOpen(false); handleAddChild(motherNode.id); }} 
+                className="flex items-center gap-2.5 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800/80 active:scale-95 transition-all w-full p-1.5 pr-4 rounded-full border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/20"
+              >
+                <div className="shrink-0 h-11 w-11 rounded-full flex flex-col items-center justify-center text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-b from-emerald-500 to-emerald-700 ring-1 ring-black/5">
+                  <Users className="h-4.5 w-4.5" />
+                </div>
+                <div className="flex flex-col text-slate-800 dark:text-slate-200 text-[11px] font-bold leading-[1.2] text-left min-w-0 pr-1 tracking-wide">
+                  <span>Tog'a</span><span>Xola</span>
+                </div>
+              </button>
+            )}
+
+            {/* In-laws (Qaynota/Qaynona) */}
+            {spouseNode && !spouseHasParents && (
+              <button 
+                onClick={() => { setIsFabOpen(false); handleAddParents(spouseNode.id); }} 
+                className="flex items-center gap-2.5 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800/80 active:scale-95 transition-all w-full p-1.5 pr-4 rounded-full border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/20"
+              >
+                <div className="shrink-0 h-11 w-11 rounded-full flex flex-col items-center justify-center text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-b from-sky-400 to-blue-600 ring-1 ring-black/5">
+                  <Users className="h-4.5 w-4.5" />
+                </div>
+                <div className="flex flex-col text-slate-800 dark:text-slate-200 text-[11px] font-bold leading-[1.2] text-left min-w-0 pr-1 tracking-wide">
+                  <span>Qaynota</span><span>Qaynona</span>
+                </div>
+              </button>
+            )}
+
+            {/* Children (Farzand) */}
+            {canAddChild && (
+              <button 
+                onClick={() => { setIsFabOpen(false); handleAddChild(rootId!); }} 
+                className="flex items-center gap-2.5 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800/80 active:scale-95 transition-all w-full p-1.5 pr-4 rounded-full border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/20"
+              >
+                <div className="shrink-0 h-11 w-11 rounded-full flex flex-col items-center justify-center text-orange-500 bg-white/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)] ring-1 ring-orange-500/20">
+                  <User className="h-4.5 w-4.5" />
+                </div>
+                <div className="flex flex-col text-slate-800 dark:text-slate-200 text-[12px] font-bold leading-[1.2] text-left min-w-0 pr-1 tracking-wide">
+                  <span>Farzand</span>
+                </div>
+              </button>
+            )}
+
+            {/* Core Relatives (If missing - centered spans 2 columns) */}
+            {!hasParents && (
+              <button 
+                onClick={() => { setIsFabOpen(false); handleAddParents(rootId!); }} 
+                className="flex items-center gap-3 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800/80 active:scale-95 transition-all w-full p-1.5 pr-4 rounded-full border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/20 col-span-2 max-w-[170px] justify-self-center mt-1"
+              >
+                <div className="shrink-0 h-11 w-11 rounded-full flex flex-col items-center justify-center text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-b from-slate-600 to-slate-800 ring-1 ring-black/5">
+                  <Users className="h-4.5 w-4.5" />
+                </div>
+                <div className="flex flex-col text-slate-800 dark:text-slate-200 text-[12px] font-bold leading-[1.2] text-left pr-2 tracking-wide uppercase">
+                  <span>Ota Ona</span>
+                </div>
+              </button>
+            )}
+            
+            {!hasSpouse && (
+              <button 
+                onClick={() => { setIsFabOpen(false); handleAddSpouse(rootId!); }} 
+                className="flex items-center gap-3 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800/80 active:scale-95 transition-all w-full p-1.5 pr-4 rounded-full border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/20 col-span-2 max-w-[170px] justify-self-center mt-1"
+              >
+                <div className="shrink-0 h-11 w-11 rounded-full flex flex-col items-center justify-center text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-b from-rose-500 to-rose-700 ring-1 ring-black/5">
+                  <UserPlus className="h-4.5 w-4.5" />
+                </div>
+                <div className="flex flex-col text-slate-800 dark:text-slate-200 text-[12px] font-bold leading-[1.2] text-left pr-2 tracking-wide uppercase">
+                  <span>Juft qo'shish</span>
+                </div>
+              </button>
+            )}
+          </div>
+
+          {/* Main FAB Trigger */}
+          <button
+            onClick={() => setIsFabOpen(!isFabOpen)}
+            className="relative group rounded-full h-[64px] w-[64px] shadow-2xl shadow-emerald-500/20 dark:shadow-indigo-500/30 transition-all duration-300 border-0 focus:outline-none ring-0 outline-none hover:-translate-y-1 active:scale-95"
+            aria-label="Add relative"
+          >
+            {/* Glow backing - Adaptive colors */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 dark:from-indigo-500 dark:to-cyan-400 blur-md opacity-40 group-hover:opacity-100 transition-opacity duration-300" />
+            
+            {/* Main glass button layer - Adaptive gradients */}
+            <div className="relative w-full h-full rounded-full bg-gradient-to-tr from-emerald-500 via-teal-500 to-emerald-600 dark:from-indigo-600 dark:via-blue-600 dark:to-cyan-600 flex items-center justify-center text-white border border-white/30 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.5)] z-10 overflow-hidden transition-all duration-500">
+               {/* Shimmer effect overlay inside button */}
+               <div className="absolute inset-0 w-full h-full bg-gradient-to-tr from-transparent via-white/30 to-transparent -translate-x-[120%] group-hover:translate-x-[120%] transition-transform duration-1000 ease-in-out" />
+               <Plus className={cn("h-8 w-8 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] relative z-10 drop-shadow-md", isFabOpen ? "rotate-[225deg]" : "")} />
+            </div>
+          </button>
+        </div>
       )}
         </>
       )}

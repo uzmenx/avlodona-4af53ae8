@@ -10,6 +10,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LangSwitcher } from "@/components/LangSwitcher";
 import { LegalFooter } from "@/components/legal/LegalFooter";
+import { Capacitor } from "@capacitor/core";
 
 const AuthLogin = () => {
   const [email, setEmail] = useState("");
@@ -49,7 +50,7 @@ const AuthLogin = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: "https://avlodona.com/auth/callback"
+          redirectTo: Capacitor.isNativePlatform() ? "com.avlodona.app://auth/callback" : "https://avlodona.com/auth/callback"
         }
       });
       if (error) throw error;

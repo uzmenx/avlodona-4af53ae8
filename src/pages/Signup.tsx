@@ -11,7 +11,8 @@ import { lovable } from "@/integrations/lovable/index";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LangSwitcher } from "@/components/LangSwitcher";
 import { LegalFooter } from "@/components/legal/LegalFooter";
-import { generateBaseUsername, ensureUniqueUsername } from "@/utils/usernameUtils";
+import { ensureUniqueUsername, generateBaseUsername } from "@/utils/usernameUtils";
+import { Capacitor } from "@capacitor/core";
 
 const Signup = () => {
   const [fullName, setFullName] = useState("");
@@ -98,7 +99,7 @@ const Signup = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: "https://avlodona.com/auth/callback"
+          redirectTo: Capacitor.isNativePlatform() ? "com.avlodona.app://auth/callback" : "https://avlodona.com/auth/callback"
         }
       });
       if (error) throw error;
