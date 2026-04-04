@@ -36,8 +36,8 @@ const AuthLogin = () => {
         toast({ title: t("success"), description: t("loggedInMsg") });
         navigate("/");
       }
-    } catch (error: any) {
-      toast({ title: t("error"), description: error.message || t("loginError"), variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: t("error"), description: (error as Error).message || t("loginError"), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -49,12 +49,12 @@ const AuthLogin = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: "https://avlodona.com/auth/callback"
         }
       });
       if (error) throw error;
-    } catch (error: any) {
-      toast({ title: t("error"), description: error.message || t("googleError"), variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: t("error"), description: (error as Error).message || t("googleError"), variant: "destructive" });
       setIsGoogleLoading(false);
     }
   };

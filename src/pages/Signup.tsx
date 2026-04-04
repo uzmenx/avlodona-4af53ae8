@@ -79,11 +79,13 @@ const Signup = () => {
         toast({ title: t("success"), description: "Ro'yxatdan o'tdingiz!" });
         navigate("/");
       }
-    } catch (error: any) {
-      if (error.message?.includes('duplicate key') || error.code === '23505') {
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const error = err as any;
+      if (error?.message?.includes('duplicate key') || error?.code === '23505') {
         toast({ title: t("error"), description: "Ushbu foydalanuvchi nomi band qilingan, iltimos boshqa email bilan qayta urinib ko'ring yoki birozdan so'ng xarakat qiling.", variant: "destructive" });
       } else {
-        toast({ title: t("error"), description: error.message || t("signupError"), variant: "destructive" });
+        toast({ title: t("error"), description: error?.message || t("signupError"), variant: "destructive" });
       }
     } finally {
       setIsLoading(false);
@@ -96,12 +98,12 @@ const Signup = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: "https://avlodona.com/auth/callback"
         }
       });
       if (error) throw error;
-    } catch (error: any) {
-      toast({ title: t("error"), description: error.message || t("googleError"), variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: t("error"), description: (error as Error).message || t("googleError"), variant: "destructive" });
       setIsGoogleLoading(false);
     }
   };

@@ -96,11 +96,11 @@ export const UnifiedFullScreenViewer = ({
 
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const [isPlaying, setIsPlaying] = useState(true);
-
-  const [isTransitioning, setIsTransitioning] = useState(false);
-
-  const [slideDirection, setSlideDirection] = useState<'up' | 'down' | null>(null);
 
   const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false);
 
@@ -130,7 +130,61 @@ export const UnifiedFullScreenViewer = ({
 
 
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+
+    const container = e.currentTarget;
+
+    const h = container.clientHeight;
+
+    if (h === 0) return;
+
+    const newIndex = Math.round(container.scrollTop / h);
+
+    if (activeTab === 'posts' && newIndex !== postIndex) {
+
+      setPostIndex(newIndex);
+
+      setCurrentMediaIndex(0);
+
+    } else if (activeTab === 'shorts' && newIndex !== shortIndex) {
+
+      setShortIndex(newIndex);
+
+    }
+
+  };
+
+
+
+  // Sync scroll position with state index
+
+  useEffect(() => {
+
+    if (scrollContainerRef.current) {
+
+      const h = scrollContainerRef.current.clientHeight;
+
+      if (h === 0) return;
+
+      const targetIndex = activeTab === 'posts' ? postIndex : shortIndex;
+
+      const currentScrollIndex = Math.round(scrollContainerRef.current.scrollTop / h);
+
+      if (targetIndex !== currentScrollIndex) {
+
+        scrollContainerRef.current.scrollTo({
+
+          top: targetIndex * h,
+
+          behavior: 'instant'
+
+        });
+
+      }
+
+    }
+
+  }, [activeTab, postIndex, shortIndex]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -803,58 +857,13 @@ export const UnifiedFullScreenViewer = ({
 
 
   const smoothNavigate = useCallback((direction: 'up' | 'down') => {
-
-    if (isTransitioning) return;
-
-    const idx = activeTab === 'posts' ? postIndex : shortIndex;
-
-    const count = activeTab === 'posts' ? posts.length : shorts.length;
-
-    const canGo = direction === 'down' ? idx < count - 1 : idx > 0;
-
-    if (!canGo) return;
-
-
-
-    setIsTransitioning(true);
-
-    setSlideDirection(direction);
-
-
-
-    // Wait for exit animation (Exactly 200ms as per legacy FullScreenViewer)
-
-    setTimeout(() => {
-
-      requestAnimationFrame(() => {
-
-        if (activeTab === 'posts') {
-
-          setPostIndex((prev) => direction === 'down' ? prev + 1 : prev - 1);
-
-        } else {
-
-          setShortIndex((prev) => direction === 'down' ? prev + 1 : prev - 1);
-
-        }
-
-        
-
-        // Wait for enter animation (Exactly 300ms as per legacy FullScreenViewer)
-
-        setTimeout(() => {
-
-          setSlideDirection(null);
-
-          setIsTransitioning(false);
-
-        }, 300);
-
-      });
-
-    }, 200);
-
-  }, [isTransitioning, activeTab, postIndex, shortIndex, posts.length, shorts.length]);
+    if (scrollContainerRef.current) {
+      const h = scrollContainerRef.current.clientHeight;
+      if (h === 0) return;
+      const targetScroll = (direction === 'down' ? 1 : -1) * h;
+      scrollContainerRef.current.scrollBy({ top: targetScroll, behavior: 'smooth' });
+    }
+  }, []);
 
 
 
@@ -874,7 +883,7 @@ export const UnifiedFullScreenViewer = ({
 
       e.preventDefault();
 
-      if (isScrolling || isTransitioning) return;
+      if (isScrolling) return;
 
       if (Math.abs(e.deltaY) > 20) {
 
@@ -900,7 +909,7 @@ export const UnifiedFullScreenViewer = ({
 
     };
 
-  }, [smoothNavigate, isTransitioning]);
+  }, [smoothNavigate]);
 
 
 
@@ -1152,13 +1161,7 @@ export const UnifiedFullScreenViewer = ({
 
       <div className={cn(
 
-        "flex-1 flex items-center justify-center relative overflow-hidden z-[1] transition-all duration-200 ease-out",
-
-        slideDirection === 'down' && "animate-slide-out-up",
-
-        slideDirection === 'up' && "animate-slide-out-down",
-
-        !slideDirection && "animate-slide-in"
+        "flex-1 flex items-center justify-center relative overflow-hidden z-[1]"
 
       )}
 
@@ -1166,7 +1169,7 @@ export const UnifiedFullScreenViewer = ({
 
       onClick={(e) => {
 
-        if (isTransitioning) return;
+       
 
         if (Date.now() - lastShortsTouchTapTs.current < 450) return;
 
@@ -1478,13 +1481,7 @@ export const UnifiedFullScreenViewer = ({
 
           className={cn(
 
-            "flex-1 flex items-center justify-center relative overflow-hidden z-[1] transition-all duration-300 ease-out",
-
-            slideDirection === 'down' && "animate-slide-out-up",
-
-            slideDirection === 'up' && "animate-slide-out-down",
-
-            !slideDirection && "animate-slide-in"
+            "flex-1 flex items-center justify-center relative overflow-hidden z-[1]"
 
           )}
 
@@ -1965,305 +1962,154 @@ export const UnifiedFullScreenViewer = ({
 
 
   return (
-
     <>
-
       <div
-
         ref={containerRef}
-
-        className="fixed inset-0 z-[60] flex flex-col overflow-hidden touch-none"
-
-        style={{
-
-          backgroundColor: '#000',
-
-          ...bgStyle
-
-        }}
-
-        onMouseDown={handleMouseDown}
-
-        onMouseUp={handleMouseUp}
-
-        onTouchStart={(e) => {
-
-          ensureAmbientPlayback();
-
-          touchMoved.current = false;
-
-          touchStartY.current = e.touches[0].clientY;
-
-          touchStartX.current = e.touches[0].clientX;
-
-          touchStartTime.current = Date.now();
-
-        }}
-
-        onTouchMove={(e) => {
-
-          const diffY = Math.abs(touchStartY.current - e.touches[0].clientY);
-
-          const diffX = Math.abs(touchStartX.current - e.touches[0].clientX);
-
-          if (diffY > 8 || diffX > 8) touchMoved.current = true;
-
-        }}
-
-        onTouchEnd={(e) => {
-
-          const diffY = touchStartY.current - e.changedTouches[0].clientY;
-
-          const diffX = touchStartX.current - e.changedTouches[0].clientX;
-
-          const elapsed = Date.now() - touchStartTime.current;
-
-          const velocityY = Math.abs(diffY) / Math.max(elapsed, 1);
-
-          // If swiping on shorts, we prefer the internal YT overlay's own logic?
-
-          // No, actually, the global handler is fine too.
-
-          // Just make sure it doesn't duplicate if shorts internal overlay is still there.
-
-          // Lower threshold for faster swipes — feels more responsive
-
-          const threshold = velocityY > 0.25 ? 16 : 34;
-
-
-
-          if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > threshold) {
-
-            smoothNavigate(diffY > 0 ? 'down' : 'up');
-
-          } else if (Math.abs(diffX) > 50) {
-
-            // Horizontal swipe mapping as per legacy FullScreenViewer
-
-            smoothNavigate(diffX > 0 ? 'down' : 'up');
-
-          }
-
-        }}>
-
-
-
+        className="fixed inset-0 z-[60] flex flex-col bg-black overflow-hidden"
+      >
+        {/* Ambient Background */}
         {ambientUrl &&
-
-        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
             <div className="absolute inset-0">
-
               {activeTab === 'posts' && isVideo(ambientUrl) ?
-
             <video
-
               key={ambientUrl}
-
               ref={ambientVideoRef}
-
               src={ambientUrl}
-
               className="absolute inset-0 w-full h-full object-cover"
-
               style={{
-
                 filter: 'blur(16px) saturate(145%) brightness(0.92) contrast(1.05)',
-
                 transform: 'scale(1.08)',
-
                 opacity: 0.72
-
               }}
-
               muted
-
               playsInline
-
               autoPlay
-
               loop
-
               preload="metadata"
-
               controls={false}
-
               disablePictureInPicture /> :
 
 
-
-
-
             <img
-
               key={ambientUrl}
-
               src={ambientUrl}
-
               alt=""
-
               className="absolute inset-0 w-full h-full object-cover"
-
               style={{
-
                 filter: 'blur(16px) saturate(145%) brightness(0.92) contrast(1.05)',
-
                 transform: 'scale(1.08)',
-
                 opacity: 0.72
-
               }} />
-
-
 
             }
 
-
-
               <div className="absolute inset-0 bg-black/28" />
-
               <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/55" />
-
               <div
-
               className="absolute inset-[-10%]"
-
               style={{
-
                 background:
-
                 'radial-gradient(ellipse at center, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.38) 58%, rgba(0,0,0,0.72) 100%)'
-
               }} />
-
             
-
             </div>
-
           </div>
-
         }
-
-
 
         {activeTab === 'posts' && dominantColor &&
-
-        <div className="absolute inset-0 z-0" style={{
-
+        <div className="fixed inset-0 z-0" style={{
           background: `radial-gradient(ellipse at center, transparent 0%, ${dominantColor} 70%)`,
-
           backdropFilter: 'blur(20px)'
-
         }} />
-
         }
 
-
-
         {/* Top bar with tabs */}
-
-        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-3 pt-[env(safe-area-inset-top,10px)] pb-2 bg-gradient-to-b from-black/50 to-transparent">
-
+        <div className="fixed top-0 left-0 right-0 z-[70] flex items-center justify-between px-3 pt-[env(safe-area-inset-top,10px)] pb-2 bg-gradient-to-b from-black/50 to-transparent">
           <button onClick={handleClose} className="p-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 my-0">
-
             <X className="w-4 h-4 text-white" />
-
           </button>
 
-
-
           <div className="flex gap-0.5 bg-white/10 backdrop-blur-md rounded-full p-0.5 border border-white/10 py-[2px] my-[23px]">
-
             <button
-
               onClick={() => handleTabSwitch('shorts')}
-
               className={cn(
-
                 "px-3.5 py-1 rounded-full text-[11px] font-medium transition-all",
-
                 activeTab === 'shorts' ? "bg-white/20 text-white shadow-sm" : "text-white/50 hover:text-white/70"
-
               )}>
-
               yt shorts
-
             </button>
-
             <button
-
               onClick={() => handleTabSwitch('posts')}
-
               className={cn(
-
                 "px-3.5 py-1 rounded-full text-[11px] font-medium transition-all",
-
                 activeTab === 'posts' ? "bg-white/20 text-white shadow-sm" : "text-white/50 hover:text-white/70"
-
               )}>
-
               postlar
-
             </button>
-
           </div>
 
-
-
           <div className="w-7" />
-
         </div>
 
-
-
-        {/* Content */}
-
-        {activeTab === 'shorts' ? renderShort() : renderPost()}
-
+        {/* Scrollable Feed */}
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="h-full w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth hide-scrollbar z-50 pt-[env(safe-area-inset-top,44px)]"
+        >
+          {activeTab === 'posts' ? (
+            posts.map((post, i) => (
+              <div key={post.id} className="h-[100dvh] w-full snap-start snap-always border-b-2 border-white relative overflow-hidden flex flex-col">
+                {i === postIndex ? renderPost() : (
+                  <div className="flex-1 flex items-center justify-center bg-black/20">
+                    <img 
+                      src={post.media_urls?.[0] || post.image_url} 
+                      alt="" 
+                      className="max-w-full max-h-full object-contain opacity-50 blur-sm" 
+                    />
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            shorts.map((short, i) => (
+              <div key={short.id} className="h-[100dvh] w-full snap-start snap-always border-b-2 border-white relative overflow-hidden flex flex-col">
+                {i === shortIndex ? renderShort() : (
+                  <div className="flex-1 relative bg-black/20">
+                    <img 
+                      src={short.thumbnail} 
+                      alt="" 
+                      className="absolute inset-0 w-full h-full object-cover opacity-50 blur-sm" 
+                    />
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
-
-
       {typeof document !== 'undefined' && showVideoPlayer && createPortal(
-
         <div className="fixed inset-0 z-[80] w-full h-full min-h-[100dvh] overflow-hidden bg-black" style={{ height: '100dvh' }}>
-
           <SamsungUltraVideoPlayer
-
             src={videoPlayerSrc}
-
             title={currentPost?.content?.slice(0, 50) || 'Video'}
-
             onClose={() => setShowVideoPlayer(false)}
-
             startInFullscreen={true}
-
           />
 
-
-
         </div>,
-
         document.body
-
       )}
 
-
-
       {storyViewerOpen && storyViewerGroups.length > 0 &&
-
       <StoryViewer
-
         storyGroups={storyViewerGroups}
-
         initialGroupIndex={0}
-
         onClose={() => setStoryViewerOpen(false)} />
 
-
-
       }
-
     </>);
 
 
