@@ -245,16 +245,16 @@ const Messages = () => {
       const [viewsRes, likesRes] = await Promise.all([
       viewerId ?
       supabase.from('story_views').select('story_id').eq('viewer_id', viewerId).in('story_id', stories.map((s) => s.id)) :
-      Promise.resolve({ data: [] as any[] }),
+      Promise.resolve({ data: [] as { story_id: string }[] }),
       viewerId ?
       supabase.from('story_likes').select('story_id').eq('user_id', viewerId).in('story_id', stories.map((s) => s.id)) :
-      Promise.resolve({ data: [] as any[] })]
+      Promise.resolve({ data: [] as { story_id: string }[] })]
       );
 
-      const viewedStoryIds = new Set((viewsRes as any)?.data?.map((v: any) => v.story_id) || []);
-      const likedStoryIds = new Set((likesRes as any)?.data?.map((l: any) => l.story_id) || []);
+      const viewedStoryIds = new Set((viewsRes as { data: { story_id: string }[] | null })?.data?.map((v) => v.story_id) || []);
+      const likedStoryIds = new Set((likesRes as { data: { story_id: string }[] | null })?.data?.map((l) => l.story_id) || []);
 
-      const normalizedStories: Story[] = stories.map((s: any) => ({
+      const normalizedStories: Story[] = stories.map((s: Record<string, unknown>) => ({
         ...s,
         media_type: s.media_type as 'image' | 'video',
         ring_id: s.ring_id || 'default',
@@ -334,10 +334,10 @@ const Messages = () => {
         const [usersRes, groupsRes] = await Promise.all([usersQuery, groupsQuery]);
         if (cancelled) return;
 
-        const rawUsers = (usersRes.data || []) as any[];
+        const rawUsers = (usersRes.data || []) as GlobalUserResult[];
         const cleanedUsers = rawUsers.filter((u) => u.id !== user?.id);
         setGlobalUsers(cleanedUsers);
-        setGlobalGroups(((groupsRes as any).data || []) as any);
+        setGlobalGroups((groupsRes.data as unknown as GlobalGroupResult[]) || []);
       } catch (e) {
         console.error('Global search error:', e);
       } finally {
@@ -416,7 +416,7 @@ const Messages = () => {
       // Store memberIds temporarily
       setPendingGroupData({
         ...pendingGroupData,
-        memberIds: memberIds as any
+        memberIds: memberIds
       });
     } else {
       // Create group immediately
@@ -443,7 +443,7 @@ const Messages = () => {
   const handleVisibilityComplete = async (visibility: "public" | "private", inviteLink: string) => {
     if (!pendingGroupData || !createType) return;
 
-    const memberIds = (pendingGroupData as any).memberIds || [];
+    const memberIds = pendingGroupData.memberIds || [];
 
     const channelId = await createGroupChat(
       pendingGroupData.name,
@@ -882,7 +882,7 @@ const Messages = () => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-2">
-                                    <StarUsername name={item.otherUser.name || 'Foydalanuvchi'} />
+                                    <StarUsername username={item.otherUser.username || item.otherUser.name || 'Foydalanuvchi'} />
                                     <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                                       {item.last_message_at ? formatTime(item.last_message_at) : ''}
                                     </span>
@@ -893,7 +893,7 @@ const Messages = () => {
                                       item.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                                     )}>
                                       {item.lastMessage?.sender_id === user?.id ? `${t('you')}: ` : ""}
-                                      {item.last_message_content || t('noMessagesYet')}
+                                      {(item as { lastMessage?: { content: string } }).lastMessage?.content || t('noMessagesYet')}
                                     </p>
                                     {item.unreadCount > 0 && (
                                       <div className="bg-primary text-primary-foreground min-w-[20px] h-5 rounded-full px-1.5 flex items-center justify-center text-[10px] font-bold shadow-sm shadow-primary/20 shrink-0">
@@ -905,6 +905,7 @@ const Messages = () => {
                               </div>
                             );
                           }
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           return <GroupChatItem key={item.id} chat={item as any} onClick={() => handleGroupClick(item.id)} />;
                         })}
 
@@ -916,51 +917,11 @@ const Messages = () => {
                         )}
                       </>
                     )}
-                        {/* Groups Tab */}
-                        {activeTab === 'groups' && filteredGroups.map((group) => (
-                          <GroupChatItem key={group.id} chat={group} onClick={() => handleGroupClick(group.id)} />
-                        ))}
 
-                        {/* Channels Tab */}
-                        {activeTab === 'channels' && filteredChannels.map((channel) => (
-                          <GroupChatItem key={channel.id} chat={channel} onClick={() => handleGroupClick(channel.id)} />
-                        ))}
-
-                    {/* Followers/Following Tabs */}
-                    {(activeTab === 'followers' || activeTab === 'following') && (
-                      <div className="space-y-1">
-                        {(activeTab === 'followers' ? filteredFollowers : filteredFollowing).map((profile) => (
-                          <div
-                            key={profile.id}
-                            onClick={() => handleUserClick(profile.id)}
-                            className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/10 active:scale-[0.99] transition-all rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md"
-                          >
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={profile.avatar_url || undefined} />
-                              <AvatarFallback>{getInitials(profile.name)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold truncate">{profile.name || profile.username}</p>
-                              <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
 
                     {/* Empty search results handled above */}
 
                   </div>
-
-                  {filteredConversations.length === 0 &&
-              filteredGroups.length === 0 &&
-              filteredChannels.length === 0 &&
-              <div className="text-center py-12 px-4">
-                         <MessageCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                         
-                         <p className="text-sm text-muted-foreground mt-1">{t('createGroupOrChannel')}</p>
-                      </div>
-              }
             </>
             }
             </>
