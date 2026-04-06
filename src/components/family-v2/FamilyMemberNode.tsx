@@ -161,7 +161,8 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
     }
   }, []);
 
-  const handleAvatarClick = () => {
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     // If long press just happened, ignore click
     if (isLongPressRef.current) {
       isLongPressRef.current = false;
@@ -179,7 +180,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
       setShowStoryViewer(true);
     } else {
       // Otherwise open profile
-      onOpenProfile(member);
+      onOpenProfile?.(member);
     }
   };
 
@@ -191,7 +192,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
   return (
     <>
        <div
-        className="relative flex flex-col items-center"
+        className="relative flex flex-col items-center nodrag nopan"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

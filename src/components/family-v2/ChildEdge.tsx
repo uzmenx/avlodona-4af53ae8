@@ -34,19 +34,16 @@ const ChildEdge = ({
   let startY: number;
   
   if (spouseNode) {
+    const sourceCenterX = sourceNode.internals.positionAbsolute.x + sourceWidth / 2;
+    const sourceCenterY = sourceNode.internals.positionAbsolute.y + 40; // Avatar center
+    
     const spouseWidth = spouseNode.measured?.width || 80;
+    const spouseCenterX = spouseNode.internals.positionAbsolute.x + spouseWidth / 2;
+    const spouseCenterY = spouseNode.internals.positionAbsolute.y + 40; // Avatar center
     
-    // Get the right edge of source (where spouse line ends)
-    const sourceRightX = sourceNode.internals.positionAbsolute.x + sourceWidth;
-    const sourceRightY = sourceNode.internals.positionAbsolute.y + 40; // Avatar center
-    
-    // Get the left edge of spouse (where spouse line starts)
-    const spouseLeftX = spouseNode.internals.positionAbsolute.x;
-    const spouseLeftY = spouseNode.internals.positionAbsolute.y + 40; // Avatar center
-    
-    // Start from below the heart (so line goes behind heart)
-    startX = (sourceRightX + spouseLeftX) / 2;
-    startY = ((sourceRightY + spouseLeftY) / 2) + 16; // Start below heart center
+    // Start from below the heart
+    startX = (sourceCenterX + spouseCenterX) / 2;
+    startY = ((sourceCenterY + spouseCenterY) / 2) + 16;
   } else {
     // Fallback: start from bottom center of parent
     startX = sourceNode.internals.positionAbsolute.x + sourceWidth / 2;

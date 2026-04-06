@@ -212,6 +212,7 @@ export const RelativeConnectionSheet = ({
                   onOpenProfile={handleNodeSelectTheir}
                   onPositionChange={NOOP_FUNC}
                   isMergeMode={true}
+                  readOnly={true}
                   mergeSelectedIds={selectedFromTab === 'their' && selectedNodeId ? [selectedNodeId] : []}
                 />
               </div>
@@ -236,6 +237,7 @@ export const RelativeConnectionSheet = ({
                   onOpenProfile={handleNodeSelectMine}
                   onPositionChange={NOOP_FUNC}
                   isMergeMode={true}
+                  readOnly={true}
                   mergeSelectedIds={selectedFromTab === 'mine' && selectedNodeId ? [selectedNodeId] : []}
                 />
               </div>
