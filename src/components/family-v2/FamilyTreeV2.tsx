@@ -650,13 +650,17 @@ export const FamilyTreeV2 = () => {
               </button>
             )}
 
-            {/* Siblings of parents (Amaki/Amma, Tog'a/Xola) */}
-            {fatherNode && (
+            {/* Amaki/Amma (Siblings of father, added to paternal grandparents) */}
+            {fatherNode && fatherHasParents && (
               <button 
-                onClick={() => { setIsFabOpen(false); handleAddChild(fatherNode.id); }} 
+                onClick={() => { 
+                  setIsFabOpen(false); 
+                  const paternalGrandparentId = fatherNode.parentIds!.find(id => members[id]) || fatherNode.parentIds![0];
+                  if (paternalGrandparentId) handleAddChild(paternalGrandparentId); 
+                }} 
                 className="flex items-center gap-2.5 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800/80 active:scale-95 transition-all w-full p-1.5 pr-4 rounded-full border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/20"
               >
-                <div className="shrink-0 h-11 w-11 rounded-full flex flex-col items-center justify-center text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-b from-emerald-500 to-emerald-700 ring-1 ring-black/5">
+                <div className="shrink-0 h-11 w-11 rounded-full flex flex-col items-center justify-center text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-b from-amber-500 to-orange-600 ring-1 ring-black/5">
                   <Users className="h-4.5 w-4.5" />
                 </div>
                 <div className="flex flex-col text-slate-800 dark:text-slate-200 text-[11px] font-bold leading-[1.2] text-left min-w-0 pr-1 tracking-wide">
@@ -665,16 +669,36 @@ export const FamilyTreeV2 = () => {
               </button>
             )}
 
-            {motherNode && (
+            {/* Tog'a/Xola (Siblings of mother, added to maternal grandparents) */}
+            {motherNode && motherHasParents && (
               <button 
-                onClick={() => { setIsFabOpen(false); handleAddChild(motherNode.id); }} 
+                onClick={() => { 
+                  setIsFabOpen(false); 
+                  const maternalGrandparentId = motherNode.parentIds!.find(id => members[id]) || motherNode.parentIds![0];
+                  if (maternalGrandparentId) handleAddChild(maternalGrandparentId); 
+                }} 
+                className="flex items-center gap-2.5 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800/80 active:scale-95 transition-all w-full p-1.5 pr-4 rounded-full border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/20"
+              >
+                <div className="shrink-0 h-11 w-11 rounded-full flex flex-col items-center justify-center text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-b from-indigo-500 to-purple-600 ring-1 ring-black/5">
+                  <Users className="h-4.5 w-4.5" />
+                </div>
+                <div className="flex flex-col text-slate-800 dark:text-slate-200 text-[11px] font-bold leading-[1.2] text-left min-w-0 pr-1 tracking-wide">
+                  <span>Tog'a</span><span>Xola</span>
+                </div>
+              </button>
+            )}
+
+            {/* Siblings of the user (Aka-uka / Opa-singil) */}
+            {(fatherNode || motherNode) && (
+              <button 
+                onClick={() => { setIsFabOpen(false); handleAddChild(fatherNode ? fatherNode.id : motherNode!.id); }} 
                 className="flex items-center gap-2.5 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800/80 active:scale-95 transition-all w-full p-1.5 pr-4 rounded-full border border-white/40 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/20"
               >
                 <div className="shrink-0 h-11 w-11 rounded-full flex flex-col items-center justify-center text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] bg-gradient-to-b from-emerald-500 to-emerald-700 ring-1 ring-black/5">
                   <Users className="h-4.5 w-4.5" />
                 </div>
                 <div className="flex flex-col text-slate-800 dark:text-slate-200 text-[11px] font-bold leading-[1.2] text-left min-w-0 pr-1 tracking-wide">
-                  <span>Tog'a</span><span>Xola</span>
+                  <span>Aka-uka</span><span>Opa-singil</span>
                 </div>
               </button>
             )}
