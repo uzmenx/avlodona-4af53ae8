@@ -73,9 +73,15 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setIsVisible(entry.isIntersecting && entry.intersectionRatio >= 0.5);
+        // Use a slightly lower threshold like 0.4 to ensure taller videos still trigger
+        // However, specifically checking if the document is hidden helps with page switching
+        if (document.hidden) {
+          setIsVisible(false);
+          return;
+        }
+        setIsVisible(entry.isIntersecting && entry.intersectionRatio >= 0.4);
       },
-      { threshold: [0, 0.5, 1] }
+      { threshold: [0, 0.25, 0.4, 0.5, 0.75, 1] }
     );
 
     observer.observe(container);
@@ -110,14 +116,18 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
 
   useEffect(() => {
     const video = videoRef.current;
-    if (video && isVideo(mediaUrls[currentIndex]) && isVisible) {
-      video.currentTime = 0;
-      window.dispatchEvent(
-        new CustomEvent('avlodona:video:request-play', { detail: { id: instanceIdRef.current } })
-      );
-      video.play().catch(() => {});
+    if (video && isVideo(mediaUrls[currentIndex])) {
+      if (isVisible) {
+        video.currentTime = 0;
+        window.dispatchEvent(
+          new CustomEvent('avlodona:video:request-play', { detail: { id: instanceIdRef.current } })
+        );
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
     }
-  }, [currentIndex]);
+  }, [currentIndex, isVisible, mediaUrls]);
 
   if (!mediaUrls || mediaUrls.length === 0) return null;
 
@@ -177,6 +187,7 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
             className="w-full h-auto object-contain cursor-pointer"
             style={{ maxHeight: '80vh', maxWidth: '100%' }}
             loop
+            muted
             playsInline
             onClick={handleVideoTap}
             onTouchEnd={handleVideoTap}

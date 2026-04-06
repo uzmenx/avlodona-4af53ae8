@@ -35,6 +35,7 @@ import AuthCallback from "./pages/AuthCallback";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
 import InviteAccept from "./pages/InviteAccept";
+import Support from "./pages/Support";
 
 const queryClient = new QueryClient();
 const FIRST_VISIT_KEY = 'avlodona:first-visit:v1';
@@ -129,6 +130,7 @@ const App = () => (
                 <Route path="/group-chat/:groupId" element={<ProtectedRoute><GroupChat /></ProtectedRoute>} />
                 <Route path="/join/:inviteLink" element={<ProtectedRoute><JoinGroup /></ProtectedRoute>} />
                 <Route path="/invite/:token" element={<InviteAccept />} />
+                <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ErrorBoundary>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { MoreHorizontal, Trash2, Flag, Share2 } from 'lucide-react';
+import { ReportModal } from '@/components/ui/ReportModal';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ interface PostMenuProps {
 export const PostMenu = ({ postId, authorId, onDelete }: PostMenuProps) => {
   const { user } = useAuth();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showReportDialog, setShowReportDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
   const isOwner = user?.id === authorId;
@@ -81,7 +83,7 @@ export const PostMenu = ({ postId, authorId, onDelete }: PostMenuProps) => {
           </DropdownMenuItem>
           
           {!isOwner && (
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive" onClick={() => setShowReportDialog(true)}>
               <Flag className="h-4 w-4 mr-2" />
               Shikoyat qilish
             </DropdownMenuItem>
@@ -122,6 +124,14 @@ export const PostMenu = ({ postId, authorId, onDelete }: PostMenuProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {showReportDialog && (
+        <ReportModal 
+          targetType="post" 
+          targetId={postId} 
+          onClose={() => setShowReportDialog(false)} 
+        />
+      )}
     </>
   );
 };

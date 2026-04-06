@@ -2,7 +2,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 
 const PrivacyPolicy = () => {
   return (
-    <AppLayout>
+    <AppLayout showNav={false}>
       <div className="max-w-lg mx-auto px-4 pt-4 pb-24">
         <h1 className="text-2xl font-bold">Privacy Policy</h1>
         <p className="mt-2 text-sm text-muted-foreground">

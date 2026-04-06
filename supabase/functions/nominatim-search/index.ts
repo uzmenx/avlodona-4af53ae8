@@ -36,13 +36,13 @@ serve(async (req: Request) => {
       const res = await fetch(url, {
         headers: {
           Accept: "application/json",
-          "User-Agent": "AvlodonaApp/1.0",
+          "User-Agent": "AvlodonaApp/1.0 (support@avlodona.com)", // Required by Nominatim Policy
         },
       });
 
       if (!res.ok) {
         return new Response(
-          JSON.stringify({ error: "Reverse geocoding xatolik", status: res.status }),
+          JSON.stringify({ error: "Joylashuvni aniqlash imkonsiz (server xatosi)", status: res.status }),
           { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
@@ -74,14 +74,14 @@ serve(async (req: Request) => {
     const res = await fetch(url, {
       headers: {
         Accept: "application/json",
-        "User-Agent": "AvlodonaApp/1.0",
+        "User-Agent": "AvlodonaApp/1.0 (support@avlodona.com)", // Required by Nominatim Policy
       },
     });
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       return new Response(
-        JSON.stringify({ error: "Joy qidirishda xatolik", status: res.status, details: text }),
+        JSON.stringify({ error: "Joy qidirishda xatolik yuz berdi. Iltimos keyinroq urinib ko'ring.", status: res.status, details: text }),
         {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
