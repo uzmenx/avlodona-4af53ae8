@@ -6,8 +6,8 @@ import { RelativeConnectionSheet } from '@/components/family/RelativeConnectionS
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
-const WELCOME_BG = "https://pub-5420856c3db34a86ae04153a95eadee4.r2.dev/messages/1fbd4e15-3762-4a4e-a032-5043a907c7ea/e335e74f00c920e02190647fcdc181db.jpg";
-const WELCOME_THUMB = "https://pub-5420856c3db34a86ae04153a95eadee4.r2.dev/messages/1fbd4e15-3762-4a4e-a032-5043a907c7ea/ee41c4499d27a81a81036f22c4c6eede.jpg";
+const WELCOME_BG = "https://pub-5420856c3db34a86ae04153a95eadee4.r2.dev/3ad5dc2755eebf35a6fd5ed088a4d66b.jpg";
+const WELCOME_THUMB = "https://pub-5420856c3db34a86ae04153a95eadee4.r2.dev/5b7f14af7bb3d5153417afbefe979edd.jpg";
 
 interface SearchRelativesFlowProps {
   onCancel?: () => void;
@@ -21,16 +21,19 @@ export const SearchRelativesFlow = ({ onCancel }: SearchRelativesFlowProps) => {
   const [isConnectionSheetOpen, setIsConnectionSheetOpen] = useState(false);
 
   useEffect(() => {
-    // Hide AppLayout's safe area bars to show full-screen background
+    // Hide AppLayout's safe area bars and navigation to show full-screen background
     window.dispatchEvent(new CustomEvent('app:transparentBars', { detail: { transparent: true } }));
+    window.dispatchEvent(new CustomEvent('app:forceHideNav', { detail: { hide: true } }));
+    
     return () => {
       // Restore bars when leaving this screen
       window.dispatchEvent(new CustomEvent('app:transparentBars', { detail: { transparent: false } }));
+      window.dispatchEvent(new CustomEvent('app:forceHideNav', { detail: { hide: false } }));
     };
   }, []);
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full min-h-[calc(100dvh-110px)] px-4 py-10 animate-in fade-in duration-500">
+    <div className="relative flex flex-col items-center justify-center w-full min-h-[100dvh] px-4 py-10 animate-in fade-in duration-500 overflow-hidden">
       <div className="fixed inset-0 -z-10 pointer-events-none">
         <img
           src={WELCOME_BG}
@@ -57,7 +60,7 @@ export const SearchRelativesFlow = ({ onCancel }: SearchRelativesFlowProps) => {
             </div>
 
             <h2 className="mt-4 text-2xl font-extrabold text-center tracking-tight">
-              Xush kelibsiz, {profile?.name || 'Foydalanuvchi'}!
+              Xush kelibsiz, {profile?.name || 'Avlodonaga'}!
             </h2>
 
             <p className="mt-2 text-sm text-muted-foreground text-center">
@@ -65,30 +68,71 @@ export const SearchRelativesFlow = ({ onCancel }: SearchRelativesFlowProps) => {
             </p>
           </div>
 
-          <div className="relative p-5 space-y-3">
+          <div className="relative p-7 space-y-4">
+            <style>{`
+              @keyframes shimmer {
+                0% { transform: translateX(-150%) skewX(-20deg); }
+                30% { transform: translateX(150%) skewX(-20deg); }
+                100% { transform: translateX(150%) skewX(-20deg); }
+              }
+              .shimmer-effect {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(
+                  to right,
+                  transparent,
+                  rgba(255, 255, 255, 0.4),
+                  transparent
+                );
+                animation: shimmer 4s infinite linear;
+              }
+            `}</style>
+
             <Button
               size="lg"
-              className="w-full rounded-2xl gap-2 font-bold shadow-lg shadow-emerald-500/15 h-12"
+              className={cn(
+                "relative overflow-hidden w-full rounded-2xl gap-3 font-bold h-14 text-base transition-all duration-300",
+                "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700",
+                "text-white shadow-[0_10px_25px_-5px_rgba(16,185,129,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(16,185,129,0.5)]",
+                "hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border-0"
+              )}
               onClick={() => setIsSearchOpen(true)}
             >
-              <Search className="w-5 h-5" />
-              Qarindoshlarni qidirish
+              <div className="shimmer-effect" />
+              <div className="relative z-10 flex items-center gap-3">
+                <div className="p-1.5 rounded-xl bg-white/20">
+                  <Search className="w-5 h-5 text-white" />
+                </div>
+                Qarindoshlarni qidirish
+              </div>
             </Button>
 
-            <div className="relative flex items-center py-1">
-              <div className="flex-grow border-t border-border/60"></div>
-              <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs font-medium">yoki</span>
-              <div className="flex-grow border-t border-border/60"></div>
+            <div className="relative flex items-center py-2">
+              <div className="flex-grow border-t border-white/10"></div>
+              <span className="flex-shrink-0 mx-4 text-white/40 text-xs font-bold uppercase tracking-widest">yoki</span>
+              <div className="flex-grow border-t border-white/10"></div>
             </div>
 
             <Button
-              variant="outline"
               size="lg"
-              className="w-full rounded-2xl gap-2 h-12"
+              className={cn(
+                "relative overflow-hidden w-full rounded-2xl gap-3 h-14 text-base font-bold transition-all duration-300",
+                "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700",
+                "text-white shadow-[0_10px_25px_-5px_rgba(59,130,246,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(59,130,246,0.5)]",
+                "hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] border-0"
+              )}
               onClick={onCancel}
             >
-              <UserPlus className="w-5 h-5" />
-              Yangi daraxt yaratish
+              <div className="shimmer-effect" />
+              <div className="relative z-10 flex items-center gap-3">
+                <div className="p-1.5 rounded-xl bg-white/20">
+                  <UserPlus className="w-5 h-5 text-white" />
+                </div>
+                Yangi daraxt yaratish
+              </div>
             </Button>
           </div>
         </div>
