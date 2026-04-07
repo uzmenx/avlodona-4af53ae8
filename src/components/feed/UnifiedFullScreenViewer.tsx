@@ -130,6 +130,8 @@ export const UnifiedFullScreenViewer = ({
 
 
 
+  const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
 
     const container = e.currentTarget;
@@ -138,20 +140,19 @@ export const UnifiedFullScreenViewer = ({
 
     if (h === 0) return;
 
-    const newIndex = Math.round(container.scrollTop / h);
+    // Debounce index update until scroll settles — avoids rapid state changes during snapping
 
-    if (activeTab === 'posts' && newIndex !== postIndex) {
+    if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
 
-      setPostIndex(newIndex);
-
-      setCurrentMediaIndex(0);
-
-    } else if (activeTab === 'shorts' && newIndex !== shortIndex) {
-
-      setShortIndex(newIndex);
-
-    }
-
+    scrollDebounceRef.current = setTimeout(() => {
+      const newIndex = Math.round(container.scrollTop / h);
+      if (activeTab === 'posts' && newIndex !== postIndex) {
+        setPostIndex(newIndex);
+        setCurrentMediaIndex(0);
+      } else if (activeTab === 'shorts' && newIndex !== shortIndex) {
+        setShortIndex(newIndex);
+      }
+    }, 10);
   };
 
 
@@ -856,14 +857,19 @@ export const UnifiedFullScreenViewer = ({
 
 
 
+  // Navigate programmatically (e.g. keyboard/mouse wheel). For touch, native snap handles it.
   const smoothNavigate = useCallback((direction: 'up' | 'down') => {
     if (scrollContainerRef.current) {
       const h = scrollContainerRef.current.clientHeight;
       if (h === 0) return;
-      const targetScroll = (direction === 'down' ? 1 : -1) * h;
-      scrollContainerRef.current.scrollBy({ top: targetScroll, behavior: 'smooth' });
+      const currentIndex = activeTab === 'posts' ? postIndex : shortIndex;
+      const count = activeTab === 'posts' ? posts.length : shorts.length;
+      const nextIndex = direction === 'down'
+        ? Math.min(currentIndex + 1, count - 1)
+        : Math.max(currentIndex - 1, 0);
+      scrollContainerRef.current.scrollTo({ top: nextIndex * h, behavior: 'smooth' });
     }
-  }, []);
+  }, [activeTab, postIndex, shortIndex, posts.length, shorts.length]);
 
 
 
@@ -1301,27 +1307,13 @@ export const UnifiedFullScreenViewer = ({
 
               const elapsed = Date.now() - touchStartTime.current;
 
-              const velocityY = Math.abs(diffY) / Math.max(elapsed, 1);
+              // Only handle TAP — native scroll-snap handles all vertical swipe navigation
 
-              const threshold = velocityY > 0.25 ? 16 : 34;
-
-
-
-              if (!touchMoved.current && Math.abs(diffY) < 8 && Math.abs(diffX) < 8 && elapsed < 300) {
+              if (!touchMoved.current && Math.abs(diffY) < 12 && Math.abs(diffX) < 12 && elapsed < 350) {
 
                 lastShortsTouchTapTs.current = Date.now();
 
                 handleShortsTap();
-
-                return;
-
-              }
-
-
-
-              if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > threshold) {
-
-                smoothNavigate(diffY > 0 ? 'down' : 'up');
 
               }
 
@@ -1485,15 +1477,12 @@ export const UnifiedFullScreenViewer = ({
 
           )}
 
-          key={currentPost.id}
-
-          style={{ touchAction: 'none' }}
-
           onClick={handleMediaClick}>
 
 
 
-          {/* Touch-intercepting overlay for posts to match shorts behavior */}
+          {/* Touch-intercepting overlay — passes vertical swipes through to parent scroll-snap container.
+              Only intercepts taps for play/pause and double-tap for like. */}
 
           <div
 
@@ -1525,29 +1514,11 @@ export const UnifiedFullScreenViewer = ({
 
             }}
 
-            onTouchEnd={(e) => {
+            onTouchEnd={() => {
 
-              const diffY = touchStartY.current - e.changedTouches[0].clientY;
+              // Native scroll-snap handles all swipe navigation.
 
-              const diffX = touchStartX.current - e.changedTouches[0].clientX;
-
-              const elapsed = Date.now() - touchStartTime.current;
-
-              const velocityY = Math.abs(diffY) / Math.max(elapsed, 1);
-
-              const threshold = velocityY > 0.25 ? 16 : 34;
-
-
-
-              if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > threshold) {
-
-                smoothNavigate(diffY > 0 ? 'down' : 'up');
-
-              } else if (Math.abs(diffX) > 50) {
-
-                smoothNavigate(diffX > 0 ? 'down' : 'up');
-
-              }
+              // This overlay only sets touchMoved so handleMediaClick knows if it was a swipe or tap.
 
             }}
 
@@ -1966,6 +1937,7 @@ export const UnifiedFullScreenViewer = ({
       <div
         ref={containerRef}
         className="fixed inset-0 z-[60] flex flex-col bg-black overflow-hidden"
+        style={{ touchAction: 'pan-y' }}
       >
         {/* Ambient Background */}
         {ambientUrl &&
@@ -2056,32 +2028,52 @@ export const UnifiedFullScreenViewer = ({
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="h-full w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth hide-scrollbar z-50 pt-[env(safe-area-inset-top,44px)]"
+          className="h-full w-full overflow-y-scroll snap-y snap-mandatory hide-scrollbar z-50 pt-[env(safe-area-inset-top,44px)]"
+          style={{
+            overscrollBehaviorY: 'none',
+            touchAction: 'pan-y',
+            // Disable iOS momentum scrolling so native snap takes full control
+            WebkitOverflowScrolling: 'auto' as React.CSSProperties['WebkitOverflowScrolling'],
+          }}
         >
           {activeTab === 'posts' ? (
-            posts.map((post, i) => (
-              <div key={post.id} className="h-[100dvh] w-full snap-start snap-always border-b-2 border-white relative overflow-hidden flex flex-col">
+            posts.map((post, i) => {
+              const srcUrl = post.media_urls?.[0] || post.image_url;
+              return (
+              <div key={post.id} className="h-[100dvh] w-full snap-start snap-always relative overflow-hidden flex flex-col" style={{ touchAction: 'pan-y' }}>
                 {i === postIndex ? renderPost() : (
-                  <div className="flex-1 flex items-center justify-center bg-black/20">
+                  <div className="flex-1 flex items-center justify-center bg-black relative">
                     <img 
-                      src={post.media_urls?.[0] || post.image_url} 
+                      src={srcUrl} 
                       alt="" 
-                      className="max-w-full max-h-full object-contain opacity-50 blur-sm" 
+                      className="max-w-full max-h-full object-contain" 
                     />
+                    {isVideo(srcUrl) && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="p-4 rounded-full bg-black/30 backdrop-blur-sm">
+                          <Play className="h-8 w-8 text-white" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            ))
+            )})
           ) : (
             shorts.map((short, i) => (
-              <div key={short.id} className="h-[100dvh] w-full snap-start snap-always border-b-2 border-white relative overflow-hidden flex flex-col">
+              <div key={short.id} className="h-[100dvh] w-full snap-start snap-always relative overflow-hidden flex flex-col" style={{ touchAction: 'pan-y' }}>
                 {i === shortIndex ? renderShort() : (
-                  <div className="flex-1 relative bg-black/20">
+                  <div className="flex-1 flex items-center justify-center bg-black relative">
                     <img 
                       src={short.thumbnail} 
                       alt="" 
-                      className="absolute inset-0 w-full h-full object-cover opacity-50 blur-sm" 
+                      className="absolute inset-0 w-full h-full object-cover" 
                     />
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="p-4 rounded-full bg-black/30 backdrop-blur-sm">
+                        <Play className="h-8 w-8 text-white" />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

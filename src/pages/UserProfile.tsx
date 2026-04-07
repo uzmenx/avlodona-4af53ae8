@@ -8,7 +8,6 @@ import { ArrowLeft, Sparkles, Grid3X3, Bookmark, Users, AtSign, ChevronDown, Che
 import { useMemorialPosts } from '@/hooks/useMemorialPosts';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Icon } from '@iconify/react';
@@ -925,25 +924,26 @@ export const UserProfilePage = () => {
             ) : isMemorial ? (
               <div className="flex-1" />
             ) : (
-              <div
+              <button
+                type="button"
+                onClick={() => setFamilyMembersOpen(true)}
                 className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0 relative">
                 <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                  Postlar
+                  Oila a'zolari
                 </span>
                 <span className="text-lg font-extrabold text-foreground leading-none">
-                  {formatCount(postsCount)}
+                  {formatCount(familyMemberCount)}
                 </span>
-                <button
+                <div
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowPostsStats(!showPostsStats);
                   }}
-                  className="absolute -bottom-2 right-2 h-5 w-5 bg-muted rounded-full flex items-center justify-center hover:bg-muted-foreground/20 transition-all"
+                  className="absolute -bottom-2 right-2 h-5 w-5 bg-muted rounded-full flex items-center justify-center hover:bg-muted-foreground/20 transition-all cursor-pointer"
                   style={{ transform: showPostsStats ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>
-                  
                   <ChevronDown className="h-3 w-3 text-foreground" />
-                </button>
-              </div>
+                </div>
+              </button>
             )}
           </div>
 
@@ -1022,17 +1022,15 @@ export const UserProfilePage = () => {
               }
 
               {!isMemorial &&
-                <button
-                  type="button"
-                  onClick={() => setFamilyMembersOpen(true)}
+                <div
                   className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0">
                   <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                    Oila a'zolari
+                    Postlar
                   </span>
                   <span className="text-lg font-extrabold text-foreground leading-none">
-                    {formatCount(familyMemberCount)}
+                    {formatCount(postsCount)}
                   </span>
-                </button>
+                </div>
               }
               </div>
             </div>

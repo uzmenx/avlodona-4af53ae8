@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { useAudio } from '@/contexts/AudioContext';
 
 interface MediaCarouselProps {
   mediaUrls: string[];
@@ -31,6 +32,8 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
 
   const lastTapTsRef = useRef(0);
   const singleTapTimerRef = useRef<number | null>(null);
+
+  const { isMuted, toggleMute } = useAudio();
 
   const isVideo = (url: string) => {
     return url.includes('.mp4') || url.includes('.mov') || url.includes('.webm');
@@ -129,6 +132,14 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
     }
   }, [currentIndex, isVisible, mediaUrls]);
 
+  // Sync video audio level with isMuted state
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) {
+      video.muted = isMuted;
+    }
+  }, [isMuted, currentIndex]);
+
   if (!mediaUrls || mediaUrls.length === 0) return null;
 
   const goTo = (index: number) => {
@@ -181,17 +192,35 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
     >
       <div className="relative w-full overflow-hidden bg-white/10 backdrop-blur-[10px] border border-white/20 flex items-center justify-center" style={{ maxHeight: '80vh', minHeight: '200px', touchAction: 'pan-y' }}>
         {isVideo(mediaUrls[currentIndex]) ?
-          <video
-            ref={videoRef}
-            src={mediaUrls[currentIndex]}
-            className="w-full h-auto object-contain cursor-pointer"
-            style={{ maxHeight: '80vh', maxWidth: '100%' }}
-            loop
-            muted
-            playsInline
-            onClick={handleVideoTap}
-            onTouchEnd={handleVideoTap}
-          />
+          <>
+            <video
+              ref={videoRef}
+              src={mediaUrls[currentIndex]}
+              className="w-full h-auto object-contain cursor-pointer"
+              style={{ maxHeight: '80vh', maxWidth: '100%' }}
+              loop
+              muted={isMuted}
+              playsInline
+              onClick={handleVideoTap}
+              onTouchEnd={handleVideoTap}
+            />
+            {/* Global Volume Toggle Floating Button */}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleMute();
+              }}
+              className="absolute top-3 right-3 z-30 p-2.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md shadow-lg transition-all duration-300 active:scale-90"
+              aria-label={isMuted ? "Ovozni yoqish" : "Ovozni o'chirish"}
+            >
+              {isMuted ? (
+                <VolumeX className="w-5 h-5 text-white" />
+              ) : (
+                <Volume2 className="w-5 h-5 text-white" />
+              )}
+            </button>
+          </>
           :
           <img
             src={mediaUrls[currentIndex]}

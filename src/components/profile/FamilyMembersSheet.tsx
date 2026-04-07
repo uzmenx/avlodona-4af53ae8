@@ -49,7 +49,7 @@ export function FamilyMembersSheet({ open, onOpenChange, ownerId }: FamilyMember
   const handleSendMessage = useCallback(() => {
     if (selectedMember?.linkedUserId) {
       onOpenChange(false);
-      navigate(`/messages?user=${selectedMember.linkedUserId}`);
+      navigate(`/chat/${selectedMember.linkedUserId}`);
     }
   }, [selectedMember, navigate, onOpenChange]);
 
@@ -112,7 +112,6 @@ export function FamilyMembersSheet({ open, onOpenChange, ownerId }: FamilyMember
               <p>Hozircha bo'sh</p>
             </div>
           ) : viewMode === 'map' ? (
-            // MAP VIEW
             <div className="absolute inset-0">
                <FamilyTreeCanvas
                   members={members}
@@ -121,80 +120,10 @@ export function FamilyMembersSheet({ open, onOpenChange, ownerId }: FamilyMember
                   onPositionChange={handlePositionChange}
                   readOnly={true}
                 />
-                
-                {selectedMember && (
-                  <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200" onClick={handleCloseProfile}>
-                    <div 
-                      className="w-full max-w-sm bg-card/90 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      {/* Cover Photo */}
-                      <div className="h-32 bg-gradient-to-br from-sky-500/20 to-purple-500/20 relative">
-                        {selectedMember.coverUrl && (
-                          <img src={selectedMember.coverUrl} alt="Cover" className="w-full h-full object-cover opacity-80" />
-                        )}
-                        <button 
-                          onClick={handleCloseProfile}
-                          className="absolute top-3 right-3 w-8 h-8 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                      
-                      <div className="px-5 pb-6">
-                        {/* Avatar */}
-                        <div className="relative -mt-12 mb-3 flex justify-center">
-                          <Avatar className="w-24 h-24 border-4 border-card shadow-xl bg-muted">
-                            <AvatarImage src={selectedMember.photoUrl || undefined} className="object-cover" />
-                            <AvatarFallback className="bg-gradient-to-br from-sky-500 to-indigo-600 text-white text-2xl font-bold">
-                              {getInitials(selectedMember.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                        </div>
-                        
-                        {/* Info */}
-                        <div className="text-center mb-6">
-                          <h3 className="text-xl font-bold text-foreground">{selectedMember.name}</h3>
-                          <p className="text-sm text-sky-500 mt-1 capitalize font-medium">
-                            {selectedMember.gender === 'male' ? 'Erkak' : 'Ayol'}
-                            {selectedMember.birthYear ? ` • ${selectedMember.birthYear}` : ''}
-                          </p>
-                        </div>
-                        
-                        {/* Actions */}
-                        <div className="grid grid-cols-2 gap-3">
-                          {selectedMember.linkedUserId ? (
-                            <>
-                              <button 
-                                onClick={handleSendMessage}
-                                className="flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 text-white py-2.5 rounded-xl font-semibold transition-colors"
-                              >
-                                <MessageSquare className="w-4 h-4" />
-                                Xabar
-                              </button>
-                              <button 
-                                onClick={handleViewProfile}
-                                className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-foreground py-2.5 rounded-xl font-semibold transition-colors border border-white/5"
-                              >
-                                <UserIcon className="w-4 h-4" />
-                                Profil
-                              </button>
-                            </>
-                          ) : (
-                            <div className="col-span-2 text-center py-2 px-4 bg-white/5 rounded-xl border border-white/5 text-sm text-muted-foreground">
-                              Platformada ro'yxatdan o'tmagan profil
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
             </div>
           ) : (
-            // LIST VIEW
             <ScrollArea className="h-full px-5">
-              <div className="space-y-2 pb-8">
+              <div className="space-y-2 pb-8 pt-2">
                 {memberList.map((m) => (
                   <div
                     key={m.id}
@@ -224,6 +153,79 @@ export function FamilyMembersSheet({ open, onOpenChange, ownerId }: FamilyMember
                 ))}
               </div>
             </ScrollArea>
+          )}
+
+          {/* Overlay Card - Global to the content area */}
+          {selectedMember && (
+            <div 
+              className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200" 
+              onClick={handleCloseProfile}
+            >
+              <div 
+                className="w-full max-w-sm bg-card/90 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Cover Photo */}
+                <div className="h-32 bg-gradient-to-br from-sky-500/20 to-purple-500/20 relative">
+                  {selectedMember.coverUrl && (
+                    <img src={selectedMember.coverUrl} alt="Cover" className="w-full h-full object-cover opacity-80" />
+                  )}
+                  <button 
+                    onClick={handleCloseProfile}
+                    className="absolute top-3 right-3 w-8 h-8 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="px-5 pb-6">
+                  {/* Avatar */}
+                  <div className="relative -mt-12 mb-3 flex justify-center">
+                    <Avatar className="w-24 h-24 border-4 border-card shadow-xl bg-muted">
+                      <AvatarImage src={selectedMember.photoUrl || undefined} className="object-cover" />
+                      <AvatarFallback className="bg-gradient-to-br from-sky-500 to-indigo-600 text-white text-2xl font-bold">
+                        {getInitials(selectedMember.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                  
+                  {/* Info */}
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-bold text-foreground">{selectedMember.name}</h3>
+                    <p className="text-sm text-sky-500 mt-1 capitalize font-medium">
+                      {selectedMember.gender === 'male' ? 'Erkak' : 'Ayol'}
+                      {selectedMember.birthYear ? ` • ${selectedMember.birthYear}` : ''}
+                    </p>
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {selectedMember.linkedUserId ? (
+                      <>
+                        <button 
+                          onClick={handleSendMessage}
+                          className="flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 text-white py-2.5 rounded-xl font-semibold transition-colors"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          Xabar
+                        </button>
+                        <button 
+                          onClick={handleViewProfile}
+                          className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-foreground py-2.5 rounded-xl font-semibold transition-colors border border-white/5"
+                        >
+                          <UserIcon className="w-4 h-4" />
+                          Profil
+                        </button>
+                      </>
+                    ) : (
+                      <div className="col-span-2 text-center py-2 px-4 bg-white/5 rounded-xl border border-white/5 text-sm text-muted-foreground">
+                        Platformada ro'yxatdan o'tmagan profil
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </SheetContent>

@@ -192,7 +192,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
   return (
     <>
        <div
-        className="relative flex flex-col items-center nodrag nopan"
+        className="relative flex flex-col items-center"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

@@ -37,6 +37,8 @@ import Terms from "./pages/Terms";
 import InviteAccept from "./pages/InviteAccept";
 import Support from "./pages/Support";
 
+import { AudioProvider } from "@/contexts/AudioContext";
+
 const queryClient = new QueryClient();
 const FIRST_VISIT_KEY = 'avlodona:first-visit:v1';
 
@@ -94,6 +96,7 @@ const App = () => (
     <TooltipProvider>
       <ThemeProvider>
         <LanguageProvider>
+        <AudioProvider>
         <AuthProvider>
           <Toaster />
           <Sonner />
@@ -136,6 +139,7 @@ const App = () => (
             </ErrorBoundary>
           </BrowserRouter>
         </AuthProvider>
+        </AudioProvider>
         </LanguageProvider>
       </ThemeProvider>
     </TooltipProvider>

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowLeft, Settings, Edit, Search, Grid3X3, Bookmark, Users, AtSign, ChevronDown, ChevronUp, BadgeCheck, BadgeX, Clock, LayoutList, Grid2X2, Columns2, Sparkles, Trash2, Check, Heart, Eye } from 'lucide-react';
 
-import { HighlightsRow, FollowHubDrawer, SocialLinksList, CollectionsFilter } from '@/components/profile';
+import { HighlightsRow, FollowHubDrawer, SocialLinksList, CollectionsFilter, FamilyMembersSheet } from '@/components/profile';
 
 import { useUserPosts } from '@/hooks/useUserPosts';
 import { useSavedPosts } from '@/hooks/useSavedPosts';
@@ -171,6 +171,7 @@ const Profile = () => {
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
   const [profileStoryGroups, setProfileStoryGroups] = useState<any[]>([]);
   const [lastPostsTabTapTsRef] = useState({ current: 0 });
+  const [familyMembersOpen, setFamilyMembersOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const familyMemberCountRef = useRef(0);
@@ -531,22 +532,27 @@ const Profile = () => {
                 })()}
               </div>
 
-              {/* RIGHT: Postlar */}
-              <div className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0 relative">
+              {/* RIGHT: Oila a'zolari */}
+              <button
+                type="button"
+                onClick={() => setFamilyMembersOpen(true)}
+                className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0 relative">
                 <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                  {t('posts')}
+                  Oila a'zolari
                 </span>
                 <span className="text-lg font-extrabold text-foreground leading-none">
-                  {formatCount(postsCount)}
+                  {formatCount(familyMemberCount)}
                 </span>
-                <button
-                  onClick={() => setShowPostsStats(!showPostsStats)}
-                  className="absolute -bottom-2 right-2 h-5 w-5 bg-muted rounded-full flex items-center justify-center hover:bg-muted-foreground/20 transition-all opacity-65"
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowPostsStats(!showPostsStats);
+                  }}
+                  className="absolute -bottom-2 right-2 h-5 w-5 bg-muted rounded-full flex items-center justify-center hover:bg-muted-foreground/20 transition-all opacity-65 cursor-pointer"
                   style={{ transform: showPostsStats ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>
-
                   <ChevronDown className="h-3 w-3 text-foreground" />
-                </button>
-              </div>
+                </div>
+              </button>
             </div>
 
             {/* ROW 2: Name & Username */}
@@ -561,7 +567,7 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* ROW 3: Kuzatilmoqda | (spacer) | Oila a'zolari */}
+            {/* ROW 3: Kuzatilmoqda | (spacer) | Postlar */}
             {showPostsStats &&
             <div className="flex justify-center mb-1">
                 <div className="flex items-end justify-center gap-1.5 w-full max-w-[480px]">
@@ -596,10 +602,10 @@ const Profile = () => {
 
                   <div className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0">
                     <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                      Oila a'zolari
+                      {t('posts')}
                     </span>
                     <span className="text-lg font-extrabold text-foreground leading-none">
-                      {formatCount(familyMemberCount)}
+                      {formatCount(postsCount)}
                     </span>
                   </div>
                 </div>
@@ -792,6 +798,8 @@ const Profile = () => {
             onOpenChange={setFollowHubOpen}
             userId={user?.id}
             initialTab={followHubTab} />
+          
+          <FamilyMembersSheet open={familyMembersOpen} onOpenChange={setFamilyMembersOpen} ownerId={user?.id} />
           
 
           {/* ═══════════════════════════════════════

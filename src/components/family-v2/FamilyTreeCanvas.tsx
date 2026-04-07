@@ -287,6 +287,12 @@ export const FamilyTreeCanvas = ({
         nodesDraggable={!readOnly}
         nodesConnectable={!readOnly}
         elementsSelectable={!readOnly}
+        onNodeClick={(_, node) => {
+          const data = node.data as any;
+          if (readOnly && data.onOpenProfile) {
+            data.onOpenProfile(data.member);
+          }
+        }}
         fitView={!initialViewport}
         defaultViewport={initialViewport}
         fitViewOptions={{ padding: 0.4, duration: 600 }}
