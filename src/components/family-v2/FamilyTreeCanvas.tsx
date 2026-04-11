@@ -10,14 +10,15 @@ import {
   NodeTypes,
   EdgeTypes,
   NodeChange,
+  ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import FamilyMemberNode from './FamilyMemberNode';
+import FamilyMemberNode, { FamilyMemberNodeData } from './FamilyMemberNode';
 import SpouseEdge from './SpouseEdge';
 import ChildEdge from './ChildEdge';
 import { FamilyMember } from '@/types/family';
-import { computeNewMemberPosition } from './layout';
+import { computeNewMemberPosition, MAX_SPOUSE_GAP, SPOUSE_GAP } from './layout';
  import { MergedProfile } from '@/hooks/useMergeMode';
 
 interface FamilyTreeCanvasProps {
@@ -41,12 +42,12 @@ interface FamilyTreeCanvasProps {
 }
 
 const nodeTypes: NodeTypes = {
-  familyMember: FamilyMemberNode as any,
+  familyMember: FamilyMemberNode as unknown as React.ComponentType<unknown>,
 };
 
 const edgeTypes: EdgeTypes = {
-  spouse: SpouseEdge as any,
-  child: ChildEdge as any,
+  spouse: SpouseEdge as unknown as React.ComponentType<unknown>,
+  child: ChildEdge as unknown as React.ComponentType<unknown>,
 };
 
 const EMPTY_MAP = new Map();
@@ -70,7 +71,7 @@ export const FamilyTreeCanvas = ({
    initialViewport,
    onViewportChange,
 }: FamilyTreeCanvasProps) => {
-  const flowInstanceRef = useRef<any>(null);
+  const flowInstanceRef = useRef<ReactFlowInstance | null>(null);
   const isDraggingRef = useRef(false);
   const draggedNodeIdRef = useRef<string | null>(null);
   const dragStartPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
@@ -92,11 +93,11 @@ export const FamilyTreeCanvas = ({
       if (change.type === 'position' && change.dragging && change.position) {
         const draggedMember = members[change.id];
         
-        if (draggedMember?.spouseId && isPairLocked?.(change.id, draggedMember.spouseId)) {
-          // First time dragging - store starting positions
+        if (draggedMember?.spouseId) {
+          // Both locked and unlocked need to track start positions for delta/leash calculations
           if (!dragStartPositionsRef.current.has(change.id)) {
             const currentNode = nodes.find(n => n.id === change.id);
-            const spouseNode = nodes.find(n => n.id === draggedMember.spouseId);
+            const spouseNode = nodes.find(n => n.id === draggedMember?.spouseId);
             
             if (currentNode && spouseNode) {
               dragStartPositionsRef.current.set(change.id, { ...currentNode.position });
@@ -105,24 +106,61 @@ export const FamilyTreeCanvas = ({
             }
           }
           
-          // Calculate delta from drag start
           const startPos = dragStartPositionsRef.current.get(change.id);
           const spouseStartPos = dragStartPositionsRef.current.get(draggedMember.spouseId);
+          const isLocked = isPairLocked?.(change.id, draggedMember.spouseId);
           
           if (startPos && spouseStartPos) {
-            const deltaX = change.position.x - startPos.x;
-            const deltaY = change.position.y - startPos.y;
-            
-            // Add spouse movement change
-            additionalChanges.push({
-              type: 'position',
-              id: draggedMember.spouseId,
-              position: {
-                x: spouseStartPos.x + deltaX,
-                y: spouseStartPos.y + deltaY,
-              },
-              dragging: true,
-            } as NodeChange<Node>);
+            if (isLocked) {
+              // LOCKED: Maintain the same diagonal relationship, but clamp max distance
+              const dx = spouseStartPos.x - startPos.x;
+              const dy = spouseStartPos.y - startPos.y;
+              const startDist = Math.sqrt(dx * dx + dy * dy);
+              
+              // If initial distance > 400, scale it down to 400 while keeping angle
+              let scale = 1;
+              if (startDist > MAX_SPOUSE_GAP) {
+                scale = MAX_SPOUSE_GAP / startDist;
+              }
+              
+              const finalDx = dx * scale;
+              const finalDy = dy * scale;
+              
+              additionalChanges.push({
+                type: 'position',
+                id: draggedMember.spouseId,
+                position: {
+                  x: change.position.x + finalDx,
+                  y: change.position.y + finalDy,
+                },
+                dragging: true,
+              } as NodeChange<Node>);
+            } else {
+              // UNLOCKED: "Leash" effect. If dragged node moves > 400px away from spouse's CURRENT position, pull spouse.
+              // We need the spouse's current position from `nodes` state since it might have been pulled already.
+              const currentSpouseNode = nodes.find(n => n.id === draggedMember.spouseId);
+              if (currentSpouseNode) {
+                const currentSpousePos = { ...currentSpouseNode.position };
+                
+                const dx2 = currentSpousePos.x - change.position.x;
+                const dy2 = currentSpousePos.y - change.position.y;
+                const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+                
+                if (dist2 > MAX_SPOUSE_GAP) {
+                  // Pull the spouse towards the dragged node so distance is exactly MAX_SPOUSE_GAP
+                  const scale2 = MAX_SPOUSE_GAP / dist2;
+                  additionalChanges.push({
+                    type: 'position',
+                    id: draggedMember.spouseId,
+                    position: {
+                      x: change.position.x + (dx2 * scale2),
+                      y: change.position.y + (dy2 * scale2),
+                    },
+                    dragging: true,
+                  } as NodeChange<Node>);
+                }
+              }
+            }
           }
         }
       }
@@ -141,12 +179,17 @@ export const FamilyTreeCanvas = ({
           // Save main node position
           onPositionChange(change.id, change.position.x, change.position.y);
           
-          // Save spouse position if locked
+          // Save spouse position if it was moved (via lock or leash)
           const draggedMember = members[change.id];
-          if (draggedMember?.spouseId && isPairLocked?.(change.id, draggedMember.spouseId)) {
+          if (draggedMember?.spouseId) {
             const spouseNode = nodes.find(n => n.id === draggedMember.spouseId);
-            if (spouseNode) {
-              onPositionChange(draggedMember.spouseId, spouseNode.position.x, spouseNode.position.y);
+            const startPosSpouse = dragStartPositionsRef.current.get(draggedMember.spouseId);
+            
+            if (spouseNode && startPosSpouse) {
+              // If spouse position changed from drag start, save it
+              if (spouseNode.position.x !== startPosSpouse.x || spouseNode.position.y !== startPosSpouse.y) {
+                onPositionChange(draggedMember.spouseId, spouseNode.position.x, spouseNode.position.y);
+              }
             }
           }
           
@@ -288,7 +331,7 @@ export const FamilyTreeCanvas = ({
         nodesConnectable={!readOnly}
         elementsSelectable={!readOnly}
         onNodeClick={(_, node) => {
-          const data = node.data as any;
+          const data = node.data as unknown as FamilyMemberNodeData;
           if (readOnly && data.onOpenProfile) {
             data.onOpenProfile(data.member);
           }

@@ -85,38 +85,73 @@ export const useFamilyInvitations = () => {
 
   const linkToSameNetwork = async (senderId: string, receiverId: string): Promise<string | null> => {
     try {
-      const { data: senderProfile } = await supabase
+      // Get BOTH users' current networks
+      const { data: profiles } = await supabase
         .from('profiles')
-        .select('family_network_id')
-        .eq('id', senderId)
-        .single();
-      
-      let networkId = senderProfile?.family_network_id;
-      
-      if (!networkId) {
+        .select('id, family_network_id')
+        .in('id', [senderId, receiverId]);
+
+      const senderProfile = profiles?.find(p => p.id === senderId);
+      const receiverProfile = profiles?.find(p => p.id === receiverId);
+
+      const senderNetworkId = senderProfile?.family_network_id;
+      const receiverNetworkId = receiverProfile?.family_network_id;
+
+      // If both already in the same network, nothing to do
+      if (senderNetworkId && senderNetworkId === receiverNetworkId) {
+        console.log('Users already in same network:', senderNetworkId);
+        return senderNetworkId;
+      }
+
+      // Determine the target network (sender's takes priority)
+      let targetNetworkId = senderNetworkId;
+
+      if (!targetNetworkId) {
+        // Sender has no network — create one and assign to sender
         const { data: newNetwork } = await supabase
           .from('family_networks')
           .insert({})
           .select('id')
           .single();
-        
-        if (newNetwork) {
-          networkId = newNetwork.id;
-          await supabase
-            .from('profiles')
-            .update({ family_network_id: networkId })
-            .eq('id', senderId);
-        }
+
+        if (!newNetwork) return null;
+
+        targetNetworkId = newNetwork.id;
+        await supabase
+          .from('profiles')
+          .update({ family_network_id: targetNetworkId })
+          .eq('id', senderId);
       }
-      
-      if (!networkId) return null;
-      
-      await supabase
-        .from('profiles')
-        .update({ family_network_id: networkId })
-        .eq('id', receiverId);
-      
-      return networkId;
+
+      if (!targetNetworkId) return null;
+
+      if (receiverNetworkId) {
+        // CRITICAL FIX: move ALL users from receiver's old network,
+        // not just the receiver. Otherwise other users who were already
+        // connected to the receiver get orphaned and their tree data
+        // disappears from the merged view.
+        console.log(`Merging networks: moving all users from ${receiverNetworkId} → ${targetNetworkId}`);
+
+        await supabase
+          .from('profiles')
+          .update({ family_network_id: targetNetworkId })
+          .eq('family_network_id', receiverNetworkId);
+
+        // Also migrate node_positions from old network to new network
+        await supabase
+          .from('node_positions')
+          .update({ network_id: targetNetworkId })
+          .eq('network_id', receiverNetworkId);
+      } else {
+        // Receiver has no network — just add them
+        await supabase
+          .from('profiles')
+          .update({ family_network_id: targetNetworkId })
+          .eq('id', receiverId);
+      }
+
+      console.log('Networks merged successfully, target:', targetNetworkId);
+      return targetNetworkId;
     } catch (error) {
       console.error('Error linking to network:', error);
       return null;
@@ -210,11 +245,22 @@ export const useFamilyInvitations = () => {
         }
       }
 
-      // Delete ALL positions for both users to force fresh auto-layout after merge
-      await Promise.all([
-        supabase.from('node_positions').delete().eq('owner_id', user.id),
-        supabase.from('node_positions').delete().eq('owner_id', invitation.sender_id),
-      ]);
+      // Also remove the 'self' merge from result so it doesn't appear in the dialog
+      // (it was already executed above)
+      result.parentMerges = result.parentMerges.filter(m => m.relationship !== 'self');
+
+      // Delete ALL positions for the ENTIRE network to force fresh auto-layout after merge
+      // Using network_id ensures that all connected users' positions get refreshed,
+      // not just sender and receiver (which missed other network members before)
+      if (networkId) {
+        await supabase.from('node_positions').delete().eq('network_id', networkId);
+      } else {
+        // Fallback: delete by owner_id if no network_id available
+        await Promise.all([
+          supabase.from('node_positions').delete().eq('owner_id', user.id),
+          supabase.from('node_positions').delete().eq('owner_id', invitation.sender_id),
+        ]);
+      }
 
       const hasParentMerges = result.parentMerges.length > 0;
       const hasCoupleGroups = result.coupleGroups.length > 0;

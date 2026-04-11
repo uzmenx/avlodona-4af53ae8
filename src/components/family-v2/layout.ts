@@ -1,9 +1,10 @@
 import type { Node } from '@xyflow/react';
 import type { FamilyMember } from '@/types/family';
 
-const HORIZONTAL_GAP = 250;
-const VERTICAL_GAP = 200;
-const SPOUSE_GAP = 180;
+export const HORIZONTAL_GAP = 250;
+export const VERTICAL_GAP = 200;
+export const SPOUSE_GAP = 180;
+export const MAX_SPOUSE_GAP = 400; // Allow max distance of 4 profiles between spouses
 
 function avg(a: number, b: number) {
   return (a + b) / 2;

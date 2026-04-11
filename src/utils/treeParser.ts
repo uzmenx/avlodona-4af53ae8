@@ -7,15 +7,32 @@ export interface ParseResult {
   newPositions: { member_id: string; x: number; y: number }[];
 }
 
+// We can define a basic shape for DBMember to satisfy ESLint
+interface DBMember {
+  id: string;
+  relation_type?: string;
+  merged_into?: string;
+  member_name?: string;
+  avatar_url?: string;
+  gender?: string;
+  linked_user_id?: string;
+  birth_year?: string | number;
+  death_year?: string | number;
+  cover_url?: string;
+  [key: string]: unknown;
+}
+
 export function parseFamilyTreeData(
-  dbMembers: any[],
-  dbPositions: any[],
+  dbMembers: DBMember[],
+  dbPositions: Record<string, unknown>[],
   targetUserId?: string
 ): ParseResult {
   // Build positions map
   const posMap = new Map<string, { x: number; y: number }>();
-  dbPositions.forEach((p: any) => {
-    posMap.set(p.member_id, { x: p.x, y: p.y });
+  dbPositions.forEach((p) => {
+    if (typeof p.member_id === 'string' && typeof p.x === 'number' && typeof p.y === 'number') {
+      posMap.set(p.member_id, { x: p.x, y: p.y });
+    }
   });
 
   const membersMap: Record<string, FamilyMember> = {};
@@ -23,7 +40,7 @@ export function parseFamilyTreeData(
   const mergedProfilesMap = new Map<string, MergedProfileInfo[]>(); // primaryId -> merged profiles
 
   // Pass 1a: Build mergedMap ONLY
-  dbMembers.forEach((m: any) => {
+  dbMembers.forEach((m) => {
     const relType = m.relation_type || '';
     const mergedMatch = relType.match(/merged_into_([a-f0-9-]+)/);
     if (mergedMatch) {
@@ -34,21 +51,35 @@ export function parseFamilyTreeData(
     }
   });
 
+  // Build a set of ALL member IDs present in the data (for validating merge targets)
+  const allDbMemberIds = new Set<string>(dbMembers.map((m) => m.id));
+
   // Helper to resolve merged IDs to their ultimate primary profile
+  // SAFETY: if a merge target doesn't exist in the data, return the original ID
   const resolveId = (id: string): string => {
     let current = id;
     const visited = new Set<string>();
     while (mergedMap.has(current) && !visited.has(current)) {
       visited.add(current);
-      current = mergedMap.get(current)!;
+      const next = mergedMap.get(current)!;
+      // If the merge target doesn't exist in our data, stop here
+      if (!allDbMemberIds.has(next)) {
+        console.warn(`[treeParser] Merge target ${next} not found in data for node ${current}. Breaking merge chain.`);
+        // Remove the broken merge from the map so the node is shown
+        mergedMap.delete(current);
+        return current;
+      }
+      current = next;
     }
     return current;
   };
 
   // Pass 1b: Collect merged profiles data into the ULTIMATE primary node
-  dbMembers.forEach((m: any) => {
+  dbMembers.forEach((m) => {
     if (mergedMap.has(m.id)) {
       const targetId = resolveId(m.id);
+      // If resolveId broke the chain and returned m.id itself, skip merging
+      if (targetId === m.id) return;
       const existing = mergedProfilesMap.get(targetId) || [];
       if (!existing.some((p) => p.id === m.id)) {
         existing.push({
@@ -65,8 +96,16 @@ export function parseFamilyTreeData(
   });
 
   // Pass 1c: Create members, skipping merged ones
-  dbMembers.forEach((m: any) => {
-    if (mergedMap.has(m.id)) return;
+  // SAFETY: if a merged node's target doesn't exist, restore it as a standalone node
+  dbMembers.forEach((m) => {
+    if (mergedMap.has(m.id)) {
+      // Double-check: does the merge target exist?
+      const targetId = resolveId(m.id);
+      if (targetId !== m.id) return; // Target exists, skip this merged node
+      // Target doesn't exist — this node was orphaned by a broken merge.
+      // Fall through and create it as a normal node.
+      console.warn(`[treeParser] Recovering orphaned node: ${m.id} (${m.member_name})`);
+    }
 
     const pos = posMap.get(m.id);
     const mergedInfos = mergedProfilesMap.get(m.id) || [];
@@ -90,7 +129,7 @@ export function parseFamilyTreeData(
   });
 
   // Second pass: establish ALL relationships from relation_type
-  dbMembers.forEach((m: any) => {
+  dbMembers.forEach((m) => {
     const effectiveId = resolveId(m.id);
     if (!membersMap[effectiveId]) return;
 
@@ -197,7 +236,33 @@ export function parseFamilyTreeData(
   const membersWithoutPos = Object.values(membersMap).filter((m) => !posMap.has(m.id));
   const totalMemberCount = Object.keys(membersMap).length;
   // Run full layout when >40% of nodes are unpositioned
-  const needsFullLayout = totalMemberCount > 0 && membersWithoutPos.length > totalMemberCount * 0.4;
+  let needsFullLayout = totalMemberCount > 0 && membersWithoutPos.length > totalMemberCount * 0.4;
+
+  // Pre-analysis: Check for severely broken spouse positions
+  if (!needsFullLayout) {
+    const MAX_SPOUSE_GAP = 400; // Hardcoded fallback or use value
+    Object.values(membersMap).forEach((m) => {
+      if (m.spouseId && membersMap[m.spouseId] && posMap.has(m.id) && posMap.has(m.spouseId)) {
+        const p1 = posMap.get(m.id)!;
+        const p2 = posMap.get(m.spouseId)!;
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        // If absolute distance is too large or too small (but ignore Y angle to preserve diagonal drag)
+        if (dist > MAX_SPOUSE_GAP || dist < 120) {
+          console.log(`Layout auto-correction triggered for ${m.name} and spouse. Dist: ${dist}`);
+          needsFullLayout = true;
+        }
+      }
+    });
+
+    if (needsFullLayout) {
+      // Clear positions so it fully recalculates cleanly
+      posMap.clear();
+      Object.values(membersMap).forEach(m => m.position = undefined);
+    }
+  }
 
   if (needsFullLayout) {
     const VERTICAL_GAP = 200;
@@ -207,7 +272,7 @@ export function parseFamilyTreeData(
 
     let startId = Object.keys(membersMap)[0];
     if (targetUserId) {
-      const selfMember = dbMembers.find((m: any) => m.linked_user_id === targetUserId && membersMap[m.id]);
+      const selfMember = dbMembers.find((m) => m.linked_user_id === targetUserId && membersMap[m.id]);
       if (selfMember) startId = selfMember.id;
     }
 
@@ -371,7 +436,7 @@ export function parseFamilyTreeData(
   });
 
   // Set root (self member)
-  const selfMember = dbMembers.find((m: any) => m.linked_user_id === targetUserId);
+  const selfMember = dbMembers.find((m) => m.linked_user_id === targetUserId);
   let newRootId = null;
   if (selfMember) {
     newRootId = resolveId(selfMember.id);
