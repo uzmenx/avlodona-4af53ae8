@@ -235,7 +235,12 @@ const EditProfile = () => {
       const response = await fetch(croppedUrl);
       const blob = await response.blob();
       const file = new File([blob], `${cropperState.type}_${Date.now()}.jpg`, { type: 'image/jpeg' });
-      const compressed = await compressImage(file);
+      const compressed = await compressImage(
+        file,
+        cropperState.type === 'avatar' ? 256 : 800,
+        cropperState.type === 'avatar' ? 256 : 800,
+        0.85
+      );
       const url = await uploadToR2(compressed, `avatars/${user.id}`);
 
       if (cropperState.type === 'avatar') {

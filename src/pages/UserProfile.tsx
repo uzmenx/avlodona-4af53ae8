@@ -185,7 +185,7 @@ export const UserProfilePage = () => {
       likes_count: mp.likes_count || 0,
       comments_count: mp.comments_count || 0,
       views_count: mp.views_count || 0,
-      author: mp.author as any,
+      author: mp.author as unknown as { id: string; name: string; username: string; avatar_url: string },
       is_memorial: true
     })) as Post[];
   }, [memorialPosts]);
@@ -270,20 +270,20 @@ export const UserProfilePage = () => {
     select('story_id').
     eq('viewer_id', viewerId).
     in('story_id', stories.map((s) => s.id)) :
-    Promise.resolve({ data: [] as any[] }),
+    Promise.resolve({ data: [] as {story_id: string}[] }),
     viewerId ?
     supabase.
     from('story_likes').
     select('story_id').
     eq('user_id', viewerId).
     in('story_id', stories.map((s) => s.id)) :
-    Promise.resolve({ data: [] as any[] })]
+    Promise.resolve({ data: [] as {story_id: string}[] })]
     );
 
     const viewedStoryIds = new Set((viewsRes.data as {story_id: string;}[] | null)?.map((v) => v.story_id) || []);
     const likedStoryIds = new Set((likesRes.data as {story_id: string;}[] | null)?.map((l) => l.story_id) || []);
 
-    const normalizedStories: Story[] = stories.map((s: any) => ({
+    const normalizedStories: Story[] = stories.map((s: Record<string, unknown>) => ({
       ...s,
       media_type: s.media_type as 'image' | 'video',
       ring_id: s.ring_id || 'default',
@@ -496,7 +496,7 @@ export const UserProfilePage = () => {
 
         if (error) throw error;
         if (data) {
-          const d = data as any;
+          const d = data as Record<string, unknown>;
           setProfile({
             ...data,
             theme_mode: d.theme_mode as ThemeMode || 'system',
@@ -601,7 +601,7 @@ export const UserProfilePage = () => {
         ? `memorial_cover_${userId}_${Date.now()}.jpg`
         : `memorial_avatar_${userId}_${Date.now()}.jpg`;
       const file = new File([blob], filename, { type: 'image/jpeg' });
-      const compressed = await compressImage(file);
+      const compressed = await compressImage(file, type === 'cover' ? 800 : 256, type === 'cover' ? 800 : 256, 0.85);
       const url = await uploadToR2(compressed, type === 'cover' ? `memorial-covers/${userId}` : `memorial-avatars/${userId}`);
       if (type === 'cover') {
         setEditCoverUrl(url);
@@ -877,7 +877,7 @@ export const UserProfilePage = () => {
                     <div
                       className="h-16 w-16 rounded-full p-[2px] cursor-pointer shadow-2xl"
                       style={{
-                        background: info.has_unviewed ? getStoryRingGradient(info.ring_id as any) : 'var(--muted-foreground)'
+                        background: info.has_unviewed ? getStoryRingGradient(info.ring_id as string) : 'var(--muted-foreground)'
                       }}
                       onClick={() => openProfileStories()}>
                       
@@ -1385,7 +1385,7 @@ export const UserProfilePage = () => {
                 </div>
               )
             }
-            const allSaved = [...savedPosts, ...savedMemorialPosts].sort((a,b) => new Date((b as any).savedAt || b.created_at).getTime() - new Date((a as any).savedAt || a.created_at).getTime());
+            const allSaved = [...savedPosts, ...savedMemorialPosts].sort((a,b) => new Date((b as Record<string, unknown>).savedAt as string || b.created_at).getTime() - new Date((a as Record<string, unknown>).savedAt as string || a.created_at).getTime());
             return allSaved.length === 0 ? (
                 <div className="text-center py-12 px-4">
                 <Bookmark className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
@@ -1395,9 +1395,9 @@ export const UserProfilePage = () => {
                 <div className="columns-2 gap-2 sm:gap-4 pb-8 px-2 sm:px-4">
                   {allSaved.map((post, index) =>
                     <div key={post.id} onClick={() => openViewer(allSaved as Post[], index)} className="cursor-pointer mb-2 sm:mb-4 break-inside-avoid">
-                      {(post as any).isMemorial ?
-                        <MemorialPostCard post={post as any} /> :
-                        <PostCard post={post as any} />}
+                      {(post as Record<string, unknown>).isMemorial ?
+                        <MemorialPostCard post={post as Parameters<typeof MemorialPostCard>[0]['post']} /> :
+                        <PostCard post={post as Parameters<typeof PostCard>[0]['post']} />}
                     </div>
                   )}
                 </div>

@@ -3,6 +3,7 @@ import { FamilyMember, AddMemberData, MergedProfileInfo } from '@/types/family';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { parseFamilyTreeData } from '@/utils/treeParser';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Unique client ID to prevent real-time feedback loops
 const CLIENT_ID = crypto.randomUUID();
@@ -57,37 +58,24 @@ export const useLocalFamilyTree = () => {
     return newNetwork.id;
   }, [user?.id]);
 
-  // Load data based on family_network_id (to see merged trees)
-  const loadData = useCallback(async (isInitial = true) => {
-    if (!user?.id) return;
-    
-    if (isInitial) {
-      setIsLoading(true);
-    } else {
-      setIsRefreshing(true);
-    }
-    
-    try {
-      // First, get user's network ID
+  const queryClient = useQueryClient();
+
+  const { data: treeData, isLoading: isQueryLoading, refetch: refetchTree } = useQuery({
+    queryKey: ['familyTree', user?.id],
+    queryFn: async () => {
+      if (!user?.id) throw new Error('Not logged in');
+      
       const userNetworkId = await getOrCreateNetworkId();
-      setNetworkId(userNetworkId);
-      
-      if (!userNetworkId) {
-        setIsLoading(false);
-        setIsRefreshing(false);
-        return;
-      }
-      
-      // Get all users in the same network
+      if (!userNetworkId) throw new Error('No network ID');
+
       const { data: networkUsers } = await supabase
         .from('profiles')
         .select('id')
         .eq('family_network_id', userNetworkId);
       
       const userIds = networkUsers?.map(u => u.id) || [user.id];
-      setIsSharedNetwork((networkUsers?.length || 1) > 1);
-      
-      // Load members and positions from ALL users in the network
+      const isShared = (networkUsers?.length || 1) > 1;
+
       const [membersRes, positionsRes] = await Promise.all([
         supabase.from('family_tree_members').select('*').in('owner_id', userIds),
         supabase.from('node_positions').select('*').eq('network_id', userNetworkId)
@@ -105,46 +93,69 @@ export const useLocalFamilyTree = () => {
         user.id
       );
 
+      // Save any auto-corrected positions silently in background
       if (newPositions.length > 0) {
         const BATCH_SIZE = 50;
-        for (let i = 0; i < newPositions.length; i += BATCH_SIZE) {
-          const batch = newPositions.slice(i, i + BATCH_SIZE).map((pos) => ({
-            member_id: pos.member_id,
-            owner_id: user.id,
-            x: pos.x,
-            y: pos.y,
-            updated_by: CLIENT_ID,
-            network_id: userNetworkId,
-          }));
-          await supabase.from('node_positions').upsert(batch, { onConflict: 'member_id,network_id' });
-        }
+        await Promise.all(
+          Array.from({ length: Math.ceil(newPositions.length / BATCH_SIZE) }).map((_, i) => {
+            const batch = newPositions.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE).map((pos) => ({
+              member_id: pos.member_id,
+              owner_id: user.id,
+              x: pos.x,
+              y: pos.y,
+              updated_by: CLIENT_ID,
+              network_id: userNetworkId,
+            }));
+            return supabase.from('node_positions').upsert(batch, { onConflict: 'member_id,network_id' });
+          })
+        ).catch(err => console.error("Auto-correction save failed:", err));
       }
 
-      setMembers(membersMap);
-      setRootId(newRootId);
+      return { membersMap, newRootId, userNetworkId, isShared };
+    },
+    enabled: !!user?.id,
+    staleTime: 0, // Always check for updates on remount (navigation)
+    gcTime: 10 * 60 * 1000,   // 10 minutes garbage collection
+  });
 
-      // Make sure we never lose our own node
-      // If our linked member doesn't exist but used to, the tree may have detached - it's fine
-
-    } catch (error) {
-      console.error('Error loading family tree:', error);
-    } finally {
+  // Sync data to local editor state when query finishes
+  useEffect(() => {
+    if (isQueryLoading) {
+      if (Object.keys(members).length === 0) setIsLoading(true);
+    } else {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [user?.id, getOrCreateNetworkId]);
 
-  // Initial load
+    if (treeData && !isDraggingRef.current) {
+      setMembers(treeData.membersMap);
+      setRootId(treeData.newRootId);
+      setNetworkId(treeData.userNetworkId);
+      setIsSharedNetwork(treeData.isShared);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treeData, isQueryLoading]);
+
+  // Handle case when not logged in
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!user?.id) {
+      setIsLoading(false);
+    }
+  }, [user?.id]);
 
-   // Listen for manual reload requests
-   useEffect(() => {
-     const handleReload = () => loadData(false);
-     window.addEventListener('family-tree-reload', handleReload);
-     return () => window.removeEventListener('family-tree-reload', handleReload);
-   }, [loadData]);
+  // Keep loadData wrapper for external calls
+  const loadData = useCallback(async (isInitial = true) => {
+    if (isInitial) setIsLoading(true);
+    else setIsRefreshing(true);
+    await refetchTree();
+  }, [refetchTree]);
+
+  // Listen for manual reload requests
+  useEffect(() => {
+    const handleReload = () => loadData(false);
+    window.addEventListener('family-tree-reload', handleReload);
+    return () => window.removeEventListener('family-tree-reload', handleReload);
+  }, [loadData]);
  
   // Real-time subscriptions
   useEffect(() => {
@@ -165,13 +176,13 @@ export const useLocalFamilyTree = () => {
         { event: '*', schema: 'public', table: 'node_positions', filter: `owner_id=eq.${user.id}` },
         (payload) => {
           if (isDraggingRef.current) {
-            const p = payload.new as any;
+            const p = payload.new as { member_id: string; x: number; y: number; updated_by: string };
             if (p) pendingUpdatesRef.current.set(p.member_id, { x: p.x, y: p.y });
             return;
           }
           
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const p = payload.new as any;
+            const p = payload.new as { member_id: string; x: number; y: number; updated_by: string };
             if (p.updated_by === CLIENT_ID) return;
             
             setMembers((prev) => {
@@ -223,7 +234,10 @@ export const useLocalFamilyTree = () => {
         updated_by: CLIENT_ID,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'member_id,network_id' });
-  }, [user?.id, networkId]);
+      
+    // Invalidate query to ensure cache stays synced with local state
+    queryClient.invalidateQueries({ queryKey: ['familyTree', user.id] });
+  }, [user?.id, networkId, queryClient]);
 
   // Add initial couple
   const addInitialCouple = useCallback(async () => {
@@ -845,6 +859,7 @@ export const useLocalFamilyTree = () => {
     totalCount,
     activeCount,
     isLoading,
+    isRefreshing,
     networkId,
     isSharedNetwork,
     addInitialCouple,

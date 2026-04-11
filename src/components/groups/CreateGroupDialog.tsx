@@ -73,7 +73,7 @@ export const CreateGroupDialog = ({
       const response = await fetch(croppedUrl);
       const blob = await response.blob();
       const file = new File([blob], `avatar_${Date.now()}.jpg`, { type: 'image/jpeg' });
-      const compressed = await compressImage(file);
+      const compressed = await compressImage(file, 400, 400, 0.85);
       const url = await uploadToR2(compressed, `group-avatars/${Date.now()}`);
       setAvatarUrl(url);
     } catch (error) {

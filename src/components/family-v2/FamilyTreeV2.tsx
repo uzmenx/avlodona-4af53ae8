@@ -46,7 +46,7 @@ export const FamilyTreeV2 = () => {
   const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
   const {
-    members, rootId, isLoading,
+    members, rootId, isLoading, isRefreshing,
     totalCount, activeCount,
     addInitialCouple, addParents, addSpouse, addChild,
     updateMember, updatePosition, removeMember, createSelfNode,
@@ -240,14 +240,14 @@ export const FamilyTreeV2 = () => {
     if (data) { setMergeData(data); setShowMergeDialog(true); }
   }, [computeMergeData, setMergeData, setShowMergeDialog]);
 
-  const handleAcceptInvitation = async (invitation: { id: string; [key: string]: any }) => {
+  const handleAcceptInvitation = async (invitation: { id: string; [key: string]: unknown }) => {
     setProcessingInvitation(invitation.id);
-    await acceptInvitation(invitation as any);
+    await acceptInvitation(invitation as Parameters<typeof acceptInvitation>[0]);
     setProcessingInvitation(null);
   };
-  const handleRejectInvitation = async (invitation: { id: string; [key: string]: any }) => {
+  const handleRejectInvitation = async (invitation: { id: string; [key: string]: unknown }) => {
     setProcessingInvitation(invitation.id);
-    await rejectInvitation(invitation as any);
+    await rejectInvitation(invitation as Parameters<typeof rejectInvitation>[0]);
     setProcessingInvitation(null);
   };
 
@@ -350,16 +350,7 @@ export const FamilyTreeV2 = () => {
     setOverlays(prev => [...prev, newOverlay]);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <TreeDeciduous className="w-12 h-12 mx-auto text-primary animate-pulse" />
-          <p className="mt-4 text-muted-foreground">Yuklanmoqda...</p>
-        </div>
-      </div>
-    );
-  }
+  // Replaced full-screen blocker with non-blocking overlay to keep shell visible
 
   return (
     <section className="min-h-screen flex flex-col">
@@ -535,6 +526,15 @@ export const FamilyTreeV2 = () => {
 
       {/* Canvas with overlays */}
       <div className={cn("flex-1 relative", isMergeMode && "pt-16", pendingInvitations.length > 0 && "pt-32")}>
+        
+        {/* Background Sync Indicator */}
+        {isRefreshing && Object.keys(members).length > 0 && (
+          <div className="absolute top-4 left-4 z-50 flex items-center justify-center gap-2 bg-background/80 backdrop-blur text-xs font-medium px-3 py-1.5 rounded-full shadow border text-muted-foreground animate-in fade-in zoom-in duration-200">
+            <div className="w-3 h-3 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            Yangilanmoqda...
+          </div>
+        )}
+
         <div className="h-[calc(100vh-110px)] min-h-[500px]">
           <FamilyTreeCanvas
             members={members}
@@ -551,6 +551,16 @@ export const FamilyTreeV2 = () => {
           {/* Overlay layer */}
           <TreeOverlayLayer overlays={overlays} onChange={setOverlays} editable={true} />
         </div>
+
+        {/* Full-screen Loading Overlay for initial fetch (Skeleton) */}
+        {isLoading && Object.keys(members).length === 0 && (
+          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-card/60 backdrop-blur-sm">
+            <div className="text-center bg-card/90 p-6 rounded-2xl shadow-xl border border-white/10 dark:border-slate-800 backdrop-blur-md">
+              <TreeDeciduous className="w-12 h-12 mx-auto text-primary animate-pulse" />
+              <p className="mt-4 text-sm font-medium text-foreground">Shajara yuklanmoqda...</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* History Drawer */}
