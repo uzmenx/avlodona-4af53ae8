@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Sparkles, Grid3X3, Bookmark, Users, AtSign, ChevronDown, ChevronUp, Grid2X2, LayoutList, Columns2, ShieldBan, ShieldCheck, MoreVertical, Link2, Search, Heart, Eye, ArrowLeftRight, Plus, Image, Video, Loader2, X, Edit2, Camera } from 'lucide-react';
+import { ArrowLeft, Sparkles, Grid3X3, Bookmark, Users, AtSign, ChevronDown, ChevronUp, Grid2X2, LayoutList, Columns2, ShieldBan, ShieldCheck, MoreVertical, Link2, Search, Heart, Eye, ArrowLeftRight, Plus, Image, Video, Loader2, X, Edit2, Camera, Lock } from 'lucide-react';
 import { useMemorialPosts } from '@/hooks/useMemorialPosts';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
@@ -162,7 +162,8 @@ export const UserProfilePage = () => {
   const [resolvedMemorialMemberId, setResolvedMemorialMemberId] = useState<string | undefined>(undefined);
   const effectivePostsUserId = isMemorial ? resolvedMemorialMemberId || userId : userId;
   const { posts, isLoading: postsLoading, postsCount, refetch } = useUserPosts(effectivePostsUserId, isMemorial);
-  const { followersCount, followingCount } = useFollow(userId);
+  const { isFollowing, followersCount, followingCount } = useFollow(userId);
+  const isRestricted = !!(profile?.is_private && !isFollowing && currentUser?.id !== userId && !isMemorial);
   const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'mentions'>(isMemorial ? 'mentions' : 'posts');
   const [postsLayout, setPostsLayout] = useState<'pinterest1' | 'list'>('pinterest1');
   const [memorialLayout, setMemorialLayout] = useState<'grid' | 'list'>('grid');
@@ -842,10 +843,14 @@ export const UserProfilePage = () => {
             <button
               type="button"
               onClick={() => {
+                if (isRestricted) return;
                 setFollowHubTab('followers');
                 setFollowHubOpen(true);
               }}
-              className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0">
+              className={cn(
+                "flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0",
+                isRestricted ? "opacity-90 cursor-default" : "cursor-pointer active:scale-95 transition-all"
+              )}>
               
                 <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
                   Kuzatuvchilar
@@ -875,11 +880,14 @@ export const UserProfilePage = () => {
                 if (info) {
                   return (
                     <div
-                      className="h-16 w-16 rounded-full p-[2px] cursor-pointer shadow-2xl"
+                      className={cn("h-16 w-16 rounded-full p-[2px] shadow-2xl", !isRestricted && "cursor-pointer")}
                       style={{
-                        background: info.has_unviewed ? getStoryRingGradient(info.ring_id as string) : 'var(--muted-foreground)'
+                        background: info.has_unviewed && !isRestricted ? getStoryRingGradient(info.ring_id as string) : 'var(--muted-foreground)'
                       }}
-                      onClick={() => openProfileStories()}>
+                      onClick={() => {
+                        if (isRestricted) return;
+                        openProfileStories();
+                      }}>
                       
                       <div className="w-full h-full rounded-full bg-background p-[2px]">
                         <Avatar className="h-full w-full">
@@ -926,23 +934,31 @@ export const UserProfilePage = () => {
             ) : (
               <button
                 type="button"
-                onClick={() => setFamilyMembersOpen(true)}
-                className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0 relative">
+                onClick={() => {
+                  if (isRestricted) return;
+                  setFamilyMembersOpen(true);
+                }}
+                className={cn(
+                  "flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0 relative",
+                  isRestricted ? "opacity-90 cursor-default" : "cursor-pointer active:scale-95 transition-all"
+                )}>
                 <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
                   Oila a'zolari
                 </span>
                 <span className="text-lg font-extrabold text-foreground leading-none">
                   {formatCount(familyMemberCount)}
                 </span>
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowPostsStats(!showPostsStats);
-                  }}
-                  className="absolute -bottom-2 right-2 h-5 w-5 bg-muted rounded-full flex items-center justify-center hover:bg-muted-foreground/20 transition-all cursor-pointer"
-                  style={{ transform: showPostsStats ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>
-                  <ChevronDown className="h-3 w-3 text-foreground" />
-                </div>
+                {!isRestricted && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPostsStats(!showPostsStats);
+                    }}
+                    className="absolute -bottom-2 right-2 h-5 w-5 bg-muted rounded-full flex items-center justify-center hover:bg-muted-foreground/20 transition-all cursor-pointer"
+                    style={{ transform: showPostsStats ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>
+                    <ChevronDown className="h-3 w-3 text-foreground" />
+                  </div>
+                )}
               </button>
             )}
           </div>
@@ -953,7 +969,7 @@ export const UserProfilePage = () => {
             <Button
               variant="outline"
               size="sm"
-              className="bg-white/10 dark:bg-white/5 border-white/20 hover:bg-white/20 text-foreground h-8 text-xs px-2.5"
+              className="bg-white/10 dark:bg-white/5 border-white/20 hover:bg-white/20 active:scale-95 active:bg-white/30 transition-all text-foreground h-8 text-xs px-2.5"
               onClick={() => setRelativeSheetOpen(true)}>
               
                 <Users className="h-3.5 w-3.5 mr-2" />
@@ -1001,10 +1017,14 @@ export const UserProfilePage = () => {
               <button
                 type="button"
                 onClick={() => {
+                  if (isRestricted) return;
                   setFollowHubTab('following');
                   setFollowHubOpen(true);
                 }}
-                className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0">
+                className={cn(
+                  "flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0",
+                  isRestricted ? "opacity-90 cursor-default" : "cursor-pointer active:scale-95 transition-all"
+                )}>
                 
                     <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
                       Kuzatilmoqda
@@ -1023,7 +1043,10 @@ export const UserProfilePage = () => {
 
               {!isMemorial &&
                 <div
-                  className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0">
+                  className={cn(
+                    "flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0",
+                    isRestricted && "opacity-90 cursor-default"
+                  )}>
                   <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
                     Postlar
                   </span>
@@ -1089,7 +1112,7 @@ export const UserProfilePage = () => {
           }
 
           {/* Social Links */}
-          {profile.social_links &&
+          {profile.social_links && !isRestricted &&
           <div className="flex justify-center mb-1.5">
               <SocialLinksList links={profile.social_links} className="justify-center" />
             </div>
@@ -1100,14 +1123,14 @@ export const UserProfilePage = () => {
         </div>
 
         {/* Story Highlights */}
-        {highlights.length > 0 && !isMemorial &&
+        {highlights.length > 0 && !isMemorial && !isRestricted &&
         <div className="flex justify-center">
             <HighlightsRow highlights={highlights} isOwner={false} />
           </div>
         }
 
         {/* Collections filter */}
-        {collections.length > 0 && activeTab === 'posts' && !isMemorial &&
+        {collections.length > 0 && activeTab === 'posts' && !isMemorial && !isRestricted &&
         <CollectionsFilter
           collections={collections}
           selectedId={selectedCollectionId}
@@ -1125,6 +1148,17 @@ export const UserProfilePage = () => {
             'Siz bu foydalanuvchi tomonidan bloklangansiz.' :
             'Bu foydalanuvchi bilan aloqa cheklangan.'}
             </p>
+          </div> :
+        isRestricted ?
+          <div className="px-5 py-16 flex flex-col items-center text-center mt-4 border-t border-white/5">
+            <div className="w-20 h-20 rounded-full border-2 border-primary/20 flex flex-col items-center justify-center mb-4 bg-background/50 backdrop-blur-sm shadow-xl">
+              <Lock className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">Bu akkaunt yopiq</h2>
+            <p className="text-muted-foreground text-sm max-w-[250px]">
+              Post va rasmlarni ko'rish uchun ushbu foydalanuvchiga obuna bo'ling.
+            </p>
+            {userId && <FollowButton targetUserId={userId} className="mt-6 font-semibold" size="lg" />}
           </div> :
 
         <>
@@ -1721,6 +1755,8 @@ export const UserProfilePage = () => {
             </div>
           </DialogContent>
         </Dialog>
+        </>
+        }
 
         {/* Crop modal for edit dialog */}
         <ImageCropper
@@ -1750,11 +1786,6 @@ export const UserProfilePage = () => {
             isProcessing={isMerging}
           />
         )}
-          
-
-
-          </>
-        }
       </div>
     </AppLayout>)
 

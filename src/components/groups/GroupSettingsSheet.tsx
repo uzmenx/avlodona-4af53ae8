@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { StarUsername } from '@/components/user/StarUsername';
 import { toast } from 'sonner';
-import { Camera, Users, Megaphone, Crown, UserMinus, UserPlus, Link, Copy, Check, Trash2, Search } from 'lucide-react';
+import { Camera, Users, Megaphone, Crown, UserMinus, UserPlus, Link, Copy, Check, Trash2, Search, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -188,6 +188,22 @@ export const GroupSettingsSheet = ({ open, onOpenChange, groupInfo, onGroupUpdat
     }
   };
 
+  const revokeInviteLink = async () => {
+    if (!isOwner) return;
+    if (!confirm("Rostdan ham havolani bekor qilmoqchimisiz? Eski havola endi ishlamaydi.")) return;
+    setIsGeneratingLink(true);
+    try {
+      const { error } = await supabase.from('group_chats').update({ invite_link: null }).eq('id', groupInfo.id);
+      if (error) throw error;
+      toast.success('Havola bekor qilindi');
+      onGroupUpdated();
+    } catch (e: any) {
+      toast.error(e?.message || 'Xatolik yuz berdi');
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -272,6 +288,11 @@ export const GroupSettingsSheet = ({ open, onOpenChange, groupInfo, onGroupUpdat
                       <Button variant="ghost" size="icon" onClick={copyInviteLink} className="h-8 w-8 rounded-lg shrink-0">
                         {linkCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                       </Button>
+                      {isOwner && (
+                        <Button variant="ghost" size="icon" onClick={revokeInviteLink} disabled={isGeneratingLink} className="h-8 w-8 rounded-lg shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <Button

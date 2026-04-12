@@ -3,6 +3,8 @@ import DailyIframe, { DailyCall, DailyParticipant, DailyEventObject } from '@dai
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { clearLocalCallNotification } from '@/lib/pushNotifications';
+import { ForegroundService } from '@capawesome-team/capacitor-android-foreground-service';
 
 interface Call {
   id: string;
@@ -80,6 +82,9 @@ export const useVideoCall = (otherUserId: string | null) => {
               setRemoteParticipant(null);
               toast.info("Qo'ng'iroq tugadi");
             }
+            if (incomingCall?.id === call.id) {
+              clearLocalCallNotification(call.caller_id);
+            }
             setIncomingCall(null);
           }
           
@@ -97,7 +102,25 @@ export const useVideoCall = (otherUserId: string | null) => {
 
   // Cleanup on unmount
   useEffect(() => {
+    // Listen for foreground service button clicks (e.g. "Tugatish" button)
+    const setupForegroundListener = async () => {
+      try {
+        await ForegroundService.removeAllListeners();
+        await ForegroundService.addListener('buttonTapped', (event) => {
+          if (event.buttonId === 1) {
+            // "Tugatish" was clicked
+            leaveCall();
+          }
+        });
+      } catch (e) {
+        // usually fails on web/iOS, ignore
+      }
+    };
+    
+    setupForegroundListener();
+
     return () => {
+      try { ForegroundService.removeAllListeners(); } catch (e) {}
       const co = callObjectRef.current;
       if (co) {
         try {
@@ -149,6 +172,7 @@ export const useVideoCall = (otherUserId: string | null) => {
       setLastRoomUrl(incomingCall.room_url);
       callHistorySavedRef.current = false;
       await joinRoom(incomingCall.room_url);
+      clearLocalCallNotification(incomingCall.caller_id);
       setIncomingCall(null);
       
     } catch (error) {
@@ -173,6 +197,7 @@ export const useVideoCall = (otherUserId: string | null) => {
         },
       });
       
+      clearLocalCallNotification(incomingCall.caller_id);
       setIncomingCall(null);
     } catch (error) {
       console.error('Error declining call:', error);
@@ -200,17 +225,37 @@ export const useVideoCall = (otherUserId: string | null) => {
         videoSource: true,
       });
 
-      newCallObject.on('joined-meeting', () => {
+      newCallObject.on('joined-meeting', async () => {
         setIsInCall(true);
         setWasInCall(true);
         setPartnerLeft(false);
         reconnectAttemptsRef.current = 0;
+
+        // Start Foreground Service so call doesn't drop when app is backgrounded
+        try {
+          await ForegroundService.startForegroundService({
+            id: 2,
+            title: "Avlodona Video Qo'ng'iroq",
+            body: "Suhbat davom etmoqda... Qaytish uchun bosing",
+            smallIcon: 'ic_stat_icon_config_sample',
+            buttons: [
+              { title: 'Tugatish', id: 1 }
+            ],
+            silent: true,
+          });
+        } catch (e) {
+          console.error('Failed to start foreground service:', e);
+        }
       });
 
       newCallObject.on('left-meeting', () => {
         setIsInCall(false);
         setRemoteParticipant(null);
         setPartnerLeft(false);
+        
+        try {
+          ForegroundService.stopForegroundService();
+        } catch (e) {}
       });
 
       newCallObject.on('participant-joined', (event: DailyEventObject) => {
@@ -345,6 +390,10 @@ export const useVideoCall = (otherUserId: string | null) => {
         setCallObject(null);
         callObjectRef.current = null;
       }
+      
+      try {
+        await ForegroundService.stopForegroundService();
+      } catch (e) {}
 
       if (currentCall) {
         try {

@@ -78,22 +78,26 @@ const JoinGroup = () => {
   const handleJoin = useCallback(async () => {
     if (!group || !user?.id) return;
     if (isJoining) return;
-    if (group.visibility !== 'public') {
-      toast.error('Bu yopiq guruh/kanal');
-      return;
-    }
 
     setIsJoining(true);
     try {
-      const { error } = await supabase.from('group_members').upsert(
-        {
-          group_id: group.id,
-          user_id: user.id,
-          role: 'member',
-        } as any,
-        { onConflict: 'group_id,user_id' }
-      );
-      if (error) throw error;
+      const { error } = await (supabase as any).rpc('join_group_via_invite', {
+        invite_str: group.invite_link,
+      });
+
+      if (error) {
+        // Fallback for public groups if RPC doesn't exist yet
+        const { error: fallbackError } = await supabase.from('group_members').upsert(
+          {
+            group_id: group.id,
+            user_id: user.id,
+            role: 'member',
+          } as any,
+          { onConflict: 'group_id,user_id' }
+        );
+        if (fallbackError) throw fallbackError;
+      }
+
       toast.success("Qo'shildingiz");
       navigate(`/group-chat/${group.id}`);
     } catch (e: any) {
@@ -174,10 +178,6 @@ const JoinGroup = () => {
                 className="w-full h-11 rounded-2xl bg-gradient-to-r from-[hsl(217,91%,60%)] to-[hsl(263,70%,50%)] text-white"
               >
                 Ochish
-              </Button>
-            ) : group.visibility !== 'public' ? (
-              <Button disabled className="w-full h-11 rounded-2xl">
-                Bu yopiq {group.type === 'group' ? 'guruh' : 'kanal'}
               </Button>
             ) : (
               <Button

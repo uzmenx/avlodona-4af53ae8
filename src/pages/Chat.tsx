@@ -184,6 +184,7 @@ const Chat = () => {
       localStorage.removeItem(`deleted_messages_${conversationId}`);
       toast.success('Tarix barcha uchun tozalandi');
       refetch();
+      window.dispatchEvent(new Event('avlodona:new-message'));
     } catch (error) {
       console.error('Error clearing chat for all:', error);
       toast.error(t('errorOccurred'));

@@ -271,6 +271,7 @@ const GroupChat = () => {
       localStorage.removeItem(`deleted_group_messages_${groupId}`);
       toast.success('Tarix barcha uchun tozalandi');
       await fetchMessages();
+      window.dispatchEvent(new Event('avlodona:new-message'));
     } catch (error) {
       console.error('Error clearing group history:', error);
       toast.error('Xatolik yuz berdi');
@@ -461,20 +462,24 @@ const GroupChat = () => {
 
   const joinFromInvite = useCallback(async (group: InvitePreview) => {
     if (!user?.id) return;
-    if (group.visibility !== 'public') {
-      toast.error('Bu yopiq guruh/kanal');
-      return;
-    }
     try {
-      const { error } = await supabase.from('group_members').upsert(
-        {
-          group_id: group.id,
-          user_id: user.id,
-          role: 'member',
-        } as { group_id: string; user_id: string; role: string },
-        { onConflict: 'group_id,user_id' }
-      );
-      if (error) throw error;
+      const { error } = await (supabase as any).rpc('join_group_via_invite', {
+        invite_str: group.invite_link,
+      });
+
+      if (error) {
+        // Fallback for public groups if RPC doesn't exist yet
+        const { error: fallbackError } = await supabase.from('group_members').upsert(
+          {
+            group_id: group.id,
+            user_id: user.id,
+            role: 'member',
+          } as { group_id: string; user_id: string; role: string },
+          { onConflict: 'group_id,user_id' }
+        );
+        if (fallbackError) throw fallbackError;
+      }
+
       toast.success("Qo'shildingiz");
       navigate(`/group-chat/${group.id}`);
     } catch (e: unknown) {

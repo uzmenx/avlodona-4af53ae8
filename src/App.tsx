@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { PushNotification } from "@/components/notifications/PushNotification";
+import { GlobalMessageListener } from "@/components/notifications/GlobalMessageListener";
+import { GlobalCallListener } from "@/components/chat/GlobalCallListener";
 import { PlanOverlay } from "@/components/subscription/PlanOverlay";
 import { ErrorBoundary } from "react-error-boundary";
 import { ErrorFallback } from "@/components/ui/ErrorFallback";
@@ -103,6 +105,8 @@ const App = () => (
           <PlanOverlay />
           <BrowserRouter>
             <PushNotification />
+            <GlobalMessageListener />
+            <GlobalCallListener />
             <ErrorBoundary 
               FallbackComponent={ErrorFallback}
               onReset={() => {

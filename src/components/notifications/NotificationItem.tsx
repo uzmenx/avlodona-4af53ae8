@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { uz } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Notification } from '@/hooks/useNotifications';
+import { supabase } from '@/integrations/supabase/client';
 import { useFollow } from '@/hooks/useFollow';
 import { Button } from '@/components/ui/button';
 
@@ -26,6 +27,8 @@ export const NotificationItem = ({ notification, onRead }: NotificationItemProps
     switch (notification.type) {
       case 'follow':
         return <UserPlus className="h-4 w-4 text-primary" />;
+      case 'follow_request':
+        return <UserPlus className="h-4 w-4 text-amber-500" />;
       case 'like':
       case 'story_like':
         return <Heart className="h-4 w-4 text-destructive fill-destructive" />;
@@ -58,6 +61,8 @@ export const NotificationItem = ({ notification, onRead }: NotificationItemProps
     switch (notification.type) {
       case 'follow':
         return 'sizni kuzata boshladi';
+      case 'follow_request':
+        return 'sizga kuzatish so\'rovini yubordi. Qabul qilasizmi?';
       case 'like':
         return 'postingizni yoqtirdi';
       case 'story_like':
@@ -137,8 +142,51 @@ export const NotificationItem = ({ notification, onRead }: NotificationItemProps
       case 'family_connection_request':
         navigate('/relatives');
         break;
+      case 'follow_request':
+        navigate(`/user/${notification.actor_id}`);
+        break;
       default:
         navigate(`/user/${notification.actor_id}`);
+    }
+  };
+
+  const handleAcceptRequest = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await supabase
+        .from('follows')
+        .update({ status: 'accepted' })
+        .eq('following_id', notification.user_id)
+        .eq('follower_id', notification.actor_id)
+        .eq('status', 'pending');
+        
+      // Change notification to regular follow
+      await supabase
+        .from('notifications')
+        .update({ type: 'follow' })
+        .eq('id', notification.id);
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeclineRequest = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await supabase
+        .from('follows')
+        .delete()
+        .eq('following_id', notification.user_id)
+        .eq('follower_id', notification.actor_id)
+        .eq('status', 'pending');
+        
+      // Delete notification
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notification.id);
+    } catch(err) {
+      console.error(err);
     }
   };
 
@@ -246,6 +294,26 @@ export const NotificationItem = ({ notification, onRead }: NotificationItemProps
             )}
           >
             {isFollowing ? "Kuzatilmoqda" : "Javob qaytarish"}
+          </Button>
+        </div>
+      )}
+
+      {notification.type === 'follow_request' && (
+        <div className="stop-propagation flex flex-col gap-1.5 min-w-[80px]">
+          <Button
+            size="sm"
+            onClick={handleAcceptRequest}
+            className="h-7 px-3 text-[10px] rounded hover:bg-emerald-600 bg-emerald-500 text-white shadow-none"
+          >
+            Qabul
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleDeclineRequest}
+            className="h-7 px-3 text-[10px] rounded text-muted-foreground shadow-none"
+          >
+            Rad etish
           </Button>
         </div>
       )}

@@ -244,46 +244,48 @@ export const SamsungUltraVideoPlayer = ({
   const [loading, setLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
 
-  const toggleFullscreen = useCallback(async () => {
-    if (!containerRef.current) return;
-
+  const toggleOrientation = useCallback(async () => {
     try {
-      if (!isFullscreen) {
-        if (containerRef.current.requestFullscreen) {
-          await containerRef.current.requestFullscreen();
-        } else if ((containerRef.current as unknown as { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen) {
-          await (containerRef.current as unknown as { webkitRequestFullscreen: () => Promise<void> }).webkitRequestFullscreen();
+      if (!isLandscape) {
+        // Try HTML5 fullscreen for web compatibility
+        if (containerRef.current) {
+          if (containerRef.current.requestFullscreen) {
+            await containerRef.current.requestFullscreen().catch(() => {});
+          } else if ((containerRef.current as any).webkitRequestFullscreen) {
+            await (containerRef.current as any).webkitRequestFullscreen().catch(() => {});
+          }
         }
-        
+        // Lock orientation to landscape natively
         try {
           await ScreenOrientation.lock({ orientation: 'landscape' });
         } catch (e) {
           console.warn('Orientation lock failed:', e);
         }
-        
-        setIsFullscreen(true);
+        setIsLandscape(true);
       } else {
-        if (document.exitFullscreen) {
-          await document.exitFullscreen();
-        } else if ((document as Document & { webkitExitFullscreen?: () => Promise<void> }).webkitExitFullscreen) {
-          await (document as Document & { webkitExitFullscreen: () => Promise<void> }).webkitExitFullscreen();
+        // Exit HTML5 fullscreen
+        if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen().catch(() => {});
+          } else if ((document as any).webkitExitFullscreen) {
+            await (document as any).webkitExitFullscreen().catch(() => {});
+          }
         }
-        
+        // Lock orientation back to portrait and unlock
         try {
           await ScreenOrientation.lock({ orientation: 'portrait' });
-          // Optional: await ScreenOrientation.unlock();
+          await ScreenOrientation.unlock();
         } catch (e) {
           console.warn('Orientation unlock failed:', e);
         }
-        
-        setIsFullscreen(false);
+        setIsLandscape(false);
       }
     } catch (err) {
-      console.error('Fullscreen error:', err);
+      console.error('Orientation toggle error:', err);
     }
-  }, [isFullscreen]);
+  }, [isLandscape]);
 
   useEffect(() => {
 
@@ -323,15 +325,15 @@ export const SamsungUltraVideoPlayer = ({
     return () => window.removeEventListener('avlodona:video:request-play', onRequestPlay);
   }, []);
 
-  // Handle initial fullscreen
+  // Handle initial orientation (landscape) if prop set
   useEffect(() => {
-    if (startInFullscreen && !isFullscreen) {
+    if (startInFullscreen && !isLandscape) {
       const timer = setTimeout(() => {
-        toggleFullscreen();
+        toggleOrientation();
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [startInFullscreen, toggleFullscreen, isFullscreen]);
+  }, [startInFullscreen, toggleOrientation, isLandscape]);
 
   useEffect(() => {
 
@@ -868,13 +870,15 @@ export const SamsungUltraVideoPlayer = ({
 
 
 
-  // Sync fullscreen state when user exits via ESC or system UI
+  // Sync landscape state when user exits fullscreen via ESC or system UI
 
   useEffect(() => {
 
     const onFullscreenChange = () => {
 
-      setIsFullscreen(!!document.fullscreenElement);
+      if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+        setIsLandscape(false);
+      }
 
     };
 
@@ -1406,7 +1410,7 @@ export const SamsungUltraVideoPlayer = ({
 
         case 'KeyF':
 
-          toggleFullscreen();
+          toggleOrientation();
 
           break;
 
@@ -1504,7 +1508,7 @@ export const SamsungUltraVideoPlayer = ({
 
     return () => window.removeEventListener('keydown', handleKeyDown);
 
-  }, [volume, duration, skip, togglePlay, toggleMute, toggleFullscreen, togglePiP, handleVolumeChange, seekTo, showGestureUI]);
+  }, [volume, duration, skip, togglePlay, toggleMute, toggleOrientation, togglePiP, handleVolumeChange, seekTo, showGestureUI]);
 
 
 
@@ -2078,10 +2082,15 @@ export const SamsungUltraVideoPlayer = ({
 
               </button>
 
-              <button onClick={toggleFullscreen} className="p-2 rounded-full bg-white/10 active:scale-90 transition-all">
-
-                {isFullscreen ? <Minimize className="text-white" size={18} /> : <Maximize className="text-white" size={18} />}
-
+              <button
+                onClick={toggleOrientation}
+                className="p-2 rounded-full bg-white/10 active:scale-90 transition-all"
+                title={isLandscape ? 'Vertikal holat' : 'Gorizontal holat'}
+              >
+                {isLandscape
+                  ? <Smartphone className="text-white" size={18} />
+                  : <Monitor className="text-white" size={18} />
+                }
               </button>
 
             </div>

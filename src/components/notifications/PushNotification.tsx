@@ -21,6 +21,11 @@ interface PushNotificationData {
     id: string;
     media_urls: string[] | null;
   };
+  // For message notifications: preview of the message media
+  messageMedia?: {
+    url: string;
+    type: 'image' | 'video' | 'audio';
+  } | null;
   created_at: string;
 }
 
@@ -65,12 +70,37 @@ export const PushNotification = () => {
             post = postData;
           }
 
+          // Fetch latest message for preview (media thumbnail, etc.)
+          let messageMedia: PushNotificationData['messageMedia'] = null;
+          if (newNotification.type === 'message') {
+            const { data: latestMsg } = await supabase
+              .from('messages')
+              .select('media_url, media_type')
+              .eq('sender_id', newNotification.actor_id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (
+              latestMsg?.media_url &&
+              (latestMsg.media_type === 'image' ||
+                latestMsg.media_type === 'video' ||
+                latestMsg.media_type === 'audio')
+            ) {
+              messageMedia = {
+                url: latestMsg.media_url,
+                type: latestMsg.media_type as 'image' | 'video' | 'audio',
+              };
+            }
+          }
+
           if (actor) {
             setNotification({
               id: newNotification.id,
               type: newNotification.type as PushNotificationData['type'],
               actor,
               post: post || undefined,
+              messageMedia,
               created_at: newNotification.created_at,
             });
             setIsVisible(true);
@@ -218,9 +248,27 @@ export const PushNotification = () => {
             </div>
           </div>
 
-          {/* Icon/Preview */}
+          {/* Icon/Preview — prefer message media, then post thumbnail */}
           <div className="shrink-0">
-            {notification.post?.media_urls?.[0] ? (
+            {notification.messageMedia?.type === 'image' ? (
+              <img
+                src={notification.messageMedia.url}
+                alt=""
+                className="h-10 w-10 rounded-lg object-cover"
+              />
+            ) : notification.messageMedia?.type === 'video' ? (
+              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center relative overflow-hidden">
+                <video
+                  src={notification.messageMedia.url}
+                  className="h-full w-full object-cover"
+                  muted
+                  playsInline
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                  <span className="text-white text-[10px] font-bold">▶</span>
+                </div>
+              </div>
+            ) : notification.post?.media_urls?.[0] ? (
               <img
                 src={notification.post.media_urls[0]}
                 alt=""

@@ -14,7 +14,7 @@ interface FollowButtonProps {
 
 export const FollowButton = ({ targetUserId, size = "default", className }: FollowButtonProps) => {
   const { user } = useAuth();
-  const { isFollowing, isLoading, toggleFollow } = useFollow(targetUserId);
+  const { isFollowing, isRequested, isLoading, toggleFollow } = useFollow(targetUserId);
   const [ripples, setRipples] = useState<{ x: number; y: number; id: number }[]>([]);
   const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -44,7 +44,9 @@ export const FollowButton = ({ targetUserId, size = "default", className }: Foll
         "min-w-[90px] relative overflow-hidden transition-all duration-300 rounded-full backdrop-blur-xl border border-white/15",
         isFollowing
           ? "bg-white/10 text-foreground hover:bg-white/15"
-          : "bg-white/5 text-foreground hover:bg-white/10 border-white/20",
+          : isRequested
+            ? "bg-white/20 text-foreground hover:bg-white/30 border-white/30"
+            : "bg-white/5 text-foreground hover:bg-white/10 border-white/20",
         className,
       )}
     >
@@ -58,7 +60,7 @@ export const FollowButton = ({ targetUserId, size = "default", className }: Foll
           transition={{ duration: 0.6, ease: "easeOut" }}
         />
       ))}
-      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isFollowing ? "Kuzatasiz" : "Kuzatish"}
+      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isFollowing ? "Kuzatasiz" : isRequested ? "So'rov yuborildi" : "Kuzatish"}
     </Button>
   );
 };

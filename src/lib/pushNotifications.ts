@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 // Register service worker for push notifications
 export async function registerPushNotifications() {
@@ -26,30 +27,72 @@ export async function registerPushNotifications() {
   }
 }
 
-// Show local notification (when app is open but user is on different page)
-export function showLocalCallNotification(callerName: string, callerId: string) {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+// Show local notification (when app is open but user is on different page, or in background)
+export async function showLocalCallNotification(callerName: string, callerId: string) {
+  try {
+    // Play ringtone
+    playRingtone();
 
-  // Play ringtone
-  playRingtone();
+    // Setup Native Notification with Actions
+    await LocalNotifications.requestPermissions();
+    
+    await LocalNotifications.registerActionTypes({
+      types: [
+        {
+          id: 'INCOMING_CALL',
+          actions: [
+            { id: 'answer', title: 'Javob berish', foreground: true },
+            { id: 'decline', title: 'Rad etish', destructive: true, foreground: false }
+          ]
+        }
+      ]
+    });
 
-  const notification = new Notification(`📹 ${callerName} qo'ng'iroq qilmoqda`, {
-    body: "Video qo'ng'iroqqa javob bering",
-    icon: '/pwa-192x192.png',
-    tag: 'incoming-call',
-    requireInteraction: true,
-  } as NotificationOptions);
+    const numericId = Math.abs(parseInt(callerId.replace(/[^0-9]/g, '').substring(0, 8)) || new Date().getTime() % 10000);
 
-  notification.onclick = () => {
-    window.focus();
-    window.location.href = `/chat/${callerId}`;
-    notification.close();
-  };
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: numericId,
+          title: `📹 Video qo'ng'iroq`,
+          body: `${callerName} sizga qo'ng'iroq qilmoqda...`,
+          actionTypeId: 'INCOMING_CALL',
+          extra: { callerId },
+          smallIcon: 'ic_stat_icon_config_sample' // Placeholder for standard icon
+        }
+      ]
+    });
+  } catch (err) {
+    console.error('Native notification failed, falling back to Web:', err);
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-  // Auto-close after 30s
-  setTimeout(() => notification.close(), 30000);
+    const notification = new Notification(`📹 ${callerName} qo'ng'iroq qilmoqda`, {
+      body: "Video qo'ng'iroqqa javob bering",
+      icon: '/pwa-192x192.png',
+      tag: 'incoming-call',
+      requireInteraction: true,
+    } as NotificationOptions);
 
-  return notification;
+    notification.onclick = () => {
+      window.focus();
+      window.location.href = `/chat/${callerId}?answerCall=true`;
+      notification.close();
+    };
+
+    // Auto-close after 30s
+    setTimeout(() => notification.close(), 30000);
+
+    return notification;
+  }
+}
+
+export async function clearLocalCallNotification(callerId: string) {
+  try {
+    const numericId = Math.abs(parseInt(callerId.replace(/[^0-9]/g, '').substring(0, 8)) || new Date().getTime() % 10000);
+    await LocalNotifications.cancel({ notifications: [{ id: numericId }] });
+  } catch (err) {
+    console.error('Failed to clear notification:', err);
+  }
 }
 
 // Ringtone management

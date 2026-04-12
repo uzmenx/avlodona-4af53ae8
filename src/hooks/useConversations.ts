@@ -121,29 +121,17 @@ export const useConversations = () => {
     fetchConversations();
   }, [fetchConversations]);
 
-  // Real-time subscription
+  // Re-fetch conversations whenever a new message arrives (signalled by
+  // GlobalMessageListener) — much cheaper than a blanket realtime subscription
+  // that fires for every row change in the messages table.
   useEffect(() => {
-    if (!user?.id) return;
-
-    const channel = supabase
-      .channel('conversations-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages'
-        },
-        () => {
-          fetchConversations();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+    const handler = () => {
+      void fetchConversations();
     };
-  }, [user?.id, fetchConversations]);
+    window.addEventListener('avlodona:new-message', handler);
+    return () => window.removeEventListener('avlodona:new-message', handler);
+  }, [fetchConversations]);
+
 
   const getOrCreateConversation = async (otherUserId: string): Promise<string | null> => {
     if (!user?.id) return null;
