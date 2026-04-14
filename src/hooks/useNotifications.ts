@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export interface Notification {
   id: string;
   user_id: string;
-  type: 'follow' | 'like' | 'comment' | 'message' | 'family_invitation' | 'family_invitation_accepted' | 'story_like' | 'story' | 'calendar_event' | 'mention' | 'collab_request' | 'collab_accepted' | 'family_connection_request';
+  type: 'follow' | 'follow_request' | 'like' | 'comment' | 'message' | 'family_invitation' | 'family_invitation_accepted' | 'story_like' | 'story' | 'calendar_event' | 'mention' | 'collab_request' | 'collab_accepted' | 'family_connection_request';
   actor_id: string;
   post_id: string | null;
   comment_id: string | null;
@@ -154,7 +154,7 @@ export const useNotifications = () => {
   // Create notification helper
   const createNotification = async (
     targetUserId: string,
-    type: 'follow' | 'like' | 'comment' | 'message' | 'family_invitation' | 'family_invitation_accepted' | 'mention' | 'collab_request' | 'collab_accepted' | 'story' | 'calendar_event',
+    type: 'follow' | 'follow_request' | 'like' | 'comment' | 'message' | 'family_invitation' | 'family_invitation_accepted' | 'mention' | 'collab_request' | 'collab_accepted' | 'story' | 'calendar_event',
     postId?: string,
     commentId?: string,
     messageId?: string

@@ -245,10 +245,14 @@ export const SamsungUltraVideoPlayer = ({
 
   const [error, setError] = useState<string | null>(null);
   const [isLandscape, setIsLandscape] = useState(false);
+  // Track whether we intentionally entered landscape so the fullscreenchange
+  // listener doesn't reset state during an in-progress orientation transition.
+  const intentLandscapeRef = useRef(false);
 
   const toggleOrientation = useCallback(async () => {
     try {
-      if (!isLandscape) {
+      if (!intentLandscapeRef.current) {
+        intentLandscapeRef.current = true;
         // Try HTML5 fullscreen for web compatibility
         if (containerRef.current) {
           if (containerRef.current.requestFullscreen) {
@@ -265,6 +269,7 @@ export const SamsungUltraVideoPlayer = ({
         }
         setIsLandscape(true);
       } else {
+        intentLandscapeRef.current = false;
         // Exit HTML5 fullscreen
         if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
           if (document.exitFullscreen) {
@@ -283,9 +288,10 @@ export const SamsungUltraVideoPlayer = ({
         setIsLandscape(false);
       }
     } catch (err) {
+      intentLandscapeRef.current = false;
       console.error('Orientation toggle error:', err);
     }
-  }, [isLandscape]);
+  }, []);
 
   useEffect(() => {
 
@@ -325,15 +331,18 @@ export const SamsungUltraVideoPlayer = ({
     return () => window.removeEventListener('avlodona:video:request-play', onRequestPlay);
   }, []);
 
-  // Handle initial orientation (landscape) if prop set
+  // Handle initial orientation (landscape) if prop set — runs ONCE on mount only.
+  const didAutoRotateRef = useRef(false);
   useEffect(() => {
-    if (startInFullscreen && !isLandscape) {
+    if (startInFullscreen && !didAutoRotateRef.current) {
+      didAutoRotateRef.current = true;
       const timer = setTimeout(() => {
         toggleOrientation();
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [startInFullscreen, toggleOrientation, isLandscape]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
 
@@ -870,21 +879,31 @@ export const SamsungUltraVideoPlayer = ({
 
 
 
-  // Sync landscape state when user exits fullscreen via ESC or system UI
+  // Sync landscape state when user exits fullscreen via ESC or system UI.
+  // Only reset if we intentionally entered landscape — avoids false resets on
+  // mobile browsers that never had a real fullscreen element to begin with.
 
   useEffect(() => {
 
     const onFullscreenChange = () => {
 
       if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
-        setIsLandscape(false);
+        // Only revert if the user exited fullscreen that WE requested.
+        if (intentLandscapeRef.current) {
+          intentLandscapeRef.current = false;
+          setIsLandscape(false);
+        }
       }
 
     };
 
     document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+    };
 
   }, []);
 

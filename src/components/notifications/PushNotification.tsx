@@ -1,298 +1,238 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, Heart, MessageCircle, UserPlus, MessageSquare, X, CalendarDays } from 'lucide-react';
+import {
+  Heart, MessageCircle, UserPlus, MessageSquare, X,
+  CalendarDays, AtSign, Users, TreeDeciduous, Check, Send
+} from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { uz } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface PushNotificationData {
   id: string;
-  type: 'follow' | 'like' | 'comment' | 'message' | 'story_like' | 'story' | 'calendar_event' | 'mention' | 'collab_request' | 'collab_accepted';
+  type: string;
   actor: {
     id: string;
     name: string | null;
     username: string | null;
     avatar_url: string | null;
   };
-  post?: {
-    id: string;
-    media_urls: string[] | null;
-  };
-  // For message notifications: preview of the message media
-  messageMedia?: {
-    url: string;
-    type: 'image' | 'video' | 'audio';
-  } | null;
+  post?: { id: string; media_urls: string[] | null };
+  messageMedia?: { url: string; type: 'image' | 'video' | 'audio' } | null;
   created_at: string;
 }
+
+const getConfig = (type: string): { gradient: string; icon: React.ReactNode; text: (name: string) => string } => {
+  switch (type) {
+    case 'follow':
+      return { gradient: 'from-violet-500 to-indigo-500', icon: <UserPlus className="h-3 w-3 text-white" />, text: (n) => `${n} sizni kuzata boshladi` };
+    case 'follow_request':
+      return { gradient: 'from-amber-400 to-orange-500', icon: <UserPlus className="h-3 w-3 text-white" />, text: (n) => `${n} kuzatish so'rovini yubordi` };
+    case 'like':
+    case 'story_like':
+      return { gradient: 'from-rose-500 to-pink-500', icon: <Heart className="h-3 w-3 text-white fill-white" />, text: (n) => type === 'story_like' ? `${n} hikoyangizni yoqtirdi` : `${n} postingizni yoqtirdi` };
+    case 'comment':
+      return { gradient: 'from-sky-500 to-blue-500', icon: <MessageCircle className="h-3 w-3 text-white" />, text: (n) => `${n} izoh qoldirdi` };
+    case 'story':
+      return { gradient: 'from-sky-500 to-blue-500', icon: <MessageCircle className="h-3 w-3 text-white" />, text: (n) => `${n} yangi hikoya joyladi` };
+    case 'message':
+      return { gradient: 'from-emerald-500 to-teal-500', icon: <MessageSquare className="h-3 w-3 text-white" />, text: (n) => `${n} xabar yubordi` };
+    case 'calendar_event':
+      return { gradient: 'from-cyan-500 to-sky-500', icon: <CalendarDays className="h-3 w-3 text-white" />, text: (n) => `${n} kalendar voqeasi bugun` };
+    case 'mention':
+      return { gradient: 'from-purple-500 to-violet-500', icon: <AtSign className="h-3 w-3 text-white" />, text: (n) => `${n} sizni belgiladi` };
+    case 'collab_request':
+      return { gradient: 'from-indigo-500 to-blue-500', icon: <Users className="h-3 w-3 text-white" />, text: (n) => `${n} hamkorlik so'radi` };
+    case 'collab_accepted':
+      return { gradient: 'from-indigo-500 to-blue-500', icon: <Check className="h-3 w-3 text-white" />, text: (n) => `${n} hamkorlikni qabul qildi` };
+    case 'family_invitation':
+      return { gradient: 'from-emerald-500 to-green-600', icon: <TreeDeciduous className="h-3 w-3 text-white" />, text: (n) => `${n} oila daraxtiga taklif qildi` };
+    case 'family_invitation_accepted':
+      return { gradient: 'from-emerald-500 to-green-600', icon: <Check className="h-3 w-3 text-white" />, text: (n) => `${n} oila daraxtiga qo'shildi` };
+    case 'family_connection_request':
+      return { gradient: 'from-emerald-500 to-teal-500', icon: <TreeDeciduous className="h-3 w-3 text-white" />, text: (n) => `${n} daraxtingizga qo'shilmoqchi` };
+    default:
+      return { gradient: 'from-slate-500 to-gray-500', icon: <Send className="h-3 w-3 text-white" />, text: (n) => n };
+  }
+};
 
 export const PushNotification = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [notification, setNotification] = useState<PushNotificationData | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [isExiting, setIsExiting] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const dismiss = () => {
+    setIsVisible(false);
+    timerRef.current && clearTimeout(timerRef.current);
+    setTimeout(() => setNotification(null), 400);
+  };
 
   useEffect(() => {
     if (!user?.id) return;
 
     const channel = supabase
       .channel('push-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        async (payload) => {
-          const newNotification = payload.new as any;
-          
-          // Fetch actor info
-          const { data: actor } = await supabase
-            .from('profiles')
-            .select('id, name, username, avatar_url')
-            .eq('id', newNotification.actor_id)
-            .single();
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, async (payload) => {
+        const raw = payload.new as Record<string, unknown>;
 
-          // Fetch post if exists
-          let post = null;
-          if (newNotification.post_id) {
-            const { data: postData } = await supabase
-              .from('posts')
-              .select('id, media_urls')
-              .eq('id', newNotification.post_id)
-              .single();
-            post = postData;
-          }
+        const { data: actor } = await supabase
+          .from('profiles')
+          .select('id, name, username, avatar_url')
+          .eq('id', raw.actor_id as string)
+          .single();
 
-          // Fetch latest message for preview (media thumbnail, etc.)
-          let messageMedia: PushNotificationData['messageMedia'] = null;
-          if (newNotification.type === 'message') {
-            const { data: latestMsg } = await supabase
-              .from('messages')
-              .select('media_url, media_type')
-              .eq('sender_id', newNotification.actor_id)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
+        let post = null;
+        if (raw.post_id) {
+          const { data } = await supabase.from('posts').select('id, media_urls').eq('id', raw.post_id as string).single();
+          post = data;
+        }
 
-            if (
-              latestMsg?.media_url &&
-              (latestMsg.media_type === 'image' ||
-                latestMsg.media_type === 'video' ||
-                latestMsg.media_type === 'audio')
-            ) {
-              messageMedia = {
-                url: latestMsg.media_url,
-                type: latestMsg.media_type as 'image' | 'video' | 'audio',
-              };
-            }
-          }
+        let messageMedia: PushNotificationData['messageMedia'] = null;
+        if (raw.type === 'message') {
+          const { data: msg } = await supabase
+            .from('messages')
+            .select('media_url, media_type')
+            .eq('sender_id', raw.actor_id as string)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-          if (actor) {
-            setNotification({
-              id: newNotification.id,
-              type: newNotification.type as PushNotificationData['type'],
-              actor,
-              post: post || undefined,
-              messageMedia,
-              created_at: newNotification.created_at,
-            });
-            setIsVisible(true);
-            setIsExiting(false);
-
-            // Auto hide after 5 seconds
-            setTimeout(() => {
-              handleClose();
-            }, 5000);
+          if (msg?.media_url && ['image', 'video', 'audio'].includes(msg.media_type as string)) {
+            messageMedia = { url: msg.media_url, type: msg.media_type as 'image' | 'video' | 'audio' };
           }
         }
-      )
+
+        if (actor) {
+          if (timerRef.current) clearTimeout(timerRef.current);
+          setNotification({
+            id: raw.id as string,
+            type: raw.type as string,
+            actor,
+            post: post || undefined,
+            messageMedia,
+            created_at: raw.created_at as string,
+          });
+          setIsVisible(true);
+          timerRef.current = setTimeout(dismiss, 5500);
+        }
+      })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user?.id]);
-
-  const handleClose = () => {
-    setIsExiting(true);
-    setTimeout(() => {
-      setIsVisible(false);
-      setNotification(null);
-      setIsExiting(false);
-    }, 300);
-  };
 
   const handleClick = () => {
     if (!notification) return;
-
-    handleClose();
-
+    dismiss();
     switch (notification.type) {
       case 'follow':
+      case 'follow_request':
         navigate(`/user/${notification.actor.id}`);
-        break;
-      case 'like':
-      case 'comment':
-      case 'story_like':
-      case 'story':
-      case 'calendar_event':
-        navigate('/notifications');
         break;
       case 'message':
         navigate(`/chat/${notification.actor.id}`);
         break;
-    }
-  };
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'follow':
-        return <UserPlus className="h-4 w-4 text-primary" />;
-      case 'like':
-      case 'story_like':
-        return <Heart className="h-4 w-4 text-destructive fill-destructive" />;
-      case 'story':
-        return <MessageCircle className="h-4 w-4 text-primary" />;
-      case 'calendar_event':
-        return <CalendarDays className="h-4 w-4 text-primary" />;
-      case 'comment':
-        return <MessageCircle className="h-4 w-4 text-primary" />;
-      case 'message':
-        return <MessageSquare className="h-4 w-4 text-primary" />;
       default:
-        return null;
+        navigate('/notifications');
     }
   };
 
-  const getNotificationText = (type: string, actorName: string) => {
-    switch (type) {
-      case 'follow':
-        return `${actorName} sizni kuzatmoqda`;
-      case 'like':
-        return `${actorName} postingizni yoqtirdi`;
-      case 'story_like':
-        return `${actorName} hikoyangizni yoqtirdi`;
-      case 'story':
-        return `${actorName} yangi hikoya joyladi`;
-      case 'calendar_event':
-        return `${actorName} kalendar voqeasi bugun`;
-      case 'comment':
-        return `${actorName} izoh qoldirdi`;
-      case 'message':
-        return `${actorName} xabar yubordi`;
-      case 'mention':
-        return `${actorName} sizni postda belgiladi`;
-      case 'collab_request':
-        return `${actorName} hamkorlik so'radi`;
-      case 'collab_accepted':
-        return `${actorName} hamkorlikni qabul qildi`;
-      default:
-        return '';
-    }
-  };
-
-  if (!isVisible || !notification) return null;
+  const config = notification ? getConfig(notification.type) : null;
+  const actorName = notification?.actor.name || notification?.actor.username || 'Foydalanuvchi';
+  const mediaPreview = notification?.messageMedia?.type === 'image' || notification?.messageMedia?.type === 'video'
+    ? notification.messageMedia.url
+    : notification?.post?.media_urls?.[0] ?? null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] px-4 pt-2 pointer-events-none">
-      <div
-        className={cn(
-          "mx-auto max-w-md bg-card border border-border rounded-xl shadow-xl p-3 pointer-events-auto cursor-pointer",
-          "transform transition-all duration-300 ease-out",
-          isExiting 
-            ? "animate-out slide-out-to-top fade-out" 
-            : "animate-in slide-in-from-top fade-in"
-        )}
-        onClick={handleClick}
-      >
-        <div className="flex items-center gap-3">
-          {/* App Icon */}
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground text-xs font-bold">F</span>
-            </div>
-          </div>
+    <AnimatePresence>
+      {isVisible && notification && config && (
+        <motion.div
+          key={notification.id}
+          initial={{ y: -80, opacity: 0, scale: 0.92 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: -80, opacity: 0, scale: 0.92 }}
+          transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+          className="fixed top-3 left-0 right-0 z-[200] flex justify-center px-4 pointer-events-none"
+        >
+          <div
+            className={cn(
+              'pointer-events-auto w-full max-w-[380px] rounded-2xl cursor-pointer',
+              'bg-background/80 backdrop-blur-2xl border border-white/10',
+              'shadow-[0_8px_32px_rgba(0,0,0,0.35)] shadow-black/30',
+              'overflow-hidden'
+            )}
+            onClick={handleClick}
+          >
+            {/* Top accent bar */}
+            <div className={cn('h-[2px] w-full bg-gradient-to-r', config.gradient)} />
 
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <span className="text-xs font-medium text-muted-foreground">Avlodona</span>
-              <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(notification.created_at), { 
-                  addSuffix: false, 
-                  locale: uz 
-                })}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={notification.actor.avatar_url || undefined} />
-                <AvatarFallback>
-                  <User className="h-3 w-3" />
-                </AvatarFallback>
-              </Avatar>
-              <p className="text-sm text-foreground truncate">
-                {getNotificationText(
-                  notification.type,
-                  notification.actor.name || notification.actor.username || 'Foydalanuvchi'
-                )}
-              </p>
-            </div>
-          </div>
-
-          {/* Icon/Preview — prefer message media, then post thumbnail */}
-          <div className="shrink-0">
-            {notification.messageMedia?.type === 'image' ? (
-              <img
-                src={notification.messageMedia.url}
-                alt=""
-                className="h-10 w-10 rounded-lg object-cover"
-              />
-            ) : notification.messageMedia?.type === 'video' ? (
-              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center relative overflow-hidden">
-                <video
-                  src={notification.messageMedia.url}
-                  className="h-full w-full object-cover"
-                  muted
-                  playsInline
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                  <span className="text-white text-[10px] font-bold">▶</span>
+            <div className="flex items-center gap-3 px-3.5 py-3">
+              {/* Avatar with type badge */}
+              <div className="relative shrink-0">
+                <Avatar className="h-11 w-11 border-2 border-white/10 shadow-md">
+                  <AvatarImage src={notification.actor.avatar_url || undefined} />
+                  <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-muted to-muted/50">
+                    {(notification.actor.name || notification.actor.username || 'U')[0].toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className={cn(
+                  'absolute -bottom-1 -right-1 h-5 w-5 rounded-full flex items-center justify-center',
+                  'shadow-md ring-2 ring-background bg-gradient-to-br', config.gradient
+                )}>
+                  {config.icon}
                 </div>
               </div>
-            ) : notification.post?.media_urls?.[0] ? (
-              <img
-                src={notification.post.media_urls[0]}
-                alt=""
-                className="h-10 w-10 rounded-lg object-cover"
-              />
-            ) : (
-              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                {getNotificationIcon(notification.type)}
-              </div>
-            )}
-          </div>
 
-          {/* Close button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClose();
-            }}
-            className="shrink-0 p-1 hover:bg-muted rounded-full transition-colors"
-          >
-            <X className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </div>
-      </div>
-    </div>
+              {/* Text */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Avlodona</span>
+                  <span className="text-[10px] text-muted-foreground/60">•</span>
+                  <span className="text-[10px] text-muted-foreground/70">
+                    {formatDistanceToNow(new Date(notification.created_at), { addSuffix: false, locale: uz })}
+                  </span>
+                </div>
+                <p className="text-sm font-medium text-foreground leading-tight line-clamp-2">
+                  {config.text(actorName)}
+                </p>
+              </div>
+
+              {/* Media preview or type icon */}
+              {mediaPreview ? (
+                <div className="shrink-0 h-11 w-11 rounded-xl overflow-hidden border border-white/10">
+                  <img src={mediaPreview} alt="" className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <div className={cn(
+                  'shrink-0 h-11 w-11 rounded-xl flex items-center justify-center',
+                  'bg-gradient-to-br opacity-90', config.gradient
+                )}>
+                  <div className="scale-150">{config.icon}</div>
+                </div>
+              )}
+
+              {/* Dismiss */}
+              <button
+                onClick={(e) => { e.stopPropagation(); dismiss(); }}
+                className="shrink-0 h-7 w-7 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
+              >
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
