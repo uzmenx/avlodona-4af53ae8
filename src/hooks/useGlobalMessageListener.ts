@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
 
 interface IncomingMessage {
   id: string;
@@ -10,31 +9,34 @@ interface IncomingMessage {
   conversation_id: string;
   content: string | null;
   media_type?: 'image' | 'video' | 'audio' | null;
-}
-
-interface SenderProfile {
-  id: string;
-  name: string | null;
-  username: string | null;
-  avatar_url: string | null;
+  media_url?: string | null;
 }
 
 /**
  * Global real-time message listener.
  * Mounted once at App level — works regardless of which page the user is on.
- * Shows a toast with sender info when a new message arrives and the user
- * is NOT already inside that specific chat page.
+ * Dispatches a custom DOM event for PushNotification.tsx to handle the in-app banner.
+ * Does NOT show a sonner toast (that was the duplicate "cheap" notification).
  */
 export const useGlobalMessageListener = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Keep a ref to location so the async callback always reads the latest value
   const locationRef = useRef(location.pathname);
+
   useEffect(() => {
     locationRef.current = location.pathname;
   }, [location.pathname]);
+
+  // Expose navigate so PushNotification can use it via DOM event
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ senderId: string }>;
+      navigate(`/chat/${ce.detail.senderId}`);
+    };
+    window.addEventListener('avlodona:open-chat', handler as EventListener);
+    return () => window.removeEventListener('avlodona:open-chat', handler as EventListener);
+  }, [navigate]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -50,14 +52,17 @@ export const useGlobalMessageListener = () => {
         },
         async (payload) => {
           const msg = payload.new as IncomingMessage;
-
-          // Ignore own messages
           if (!msg || msg.sender_id === user.id) return;
 
-          // Ignore if user is already inside this specific chat
+          // If user is already in this specific chat, don't show banner
           const currentPath = locationRef.current;
-          // /chat/:userId — check by sender_id since that maps to the chat route
-          if (currentPath === `/chat/${msg.sender_id}`) return;
+          if (currentPath === `/chat/${msg.sender_id}`) {
+            // Still refresh conversation list
+            window.dispatchEvent(new CustomEvent('avlodona:new-message', {
+              detail: { conversationId: msg.conversation_id, senderId: msg.sender_id },
+            }));
+            return;
+          }
 
           // Fetch sender profile
           const { data: sender } = await supabase
@@ -66,45 +71,47 @@ export const useGlobalMessageListener = () => {
             .eq('id', msg.sender_id)
             .maybeSingle();
 
-          const profile = sender as SenderProfile | null;
-          if (!profile) return;
+          if (!sender) return;
 
-          const senderName =
-            profile.name || profile.username || 'Foydalanuvchi';
-
-          // Build preview text based on media type
+          // Build preview text
           let preview = msg.content?.trim() ?? '';
-          if (msg.media_type === 'image') preview = '📷 Rasm yubordi';
-          else if (msg.media_type === 'video') preview = '🎥 Video yubordi';
-          else if (msg.media_type === 'audio') preview = '🎤 Ovozli xabar';
-          else if (!preview) preview = '📎 Fayl yubordi';
+          let mediaThumb: string | null = null;
 
-          // Show in-app toast notification (Telegram-style)
-          toast(senderName, {
-            description: preview.slice(0, 100),
-            duration: 5000,
-            action: {
-              label: 'Ochish',
-              onClick: () => navigate(`/chat/${msg.sender_id}`),
+          if (msg.media_type === 'image') {
+            preview = '📷 Rasm';
+            mediaThumb = msg.media_url ?? null;
+          } else if (msg.media_type === 'video') {
+            preview = '🎥 Video';
+            mediaThumb = msg.media_url ?? null;
+          } else if (msg.media_type === 'audio') {
+            preview = '🎤 Ovozli xabar';
+          } else if (!preview) {
+            preview = '📎 Fayl';
+          }
+
+          // Remove [[POST:...]] and [[SHORT:...]] markers from preview
+          preview = preview.replace(/\[\[(POST|SHORT):[^\]]+\]\]/g, 'Post').trim();
+
+          // Dispatch custom event — PushNotification.tsx will handle the banner
+          window.dispatchEvent(new CustomEvent('avlodona:incoming-message', {
+            detail: {
+              id: msg.id,
+              conversationId: msg.conversation_id,
+              sender,
+              preview: preview.slice(0, 120),
+              mediaThumb,
+              mediaType: msg.media_type,
             },
-          });
+          }));
 
-          // Notify useConversations to refresh the list
-          window.dispatchEvent(
-            new CustomEvent('avlodona:new-message', {
-              detail: {
-                conversationId: msg.conversation_id,
-                senderId: msg.sender_id,
-              },
-            })
-          );
+          // Refresh conversation list
+          window.dispatchEvent(new CustomEvent('avlodona:new-message', {
+            detail: { conversationId: msg.conversation_id, senderId: msg.sender_id },
+          }));
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // navigate is stable, user.id changes only on login/logout
-  }, [user?.id, navigate]);
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
 };
