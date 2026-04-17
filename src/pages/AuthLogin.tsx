@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -71,34 +71,41 @@ const AuthLogin = () => {
         <div className="absolute bottom-20 right-20 w-52 h-52 bg-teal-400/15 rounded-full blur-2xl animate-pulse delay-1500" />
       </div>
 
-      {/* Header: login sahifasida ortga tugmasi koʻrinmasin, faqat til tugmasi */}
-      <div className="relative z-10 p-4 flex items-center justify-end">
-        <LangSwitcher glow />
-      </div>
-
       {/* Content */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-8">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-4 w-full">
         {/* Glass Card */}
-        <div className="w-full max-w-md backdrop-blur-xl bg-white/8 border border-white/20 rounded-3xl shadow-2xl p-8 space-y-6">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">{t('welcome')}</h1>
-            <p className="text-white/70"></p>
+        <div className="w-full max-w-md backdrop-blur-xl bg-white/8 border border-white/20 rounded-3xl shadow-2xl p-5 sm:p-6 space-y-4 relative">
+          
+          {/* Top Controls inside card */}
+          <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 hover:bg-white/10 rounded-full transition-all duration-300 backdrop-blur-sm flex items-center justify-center h-10 w-10"
+            >
+              <ArrowLeft className="h-5 w-5 text-white" />
+            </button>
+            <LangSwitcher glow />
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          <div className="text-center pt-8 mb-5">
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-2 leading-tight px-2">{t('landingH1')}</h1>
+            <p className="text-white/70 text-sm leading-relaxed max-w-[280px] mx-auto">{t('landingTagline')}</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="email" className="sr-only">
                 Email
               </Label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 z-10 pointer-events-none" />
                 <Input
                   id="email"
                   type="email"
                   placeholder={t('email')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-12 h-14 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-2xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm"
+                  className="pl-12 h-12 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-2xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm"
                   required
                 />
               </div>
@@ -109,20 +116,20 @@ const AuthLogin = () => {
                 Password
               </Label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 z-10 pointer-events-none" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-12 pr-12 h-14 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-2xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm"
+                  className="pl-12 pr-12 h-12 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-2xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.6)] transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.6)] transition-colors z-10"
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -131,7 +138,7 @@ const AuthLogin = () => {
 
             <Button
               type="submit"
-              className="w-full h-14 rounded-full bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#16a34a] hover:to-[#15803d] text-white font-bold text-base transition-all duration-300 transform hover:scale-105 shadow-lg shadow-[rgba(34,197,94,0.4)] tracking-[0.04em]"
+              className="w-full h-12 rounded-full bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#16a34a] hover:to-[#15803d] text-white font-bold text-sm transition-all duration-300 transform hover:scale-105 shadow-lg shadow-[rgba(34,197,94,0.4)] tracking-[0.04em]"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -156,7 +163,7 @@ const AuthLogin = () => {
             </Link>.
           </p>
 
-          <div className="relative py-4">
+          <div className="relative py-3">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-[rgba(255,255,255,0.15)]" />
             </div>
@@ -169,15 +176,15 @@ const AuthLogin = () => {
           <Button
             type="button"
             variant="outline"
-            className="w-full h-14 rounded-full bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.12)] hover:border-[rgba(255,255,255,0.3)] transition-all duration-300 backdrop-blur-sm"
+            className="w-full h-12 rounded-full bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.12)] hover:border-[rgba(255,255,255,0.3)] transition-all duration-300 backdrop-blur-sm"
             onClick={handleGoogleLogin}
             disabled={isGoogleLoading}
           >
             {isGoogleLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-white" />
+              <Loader2 className="h-5 w-5 animate-spin text-white" />
             ) : (
               <div className="flex items-center justify-center gap-3">
-                <svg className="h-6 w-6" viewBox="0 0 24 24">
+                <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -195,7 +202,7 @@ const AuthLogin = () => {
                     fill="#EA4335"
                   />
                 </svg>
-                <span className="text-white font-medium">{t('socialSignup')}</span>
+                <span className="text-white font-medium text-sm">{t('socialSignup')}</span>
               </div>
             )}
           </Button>

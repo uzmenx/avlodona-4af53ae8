@@ -68,6 +68,16 @@ const translations = {
   haveAccount: { uz: "Akkauntingiz bormi?", ru: "Есть аккаунт?", en: "Have account?" },
   signIn: { uz: "Kirish", ru: "Войти", en: "Sign in" },
   hello: { uz: "Salom!", ru: "Привет!", en: "Hello!" },
+  landingH1: {
+    uz: "Ajdodlar xotirasini abadiylashtirib, avlodlarni birlashtiramiz",
+    ru: "Увековечивая память предков, объединяем поколения",
+    en: "Immortalizing the memory of ancestors, uniting generations",
+  },
+  landingTagline: {
+    uz: "O'zbekiston va Markaziy Osiyo uchun birinchi oila daraxti, genealogiya va raqamli xotira platformasi",
+    ru: "Первая в Узбекистане и Центральной Азии платформа семейного древа, генеалогии и цифровой памяти",
+    en: "The first family tree, genealogy, and digital memory platform for Uzbekistan and Central Asia",
+  },
   createAccount: { uz: "Yangi akkaunt yarating", ru: "Создайте аккаунт", en: "Create an account" },
   username: { uz: "Ism va Familiya", ru: "Имя и Фамилия", en: "Full Name" },
   userHandle: { uz: "Foydalanuvchi nomi", ru: "Имя пользователя", en: "Username" },

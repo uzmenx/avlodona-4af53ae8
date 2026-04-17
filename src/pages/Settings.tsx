@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, LogOut, Moon, Sun, Monitor, Shield, Mail, Globe, Palette, EyeOff, Lock, WifiOff, BookOpen, FolderLock, AtSign, Bookmark, Star, Zap } from 'lucide-react';
+import { ArrowLeft, LogOut, Moon, Sun, Monitor, Shield, Mail, Globe, Palette, EyeOff, Lock, WifiOff, BookOpen, FolderLock, AtSign, Bookmark, Star, Zap, Info, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
@@ -337,6 +337,26 @@ const Settings = () => {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Information */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                Dastur haqida
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="outline"
+                className="w-full justify-between hover:bg-primary/5 hover:text-primary transition-all font-medium"
+                onClick={() => navigate('/about')}
+              >
+                <span>Biz haqimizda (Avlodona qanday tizim?)</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </CardContent>
           </Card>
 

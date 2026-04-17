@@ -120,24 +120,25 @@ const Signup = () => {
         <div className="absolute bottom-20 right-20 w-52 h-52 bg-teal-400/15 rounded-full blur-2xl animate-pulse delay-1500" />
       </div>
 
-      {/* Header: registratsiyada ortga tugmasi, til tugmasi nur bilan */}
-      <div className="relative z-10 p-3 flex items-center justify-between">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 hover:bg-white/10 rounded-full transition-all duration-300 backdrop-blur-sm"
-        >
-          <ArrowLeft className="h-5 w-5 text-white" />
-        </button>
-        <LangSwitcher glow />
-      </div>
-
       {/* Content */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-5 py-4">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-4 w-full">
         {/* Glass Card */}
-        <div className="w-full max-w-md backdrop-blur-xl bg-white/8 border border-white/20 rounded-3xl shadow-2xl p-6 space-y-4">
-          <div className="text-center mb-4">
-            <h1 className="text-2xl font-bold text-white mb-1">{t('welcome')}</h1>
-            <p className="text-white/70">{t('createAccount')}</p>
+        <div className="w-full max-w-md backdrop-blur-xl bg-white/8 border border-white/20 rounded-3xl shadow-2xl p-5 sm:p-6 space-y-4 relative">
+          
+          {/* Top Controls inside card */}
+          <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 hover:bg-white/10 rounded-full transition-all duration-300 backdrop-blur-sm flex items-center justify-center h-10 w-10"
+            >
+              <ArrowLeft className="h-5 w-5 text-white" />
+            </button>
+            <LangSwitcher glow />
+          </div>
+
+          <div className="text-center pt-8 mb-5">
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-2 leading-tight px-2">{t('landingH1')}</h1>
+            <p className="text-white/70 text-xs sm:text-sm leading-relaxed max-w-[280px] mx-auto">{t('landingTagline')}</p>
           </div>
 
           <form onSubmit={handleSignup} className="space-y-3">
@@ -147,7 +148,7 @@ const Signup = () => {
                 <span className="text-xs text-[rgba(255,255,255,0.5)]">(Ixtiyoriy)</span>
               </div>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 z-10 pointer-events-none" />
                 <Input
                   id="fullName"
                   type="text"
@@ -165,7 +166,7 @@ const Signup = () => {
                 Email
               </Label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 z-10 pointer-events-none" />
                 <Input
                   id="email"
                   type="email"
@@ -183,7 +184,7 @@ const Signup = () => {
                 Password
               </Label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 z-10 pointer-events-none" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -197,7 +198,7 @@ const Signup = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.6)] transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.6)] transition-colors z-10"
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>

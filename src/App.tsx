@@ -38,6 +38,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Terms from "./pages/Terms";
 import InviteAccept from "./pages/InviteAccept";
 import Support from "./pages/Support";
+import About from "./pages/About";
 
 import { AudioProvider } from "@/contexts/AudioContext";
 
@@ -138,6 +139,7 @@ const App = () => (
                 <Route path="/join/:inviteLink" element={<ProtectedRoute><JoinGroup /></ProtectedRoute>} />
                 <Route path="/invite/:token" element={<InviteAccept />} />
                 <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+                <Route path="/about" element={<About />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ErrorBoundary>
