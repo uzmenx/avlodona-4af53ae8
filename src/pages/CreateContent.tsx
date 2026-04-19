@@ -105,15 +105,10 @@ const CreateContent = () => {
       setLocationLoading(true);
       setLocationError(null);
       try {
-        const targetUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=uz`;
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
-        const res = await fetch(proxyUrl, {
-          headers: {
-            Accept: 'application/json'
-          }
+        const { data, error } = await supabase.functions.invoke('nominatim-search', {
+          body: { q, limit: 5, lang: 'uz' },
         });
-        if (!res.ok) throw new Error('Joy qidirishda xatolik');
-        const data = (await res.json()) as NominatimPlace[];
+        if (error) throw error;
         setLocationResults(Array.isArray(data) ? data : []);
       } catch (e: any) {
         setLocationResults([]);
