@@ -635,6 +635,25 @@ All colors MUST be HSL.
   to { transform: rotate(360deg); }
 }
 
+/* Creative menu sub-menu spring entrance animation */
+@keyframes creativeMenuIn {
+  0% {
+    opacity: 0;
+    transform: translateX(14px) scale(0.88);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-3px) scale(1.03);
+  }
+  80% {
+    transform: translateX(2px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
 .animate-spin-slow {
   animation: spin-slow 3s linear infinite;
 }

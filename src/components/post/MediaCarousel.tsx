@@ -5,14 +5,25 @@ import { ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudio } from '@/contexts/AudioContext';
 
+interface GifOverlay {
+  id: string;
+  url: string;
+  originalUrl?: string;
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+}
+
 interface MediaCarouselProps {
   mediaUrls: string[];
   className?: string;
   onVideoDoubleTap?: () => void;
   onVideoSingleTap?: () => void;
+  mediaMetadata?: Array<{ gifOverlays?: GifOverlay[] }> | null;
 }
 
-export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoSingleTap }: MediaCarouselProps) => {
+export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoSingleTap, mediaMetadata }: MediaCarouselProps) => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -82,9 +93,9 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
           setIsVisible(false);
           return;
         }
-        setIsVisible(entry.isIntersecting && entry.intersectionRatio >= 0.4);
+        setIsVisible(entry.isIntersecting && entry.intersectionRatio >= 0.1);
       },
-      { threshold: [0, 0.25, 0.4, 0.5, 0.75, 1] }
+      { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] }
     );
 
     observer.observe(container);
@@ -201,6 +212,7 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
               loop
               muted={isMuted}
               playsInline
+              autoPlay
               onClick={handleVideoTap}
               onTouchEnd={handleVideoTap}
             />
@@ -229,6 +241,29 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
             style={{ maxHeight: '80vh', maxWidth: '100%' }}
           />
         }
+
+        {/* GIF Overlays — rendered as live animated images on top of media (Instagram-style) */}
+        {(() => {
+          const overlays = mediaMetadata?.[currentIndex]?.gifOverlays;
+          if (!overlays || overlays.length === 0) return null;
+          return overlays.map(gif => (
+            <img
+              key={gif.id}
+              src={gif.originalUrl || gif.url}
+              alt="gif sticker"
+              loading="lazy"
+              className="absolute pointer-events-none select-none"
+              style={{
+                left: `${gif.x}%`,
+                top: `${gif.y}%`,
+                transform: `translate(-50%, -50%) scale(${gif.scale}) rotate(${gif.rotation}deg)`,
+                width: '28%',
+                maxWidth: '160px',
+                zIndex: 20,
+              }}
+            />
+          ));
+        })()}
       </div>
 
 

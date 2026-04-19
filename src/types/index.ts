@@ -41,6 +41,7 @@ export interface Post {
   updated_at?: string;
   author?: User;
   is_memorial?: boolean;
+  media_metadata?: Array<{ gifOverlays?: Array<{ id: string; url: string; originalUrl?: string; x: number; y: number; scale: number; rotation: number }> }> | null;
 }
 
 export interface Notification {

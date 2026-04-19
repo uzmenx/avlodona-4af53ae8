@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, ChevronRight, Image as ImageIcon, Lock, Music2, Play, Pause, RefreshCw, Smile, Type, Volume2, VolumeX, X, Disc, ImagePlus, AlignLeft } from 'lucide-react';
+import { Camera, ChevronRight, Image as ImageIcon, Lock, Music2, Play, Pause, RefreshCw, Smile, Type, Volume2, VolumeX, X, Disc, ImagePlus, AlignLeft, Pen, Undo2, Redo2, Trash2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Icon } from '@iconify/react';
 import { EMOJIS, MEDIA_FILTERS } from './filters';
 import FilterStrip from './FilterStrip';
 import { MusicPicker, type SelectedMusic } from './MusicPicker';
-import TextOverlay, { TextItem } from './TextOverlay';
+import TextOverlay, { TextItem, TextEditModal } from './TextOverlay';
+import DrawingCanvas, { type DrawingCanvasHandle, type DrawStroke } from './DrawingCanvas';
+import GiphyPicker, { type GiphyItem } from './GiphyPicker';
+import { useOverlayGestures } from './useOverlayGestures';
 
 export interface CapturedMedia {
   id: string;
@@ -21,18 +25,23 @@ type EditableItem = {
   filter: string;
   texts: TextItem[];
   images: ImageSticker[];
+  strokes: DrawStroke[];
   mediaTransform: {
     x: number;
     y: number;
     scale: number;
     rotation: number;
   };
+  videoTrimStart?: number;
+  videoTrimEnd?: number;
 };
 
 type ImageSticker = {
   id: string;
-  file: File;
-  url: string;
+  file?: File;        // local file sticker (may be undefined for GIPHY)
+  url: string;        // object URL or GIPHY URL
+  originalUrl?: string; // GIPHY high-res URL
+  isGif?: boolean;    // true = animated GIF/sticker from GIPHY
   x: number;
   y: number;
   scale: number;
@@ -44,142 +53,47 @@ function ImageOverlay({
   containerRef,
   onUpdate,
   onDelete,
+  isOverTrash,
+  onDragStart,
+  onDragEnd,
 }: {
   item: ImageSticker;
   containerRef: React.RefObject<HTMLDivElement>;
   onUpdate: (item: ImageSticker) => void;
   onDelete: (id: string) => void;
+  isOverTrash?: boolean;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
 }) {
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStart = useRef({ x: 0, y: 0, itemX: 0, itemY: 0 });
-  const pinchRef = useRef<{ dist: number; angle: number; scale: number; rotation: number } | null>(null);
-  const activeTouchIdRef = useRef<number | null>(null);
-  const elRef = useRef<HTMLDivElement>(null);
-
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setIsDragging(true);
-    dragStart.current = { x: e.clientX, y: e.clientY, itemX: item.x, itemY: item.y };
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  }, [item.x, item.y]);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging) return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const dx = e.clientX - dragStart.current.x;
-    const dy = e.clientY - dragStart.current.y;
-    onUpdate({
-      ...item,
-      x: Math.max(0, Math.min(100, dragStart.current.itemX + (dx / rect.width) * 100)),
-      y: Math.max(0, Math.min(100, dragStart.current.itemY + (dy / rect.height) * 100)),
-    });
-  }, [containerRef, isDragging, item, onUpdate]);
-
-  const handlePointerUp = useCallback(() => setIsDragging(false), []);
-
-  useEffect(() => {
-    const el = elRef.current;
-    if (!el) return;
-
-    const findTouch = (touches: TouchList, id: number) => {
-      for (let i = 0; i < touches.length; i++) {
-        if (touches[i]?.identifier === id) return touches[i];
-      }
-      return null;
-    };
-
-    const pickSecondTouch = (touches: TouchList, firstId: number) => {
-      for (let i = 0; i < touches.length; i++) {
-        const t = touches[i];
-        if (t && t.identifier !== firstId) return t;
-      }
-      return null;
-    };
-
-    const onGlobalTouchMove = (e: TouchEvent) => {
-      const firstId = activeTouchIdRef.current;
-      if (firstId === null) return;
-      if (e.touches.length < 2) return;
-
-      const t1 = findTouch(e.touches, firstId);
-      const t2 = pickSecondTouch(e.touches, firstId);
-      if (!t1 || !t2) return;
-
-      e.stopPropagation();
-      e.preventDefault();
-
-      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-      const angle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * (180 / Math.PI);
-
-      if (!pinchRef.current) {
-        pinchRef.current = { dist, angle, scale: item.scale, rotation: item.rotation };
-        return;
-      }
-
-      onUpdate({
-        ...item,
-        scale: Math.max(0.2, Math.min(6, pinchRef.current.scale * (dist / pinchRef.current.dist))),
-        rotation: pinchRef.current.rotation + (angle - pinchRef.current.angle),
-      });
-    };
-
-    const onGlobalTouchEnd = (e: TouchEvent) => {
-      const firstId = activeTouchIdRef.current;
-      if (firstId === null) return;
-
-      const stillPresent = findTouch(e.touches, firstId);
-      if (!stillPresent) {
-        activeTouchIdRef.current = null;
-        pinchRef.current = null;
-      }
-
-      if (e.touches.length < 2) pinchRef.current = null;
-    };
-
-    const handleTouchStart = (e: TouchEvent) => {
-      e.stopPropagation();
-      e.preventDefault();
-
-      if (activeTouchIdRef.current === null && e.changedTouches?.[0]) {
-        activeTouchIdRef.current = e.changedTouches[0].identifier;
-      }
-    };
-
-    el.addEventListener('touchstart', handleTouchStart, { passive: false });
-    window.addEventListener('touchmove', onGlobalTouchMove, { passive: false });
-    window.addEventListener('touchend', onGlobalTouchEnd);
-    window.addEventListener('touchcancel', onGlobalTouchEnd);
-
-    return () => {
-      el.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', onGlobalTouchMove);
-      window.removeEventListener('touchend', onGlobalTouchEnd);
-      window.removeEventListener('touchcancel', onGlobalTouchEnd);
-    };
-  }, [item, onUpdate]);
+  const { isDragging, bindGestures } = useOverlayGestures({
+    item,
+    onUpdate,
+    containerRef,
+    snapAngles: true,
+    onDragStart,
+    onDragEnd,
+  });
 
   return (
     <div
-      ref={elRef}
+      {...bindGestures}
+      data-oid={item.id}
       className="absolute select-none touch-none cursor-move group"
       style={{
         left: `${item.x}%`,
         top: `${item.y}%`,
         transform: `translate(-50%, -50%) scale(${item.scale}) rotate(${item.rotation}deg)`,
         zIndex: isDragging ? 50 : 35,
+        transition: isOverTrash ? 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s' : undefined,
+        opacity: isOverTrash ? 0.35 : 1,
       }}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      onTouchStart={(e) => { e.stopPropagation(); }}
-      onTouchMove={(e) => { e.stopPropagation(); }}
-      onTouchEnd={(e) => { e.stopPropagation(); }}
-      onTouchCancel={(e) => { e.stopPropagation(); }}
     >
-      <div className="relative">
+      <div 
+        className="relative transition-transform duration-150"
+        style={{
+          transform: isOverTrash ? 'scale(0.5)' : 'scale(1)',
+        }}
+      >
         <img src={item.url} alt="" className="w-28 max-w-[42vw] h-auto rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.45)]" draggable={false} />
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
@@ -194,7 +108,7 @@ function ImageOverlay({
 
 interface InstagramMediaCaptureProps {
   onClose: () => void;
-  onNext: (items: { file: File; filter: string }[], captionText?: string) => void;
+  onNext: (items: { file: File; filter: string; gifOverlays?: ImageSticker[] }[], captionText?: string) => void;
   maxItems?: number;
   memoryMemberId?: string | null;
 }
@@ -243,6 +157,8 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   const trayStartYRef = useRef<number | null>(null);
 
   const [items, setItems] = useState<EditableItem[]>([]);
+  const itemsRef = useRef(items);
+  useEffect(() => { itemsRef.current = items; }, [items]);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const [zoom, setZoom] = useState(1);
@@ -262,6 +178,22 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showMusicPicker, setShowMusicPicker] = useState(false);
   const [textValue, setTextValue] = useState('');
+  const [showDrawing, setShowDrawing] = useState(false);
+  const [showGiphyPicker, setShowGiphyPicker] = useState(false);
+  const [showCreativeMenu, setShowCreativeMenu] = useState(false);
+  const drawingCanvasRef = useRef<DrawingCanvasHandle>(null);
+  const [isDraggingOverlay, setIsDraggingOverlay] = useState(false);
+  const [isOverTrashId, setIsOverTrashId] = useState<string | null>(null);
+  const [isNearTrash, setIsNearTrash] = useState(false);
+  const trashRef = useRef<HTMLDivElement>(null);
+
+  // Premium haptic feedback when entering trash boundary
+  useEffect(() => {
+    if (isOverTrashId && typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(20); } catch (e) {} // Vibrate for 20ms Android
+    }
+  }, [isOverTrashId]);
+
   const [selectedMusic, setSelectedMusic] = useState<{ file: File; name: string; url: string } | null>(null);
   const [selectedMusicMeta, setSelectedMusicMeta] = useState<SelectedMusic | null>(null);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
@@ -350,44 +282,45 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   }, []);
 
   const addMediaItem = useCallback((media: CapturedMedia) => {
-    setItems(prev => {
-      const next = [...prev, {
-        media,
-        filter: 'original',
-        texts: [],
-        images: [],
-        mediaTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
-      }];
-      // activeIndex should point to the newly added item
-      setActiveIndex(next.length - 1);
-      return next;
-    });
+    setItems(prev => [...prev, {
+      media,
+      filter: 'original',
+      texts: [],
+      images: [],
+      strokes: [],
+      mediaTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+      videoTrimStart: undefined,
+      videoTrimEnd: undefined,
+    }]);
+    
+    setActiveIndex(itemsRef.current.length);
     setFocusedMediaId(media.id);
     setTrayOpen(false);
   }, []);
 
   const removeMedia = useCallback((id: string) => {
-    setItems(prev => {
-      const idx = prev.findIndex(x => x.media.id === id);
-      const found = prev[idx];
-      if (found) {
-        URL.revokeObjectURL(found.media.url);
-        found.images.forEach(img => URL.revokeObjectURL(img.url));
-      }
-      const next = prev.filter(x => x.media.id !== id);
+    const currentItems = itemsRef.current;
+    const idx = currentItems.findIndex(x => x.media.id === id);
+    if (idx === -1) return;
 
-      // Clamp activeIndex against the new array length.
-      setActiveIndex((current) => {
-        if (next.length === 0) return 0;
-        // If you removed an item before current, shift left.
-        const shifted = idx >= 0 && idx < current ? current - 1 : current;
-        return Math.max(0, Math.min(shifted, next.length - 1));
+    const found = currentItems[idx];
+    if (found) {
+      URL.revokeObjectURL(found.media.url);
+      found.images.forEach(img => URL.revokeObjectURL(img.url));
+    }
+    
+    const nextItems = currentItems.filter(x => x.media.id !== id);
+    setItems(nextItems);
+
+    if (nextItems.length === 0) {
+      setActiveIndex(0);
+      setFocusedMediaId(null);
+    } else {
+      setActiveIndex(current => {
+        const shifted = idx < current ? current - 1 : current;
+        return Math.max(0, Math.min(shifted, nextItems.length - 1));
       });
-
-      // If nothing left, go back to capture mode.
-      if (next.length === 0) setFocusedMediaId(null);
-      return next;
-    });
+    }
   }, []);
 
   const moveMedia = useCallback((from: number, to: number) => {
@@ -475,7 +408,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
           try {
             tempVideo.preload = 'auto';
             tempVideo.load();
-          } catch {}
+          } catch (e) {
+            // ignore
+          }
 
           await new Promise<void>((resolve, reject) => {
             const onLoaded = () => resolve();
@@ -487,7 +422,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
           const seekTime = Math.min(0.2, Math.max(0, (Number.isFinite(tempVideo.duration) ? tempVideo.duration : 0) / 4));
           try {
             tempVideo.currentTime = seekTime;
-          } catch {}
+          } catch (e) {
+            // ignore
+          }
 
           await new Promise<void>((resolve) => {
             const done = () => resolve();
@@ -526,7 +463,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
       clearTimeout(musicStopTimerRef.current);
       try {
         musicAudioRef.current.currentTime = Math.min(Math.max(0, musicTrimStart), Math.max(0, (musicTrimEnd || 0) - 0.05));
-      } catch {}
+      } catch (e) {
+        // ignore error
+      }
       musicAudioRef.current.play();
       setIsMusicPlaying(true);
 
@@ -721,43 +660,87 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
-    const remaining = maxItems - items.length;
+    if (!files || files.length === 0) return;
+    
+    const currentLen = itemsRef.current.length;
+    const remaining = maxItems - currentLen;
+    if (remaining <= 0) {
+      e.target.value = '';
+      return;
+    }
 
-    Array.from(files).slice(0, remaining).forEach((file, i) => {
+    const newMedias: CapturedMedia[] = Array.from(files).slice(0, remaining).map((file, i) => {
       const isVideo = file.type.startsWith('video/');
       const url = URL.createObjectURL(file);
-      addMediaItem({
+      return {
         id: `${Date.now()}-${i}`,
         type: isVideo ? 'video' : 'photo',
         file,
         url,
-      });
+      };
     });
 
-    e.target.value = '';
-  }, [addMediaItem, items.length, maxItems]);
+    const newItems: EditableItem[] = newMedias.map(media => ({
+      media,
+      filter: 'original',
+      texts: [],
+      images: [],
+      strokes: [],
+      mediaTransform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    }));
 
-  const addText = useCallback(() => {
-    if (!textValue.trim() || !active) return;
+    setItems(prev => [...prev, ...newItems]);
+    setActiveIndex(currentLen + newItems.length - 1);
+    setFocusedMediaId(newMedias[newMedias.length - 1].id);
+    setTrayOpen(false);
+
+    e.target.value = '';
+  }, [maxItems]);
+
+  const addGif = useCallback((gif: GiphyItem) => {
+    if (!active) return;
+    updateActive({
+      images: [
+        ...active.images,
+        {
+          id: gif.id + '_' + Date.now(),
+          url: gif.previewUrl,
+          originalUrl: gif.originalUrl,
+          isGif: true,
+          x: 50,
+          y: 50,
+          scale: 1,
+          rotation: 0,
+        },
+      ],
+    });
+    setShowGiphyPicker(false);
+    setShowEmojiPicker(false);
+  }, [active, updateActive]);
+
+  const addText = useCallback((opts: { text: string; color: string; bg: import('./TextOverlay').TextBg; font: import('./TextOverlay').TextFont; align: 'left' | 'center' | 'right' }) => {
+    if (!opts.text.trim() || !active) return;
     updateActive({
       texts: [
         ...active.texts,
         {
           id: crypto.randomUUID(),
-          content: textValue,
+          content: opts.text,
           x: 50,
           y: 50,
           scale: 1,
           rotation: 0,
           fontSize: 22,
           isEmoji: false,
+          color: opts.color,
+          bg: opts.bg,
+          font: opts.font,
+          align: opts.align,
         },
       ],
     });
-    setTextValue('');
     setShowTextInput(false);
-  }, [active, textValue, updateActive]);
+  }, [active, updateActive]);
 
   const addEmoji = useCallback((emoji: string) => {
     if (!active) return;
@@ -822,6 +805,44 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   useEffect(() => {
     setIsPlaying(false);
   }, [activeIndex]);
+
+  // Handle music playback during editing phase
+  useEffect(() => {
+    // isFocused = !!focusedMediaId && active?.media.id === focusedMediaId
+    const editingNow = !!focusedMediaId && active?.media.id === focusedMediaId;
+    if (!isRecording && editingNow && selectedMusic && musicAudioRef.current) {
+      // Loop section between musicTrimStart and musicTrimEnd
+      const audio = musicAudioRef.current;
+      
+      const onTimeUpdate = () => {
+        if (musicTrimEnd > 0 && audio.currentTime >= musicTrimEnd) {
+          audio.currentTime = Math.max(0, musicTrimStart);
+          audio.play().catch(() => {});
+        }
+      };
+      
+      audio.addEventListener('timeupdate', onTimeUpdate);
+      
+      // Make sure it starts playing
+      if (audio.paused) {
+        audio.currentTime = Math.max(0, musicTrimStart);
+        audio.play().catch(() => {});
+        setIsMusicPlaying(true);
+      }
+      
+      return () => {
+        audio.removeEventListener('timeupdate', onTimeUpdate);
+        // Important: we don't completely stop audio here so it can play during transition or if we're just unmounting this effect.
+        // It will be stopped appropriately when switching modes or removing music.
+      };
+    } else if (!isRecording) {
+      if (musicAudioRef.current && !musicAudioRef.current.paused) {
+        musicAudioRef.current.pause();
+        setIsMusicPlaying(false);
+      }
+    }
+  }, [isRecording, focusedMediaId, active?.media.id, selectedMusic, musicTrimStart, musicTrimEnd]);
+
 
   const handleSwipeStart = useCallback((e: React.TouchEvent) => {
     swipeStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -1064,6 +1085,11 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
 
     await renderFrame(ctx, img, editable, stickerBitmaps);
 
+    // Bake drawing strokes
+    if (editable.strokes && editable.strokes.length > 0 && drawingCanvasRef.current) {
+      drawingCanvasRef.current.drawStrokesToCanvas(ctx, srcW, srcH, editable.strokes);
+    }
+
     const blob = await new Promise<Blob>((resolve, reject) => {
       c.toBlob(
         (b) => (b ? resolve(b) : reject(new Error('toBlob failed'))),
@@ -1073,9 +1099,128 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
     });
 
     return new File([blob], `edited-${Date.now()}.jpg`, { type: 'image/jpeg' });
-  }, []);
+  }, [renderFrame]);
 
   const exportVideo = useCallback(async (editable: EditableItem): Promise<File> => {
+    // --- Photo-to-video path (when photo has animated GIF stickers) ---
+    const isPhotoSource = editable.media.type === 'photo';
+
+    if (isPhotoSource) {
+      // Load photo as image
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = editable.media.url;
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('image load error'));
+      });
+
+      const w = img.naturalWidth || 1080;
+      const h = img.naturalHeight || 1920;
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext('2d');
+      if (!ctx) return editable.media.file!;
+
+      const stickerBitmaps = new Map<string, ImageBitmap>();
+      for (const s of editable.images) {
+        if (s.isGif) continue; // Skip GIFs for static bitmap, handled separately
+        try {
+          const bmp = await createImageBitmap(await (await fetch(s.url)).blob());
+          stickerBitmaps.set(s.id, bmp);
+        } catch { /* ignore */ }
+      }
+
+      // We attach GIF images to the DOM with full visibility so the browser
+      // animates them. Opacity tricks cause browsers to pause GIF animations.
+      // The container is placed off-screen but fully rendered.
+      const hiddenContainer = document.createElement('div');
+      hiddenContainer.style.position = 'fixed';
+      hiddenContainer.style.top = '0px';
+      hiddenContainer.style.left = '-200px';
+      hiddenContainer.style.width = '160px';
+      hiddenContainer.style.height = '160px';
+      hiddenContainer.style.overflow = 'hidden';
+      hiddenContainer.style.opacity = '1';
+      hiddenContainer.style.pointerEvents = 'none';
+      hiddenContainer.style.zIndex = '9999';
+      document.body.appendChild(hiddenContainer);
+
+      const gifImages = new Map<string, HTMLImageElement>();
+      for (const s of editable.images) {
+        if (s.isGif) {
+          const gifEl = new Image();
+          gifEl.crossOrigin = 'anonymous';
+          gifEl.src = s.url;
+          await new Promise<void>(res => { gifEl.onload = () => res(); gifEl.onerror = () => res(); });
+          gifImages.set(s.id, gifEl);
+          hiddenContainer.appendChild(gifEl);
+        }
+      }
+
+      const canvasStream = (c as any).captureStream?.(30) as MediaStream;
+      const videoTrack = canvasStream?.getVideoTracks?.()[0];
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
+        ? 'video/webm;codecs=vp8'
+        : 'video/webm';
+      const recorder = new MediaRecorder(new MediaStream([...(videoTrack ? [videoTrack] : [])]), { mimeType });
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      const done = new Promise<Blob>(resolve => {
+        recorder.onstop = () => resolve(new Blob(chunks, { type: 'video/webm' }));
+      });
+
+      recorder.start(250);
+
+      // Duration: 5 seconds at 30fps
+      const DURATION_MS = 5000;
+      const start = performance.now();
+      await new Promise<void>(resolve => {
+        const drawLoop = async () => {
+          const elapsed = performance.now() - start;
+          if (elapsed >= DURATION_MS) { resolve(); return; }
+
+          await renderFrame(ctx, img, editable, stickerBitmaps);
+
+          // Draw GIF stickers on top (browser handles frame)
+          for (const s of editable.images) {
+            const gifEl = gifImages.get(s.id);
+            if (!gifEl) continue;
+            ctx.save();
+            const x = (s.x / 100) * w;
+            const y = (s.y / 100) * h;
+            ctx.translate(x, y);
+            ctx.rotate((s.rotation * Math.PI) / 180);
+            ctx.scale(s.scale, s.scale);
+            const drawW = Math.min(w * 0.28, 320);
+            const ratio = gifEl.naturalWidth ? gifEl.naturalWidth / gifEl.naturalHeight : 1;
+            const drawH = drawW / ratio;
+            ctx.drawImage(gifEl, -drawW / 2, -drawH / 2, drawW, drawH);
+            ctx.restore();
+          }
+
+          if (editable.strokes && editable.strokes.length > 0 && drawingCanvasRef.current) {
+            drawingCanvasRef.current.drawStrokesToCanvas(ctx, w, h, editable.strokes);
+          }
+
+          requestAnimationFrame(drawLoop);
+        };
+        requestAnimationFrame(drawLoop);
+      });
+
+      recorder.stop();
+      const blob = await done;
+      
+      // Cleanup DOM
+      if (document.body.contains(hiddenContainer)) {
+        document.body.removeChild(hiddenContainer);
+      }
+      
+      return new File([blob], `gif-story-${Date.now()}.webm`, { type: 'video/webm' });
+    }
+
+    // --- Standard video path ---
     const offscreenVideo = document.createElement('video');
     offscreenVideo.src = editable.media.url;
     offscreenVideo.crossOrigin = 'anonymous';
@@ -1099,15 +1244,42 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
     c.width = w;
     c.height = h;
     const ctx = c.getContext('2d');
-    if (!ctx) return editable.media.file;
+    if (!ctx) return editable.media.file!;
 
     const stickerBitmaps = new Map<string, ImageBitmap>();
     for (const s of editable.images) {
+      if (s.isGif) continue; // Skip GIFs
       try {
         const bmp = await createImageBitmap(await (await fetch(s.url)).blob());
         stickerBitmaps.set(s.id, bmp);
       } catch {
         // ignore
+      }
+    }
+
+    // We attach GIF images to the DOM with full visibility so the browser
+    // animates them. Opacity tricks cause browsers to pause GIF animations.
+    const hiddenContainer = document.createElement('div');
+    hiddenContainer.style.position = 'fixed';
+    hiddenContainer.style.top = '0px';
+    hiddenContainer.style.left = '-200px';
+    hiddenContainer.style.width = '160px';
+    hiddenContainer.style.height = '160px';
+    hiddenContainer.style.overflow = 'hidden';
+    hiddenContainer.style.opacity = '1';
+    hiddenContainer.style.pointerEvents = 'none';
+    hiddenContainer.style.zIndex = '9999';
+    document.body.appendChild(hiddenContainer);
+
+    const gifImages = new Map<string, HTMLImageElement>();
+    for (const s of editable.images) {
+      if (s.isGif) {
+        const gifEl = new Image();
+        gifEl.crossOrigin = 'anonymous';
+        gifEl.src = s.url;
+        await new Promise<void>(res => { gifEl.onload = () => res(); gifEl.onerror = () => res(); });
+        gifImages.set(s.id, gifEl);
+        hiddenContainer.appendChild(gifEl);
       }
     }
 
@@ -1131,9 +1303,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
       mixedStream = new MediaStream([...(videoTrack ? [videoTrack] : [])]);
     }
 
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-      ? 'video/webm;codecs=vp9,opus'
-      : (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus' : 'video/webm');
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
+      ? 'video/webm;codecs=vp8,opus'
+      : (MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8' : 'video/webm');
 
     const recorder = new MediaRecorder(mixedStream, { mimeType });
     const chunks: Blob[] = [];
@@ -1153,6 +1325,28 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
     let raf = 0;
     const draw = async () => {
       await renderFrame(ctx, offscreenVideo, editable, stickerBitmaps);
+
+      // Draw GIF stickers on top
+      for (const s of editable.images) {
+        const gifEl = gifImages.get(s.id);
+        if (!gifEl) continue;
+        ctx.save();
+        const x = (s.x / 100) * w;
+        const y = (s.y / 100) * h;
+        ctx.translate(x, y);
+        ctx.rotate((s.rotation * Math.PI) / 180);
+        ctx.scale(s.scale, s.scale);
+        const drawW = Math.min(w * 0.28, 320);
+        const ratio = gifEl.naturalWidth ? gifEl.naturalWidth / gifEl.naturalHeight : 1;
+        const drawH = drawW / ratio;
+        ctx.drawImage(gifEl, -drawW / 2, -drawH / 2, drawW, drawH);
+        ctx.restore();
+      }
+
+      if (editable.strokes && editable.strokes.length > 0 && drawingCanvasRef.current) {
+        drawingCanvasRef.current.drawStrokesToCanvas(ctx, w, h, editable.strokes);
+      }
+
       if (offscreenVideo.ended) return;
       raf = requestAnimationFrame(draw);
     };
@@ -1170,31 +1364,54 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
     recorder.stop();
     const blob = await done;
 
+    if (document.body.contains(hiddenContainer)) {
+      document.body.removeChild(hiddenContainer);
+    }
+
     return new File([blob], `edited-${Date.now()}.webm`, { type: 'video/webm' });
-  }, []);
+  }, [renderFrame]);
 
   const handleNext = useCallback(async () => {
     if (items.length === 0 || isExporting) return;
     setIsExporting(true);
     try {
-      const edited = [] as { file: File; filter: string }[];
+      const edited = [] as { file: File; filter: string; gifOverlays?: ImageSticker[] }[];
       for (const it of items) {
+        const gifStickers = it.images.filter(img => img.isGif);
+        const hasGifs = gifStickers.length > 0;
+
         if (it.media.type === 'photo') {
-          const f = await exportPhoto(it);
-          edited.push({ file: f, filter: 'original' });
+          if (hasGifs) {
+            // Instagram approach: export photo WITHOUT GIFs baked in,
+            // pass GIF data separately to be stored as metadata and rendered as live overlays.
+            const f = await exportPhoto(it);
+            edited.push({ file: f, filter: 'original', gifOverlays: gifStickers });
+          } else {
+            const f = await exportPhoto(it);
+            edited.push({ file: f, filter: 'original' });
+          }
           continue;
         }
 
         const hasEdits = it.filter !== 'original' || it.texts.length > 0 || it.images.length > 0 ||
+          (it.strokes && it.strokes.length > 0) ||
           it.mediaTransform.x !== 0 || it.mediaTransform.y !== 0 || it.mediaTransform.scale !== 1 || it.mediaTransform.rotation !== 0;
 
         if (!hasEdits) {
-          edited.push({ file: it.media.file, filter: it.filter });
+          edited.push({ file: it.media.file, filter: it.filter, gifOverlays: hasGifs ? gifStickers : undefined });
           continue;
         }
 
-        const f = await exportVideo(it);
-        edited.push({ file: f, filter: 'original' });
+        // For videos: export the video (without GIF baking), pass GIFs as overlay metadata
+        if (hasGifs) {
+          // Don't bake GIFs into the video - export video normally (non-GIF stickers/text/filter baked)
+          const nonGifImages = it.images.filter(img => !img.isGif);
+          const f = await exportVideo({ ...it, images: nonGifImages });
+          edited.push({ file: f, filter: 'original', gifOverlays: gifStickers });
+        } else {
+          const f = await exportVideo(it);
+          edited.push({ file: f, filter: 'original' });
+        }
       }
       onNext(edited, postCaption);
     } finally {
@@ -1317,33 +1534,112 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
       setShowTextInput(false);
     }
   }, []);
+  const checkIfOverTrash = useCallback((itemXPercent: number, itemYPercent: number, id: string) => {
+    if (!containerRef.current || !trashRef.current) return;
+    
+    // Get container dimensions to convert % to px
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const cx = (itemXPercent / 100) * containerRect.width + containerRect.left;
+    const cy = (itemYPercent / 100) * containerRect.height + containerRect.top;
+    
+    // Get trash boundary
+    const trashRect = trashRef.current.getBoundingClientRect();
+    const trashCx = trashRect.left + trashRect.width / 2;
+    const trashCy = trashRect.top + trashRect.height / 2;
+    
+    const dist = Math.hypot(cx - trashCx, cy - trashCy);
+    // 60px distance gives a generous and safe hit area for mobile
+    const isOver = dist < 60;
+    
+    setIsOverTrashId(isOver ? id : null);
+    setIsNearTrash(dist < 180);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[60] bg-black flex flex-col overflow-hidden">
       <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={handleFileSelect} className="hidden" />
       <input ref={stickerInputRef} type="file" accept="image/*" onChange={handleStickerFileSelect} className="hidden" />
 
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <button
-          onClick={onClose}
-          className="w-10 h-10 rounded-full glass-button flex items-center justify-center active:scale-90 transition-transform"
-        >
-          <X className="w-5 h-5 text-white" />
-        </button>
+      {/* Unified Top Dock (Header + Strip) */}
+      <div className="absolute top-0 left-0 right-0 z-50 px-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        {items.length > 0 ? (
+          <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-black/55 backdrop-blur-xl border border-white/10 shadow-2xl">
+            <button
+              onClick={onClose}
+              className="w-12 h-12 flex-shrink-0 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center active:scale-90 transition-all border border-white/5"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
 
-        {items.length > 0 && (
-          <button
-            onClick={handleNext}
-            disabled={isExporting}
-            className={cn(
-              "px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold flex items-center gap-1 active:scale-95 transition-transform",
-              isExporting && 'opacity-60 pointer-events-none'
-            )}
-          >
-            {isExporting ? 'Tayyorlanmoqda…' : (memoryMemberId ? 'Ulashish' : 'Keyingi')}
-            {!memoryMemberId && <ChevronRight className="w-4 h-4" />}
-          </button>
+            <div className="flex-1 flex gap-2 overflow-x-auto items-center mx-0.5" style={{ scrollbarWidth: 'none' }}>
+              {items.map((it, idx) => (
+                <div
+                  key={it.media.id}
+                  draggable
+                  onDragStart={(e) => e.dataTransfer.setData('idx', idx.toString())}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); moveMedia(parseInt(e.dataTransfer.getData('idx')), idx); }}
+                  className={cn(
+                    'relative flex-shrink-0 transition-all duration-300',
+                    idx === activeIndex ? 'opacity-100 scale-100' : 'opacity-60 scale-95 hover:opacity-80'
+                  )}
+                  onClick={() => handleSelectFromStrip(idx)}
+                >
+                  <div className={cn(
+                    "w-12 h-12 rounded-xl overflow-hidden border transition-colors duration-200",
+                    idx === activeIndex ? "border-primary/80 ring-2 ring-primary/40" : "border-white/10"
+                  )}>
+                    {it.media.type === 'photo' ? (
+                      <img src={it.media.url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="relative w-full h-full">
+                        <img src={it.media.thumbnail || it.media.url} alt="" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                          <Play className="w-4 h-4 text-white fill-white" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {focusedMediaId === it.media.id && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                      <div className="w-7 h-7 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
+                        <Camera className="w-3.5 h-3.5 text-white" />
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeMedia(it.media.id); }}
+                    className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center shadow hover:bg-red-500 transition-colors z-30"
+                  >
+                    <X className="w-2.5 h-2.5 text-white" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={handleNext}
+              disabled={isExporting}
+              className={cn(
+                "h-12 px-4 flex-shrink-0 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold flex items-center gap-1 shadow-lg hover:shadow-primary/25 active:scale-95 transition-all text-shadow-sm",
+                isExporting && 'opacity-60 pointer-events-none'
+              )}
+            >
+              {isExporting ? '...' : (memoryMemberId ? 'Ulashish' : 'Keyingi')}
+              {!memoryMemberId && !isExporting && <ChevronRight className="w-4 h-4" />}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between px-1">
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full glass-button flex items-center justify-center active:scale-90 transition-transform"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
         )}
       </div>
 
@@ -1610,60 +1906,13 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
           </>
         )}
 
-        {/* Selected strip (top) */}
-        {showTopStrip && (
-          <div className="absolute left-2 right-2 z-20" style={{ top: 'max(3.75rem, calc(env(safe-area-inset-top) + 2.75rem))' }}>
-            <div className="flex gap-1.5 p-1.5 rounded-2xl bg-black/50 backdrop-blur-xl overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-              {items.map((it, idx) => (
-                <div
-                  key={it.media.id}
-                  draggable
-                  onDragStart={(e) => e.dataTransfer.setData('idx', idx.toString())}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => { e.preventDefault(); moveMedia(parseInt(e.dataTransfer.getData('idx')), idx); }}
-                  className={cn('relative flex-shrink-0', idx === activeIndex ? 'opacity-100' : 'opacity-70')}
-                  onClick={() => handleSelectFromStrip(idx)}
-                >
-                  <div className="w-14 h-14 rounded-lg overflow-hidden border border-white/15">
-                    {it.media.type === 'photo' ? (
-                      <img src={it.media.url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="relative w-full h-full">
-                        <img src={it.media.thumbnail || it.media.url} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                          <Play className="w-4 h-4 text-white fill-white" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {focusedMediaId === it.media.id && (
-                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                      <div className="w-8 h-8 rounded-full bg-black/35 backdrop-blur-xl border border-white/25 flex items-center justify-center shadow-lg">
-                        <Camera className="w-4 h-4 text-white" />
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={(e) => { e.stopPropagation(); removeMedia(it.media.id); }}
-                    className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-destructive flex items-center justify-center shadow"
-                  >
-                    <X className="w-2.5 h-2.5 text-destructive-foreground" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Focused preview layer (edit mode) */}
         {isFocused && active && (
           <div className="absolute inset-0 z-10 bg-gradient-to-br from-slate-900/70 via-purple-900/55 to-slate-900/70 flex flex-col">
-            <div className="flex-1 relative overflow-hidden flex items-center justify-center px-1 pt-14">
+            <div className="flex-1 relative overflow-hidden flex items-center justify-center px-1 pt-24 pb-10">
               <div
                 ref={containerRef}
-                className="relative w-full max-w-md aspect-[9/16] max-h-[calc(100vh-260px)] rounded-2xl overflow-hidden border border-white/20 shadow-2xl"
+                className="relative w-full max-w-md aspect-[9/16] max-h-[calc(100vh-280px)] rounded-2xl overflow-hidden border border-white/20 shadow-2xl"
                 onTouchStart={handleEditTouchStart}
                 onTouchMove={handleEditTouchMove}
                 onTouchEnd={handleEditTouchEnd}
@@ -1703,8 +1952,26 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                     key={t.id}
                     item={t}
                     containerRef={containerRef as React.RefObject<HTMLDivElement>}
-                    onUpdate={(updated) => updateActive({ texts: active.texts.map(x => (x.id === updated.id ? updated : x)) })}
-                    onDelete={(id) => updateActive({ texts: active.texts.filter(x => x.id !== id) })}
+                    onUpdate={(updated) => {
+                      updateActive({ texts: active.texts.map(x => (x.id === updated.id ? updated : x)) });
+                      checkIfOverTrash(updated.x, updated.y, updated.id);
+                    }}
+                    onDelete={(id) => {
+                      updateActive({ texts: active.texts.filter(x => x.id !== id) });
+                      setIsOverTrashId(null);
+                      setIsNearTrash(false);
+                      setIsDraggingOverlay(false);
+                    }}
+                    isOverTrash={isOverTrashId === t.id}
+                    onDragStart={() => setIsDraggingOverlay(true)}
+                    onDragEnd={() => {
+                      setIsDraggingOverlay(false);
+                      if (isOverTrashId === t.id) {
+                        updateActive({ texts: active.texts.filter(x => x.id !== t.id) });
+                      }
+                      setIsOverTrashId(null);
+                      setIsNearTrash(false);
+                    }}
                   />
                 ))}
 
@@ -1713,8 +1980,26 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                     key={img.id}
                     item={img}
                     containerRef={containerRef as React.RefObject<HTMLDivElement>}
-                    onUpdate={(updated) => updateActive({ images: active.images.map(x => (x.id === updated.id ? updated : x)) })}
-                    onDelete={(id) => removeSticker(id)}
+                    onUpdate={(updated) => {
+                      updateActive({ images: active.images.map(x => (x.id === updated.id ? updated : x)) });
+                      checkIfOverTrash(updated.x, updated.y, updated.id);
+                    }}
+                    onDelete={(id) => {
+                      removeSticker(id);
+                      setIsOverTrashId(null);
+                      setIsNearTrash(false);
+                      setIsDraggingOverlay(false);
+                    }}
+                    isOverTrash={isOverTrashId === img.id}
+                    onDragStart={() => setIsDraggingOverlay(true)}
+                    onDragEnd={() => {
+                      setIsDraggingOverlay(false);
+                      if (isOverTrashId === img.id) {
+                        removeSticker(img.id);
+                      }
+                      setIsOverTrashId(null);
+                      setIsNearTrash(false);
+                    }}
                   />
                 ))}
 
@@ -1737,45 +2022,182 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                     </div>
                   </button>
                 )}
+
+                {/* Drag-to-delete trash zone */}
+                <div
+                  ref={trashRef}
+                  className={cn(
+                    'absolute bottom-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center justify-center gap-1.5 w-[64px] h-[64px] rounded-full backdrop-blur-md border-2 transition-all duration-300 shadow-2xl',
+                    isDraggingOverlay || showDrawing ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' : 'opacity-0 translate-y-6 scale-90 pointer-events-none',
+                    isOverTrashId !== null
+                      ? 'border-red-500 bg-red-600/70 scale-125 shadow-[0_0_30px_rgba(239,68,68,0.7)]'
+                      : 'border-white/20 bg-black/40'
+                  )}
+                  onClick={() => {
+                    if (showDrawing) drawingCanvasRef.current?.clear();
+                  }}
+                >
+                  <Trash2 
+                    className={cn(
+                      'transition-all duration-300',
+                      isOverTrashId !== null ? 'w-8 h-8 text-white' : 'w-6 h-6 text-white/90'
+                    )} 
+                  />
+                </div>
+
+                {/* Drawing canvas */}
+                {active && (
+                  <DrawingCanvas
+                    key={active.media.id}
+                    ref={drawingCanvasRef}
+                    isActive={showDrawing}
+                    initialStrokes={active.strokes}
+                    width={containerRef.current?.clientWidth || 390}
+                    height={containerRef.current?.clientHeight || 693}
+                    onStrokeEnd={() => {
+                      if (drawingCanvasRef.current) {
+                        updateActive({ strokes: drawingCanvasRef.current.exportStrokes() });
+                      }
+                    }}
+                  />
+                )}
               </div>
 
               {/* Edit tools */}
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-3">
-                <button
-                  onClick={() => {
-                    setShowEmojiPicker(!showEmojiPicker);
-                    setShowTextInput(false);
-                  }}
-                  className="flex flex-col items-center gap-0.5"
-                >
-                  <div className="w-11 h-11 rounded-xl bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-lg">
-                    <Smile className="w-5 h-5" />
-                  </div>
-                  <span className="text-[9px] text-white/70 font-medium">Stiker</span>
-                </button>
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-3">
+                {/* ─── Creative Menu trigger (Drawing / GIF / Sticker / Image) ─── */}
+                <div className="relative flex flex-col items-center gap-0.5">
+                  <button
+                    onClick={() => {
+                      setShowCreativeMenu(m => !m);
+                      // Close any open sub-panels when toggling
+                      setShowEmojiPicker(false);
+                      setShowGiphyPicker(false);
+                      if (showCreativeMenu) setShowDrawing(false);
+                    }}
+                    className="flex flex-col items-center gap-0.5 group"
+                  >
+                    <div className={cn(
+                      'w-11 h-11 rounded-xl backdrop-blur-xl border flex items-center justify-center text-white shadow-lg transition-all duration-300',
+                      showCreativeMenu
+                        ? 'bg-violet-600/70 border-violet-400 shadow-violet-500/30'
+                        : 'bg-black/40 border-white/20 group-active:scale-90'
+                    )}>
+                      <Icon icon="solar:sticker-smile-circle-outline" className="w-6 h-6" />
+                    </div>
+                    <span className="text-[9px] text-white/70 font-medium">Ijodiy</span>
+                  </button>
 
-                <button
-                  onClick={() => {
-                    stickerInputRef.current?.click();
-                    setShowEmojiPicker(false);
-                    setShowTextInput(false);
-                  }}
-                  className="flex flex-col items-center gap-0.5"
-                >
-                  <div className="w-11 h-11 rounded-xl bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-lg">
-                    <ImagePlus className="w-5 h-5" />
-                  </div>
-                  <span className="text-[9px] text-white/70 font-medium">Rasm</span>
-                </button>
+                  {/* Sub-menu — animated vertical list */}
+                  {showCreativeMenu && (
+                    <div
+                      className="absolute right-12 top-0 flex flex-col gap-2 z-50"
+                      style={{ animation: 'creativeMenuIn 0.22s cubic-bezier(0.34,1.56,0.64,1) both' }}
+                    >
+                      {/* Drawing */}
+                      <button
+                        onClick={() => {
+                          setShowDrawing(d => !d);
+                          setShowEmojiPicker(false);
+                          setShowTextInput(false);
+                          setShowGiphyPicker(false);
+                          setShowCreativeMenu(false);
+                        }}
+                        className="flex items-center gap-2 group/sub"
+                      >
+                        <span className="text-[11px] text-white/80 font-medium px-2 py-1 bg-black/50 backdrop-blur-md rounded-lg border border-white/15 whitespace-nowrap">Chizish</span>
+                        <div className={cn(
+                          'w-10 h-10 rounded-xl backdrop-blur-xl border flex items-center justify-center text-white shadow-lg transition-all',
+                          showDrawing ? 'bg-primary/60 border-primary' : 'bg-black/55 border-white/25 group-active/sub:scale-90'
+                        )}>
+                          <Pen className="w-4 h-4" />
+                        </div>
+                      </button>
 
+                      {/* GIF */}
+                      <button
+                        onClick={() => {
+                          setShowGiphyPicker(g => !g);
+                          setShowEmojiPicker(false);
+                          setShowTextInput(false);
+                          setShowDrawing(false);
+                          setShowCreativeMenu(false);
+                        }}
+                        className="flex items-center gap-2 group/sub"
+                      >
+                        <span className="text-[11px] text-white/80 font-medium px-2 py-1 bg-black/50 backdrop-blur-md rounded-lg border border-white/15 whitespace-nowrap">GIF</span>
+                        <div className="w-10 h-10 rounded-xl bg-black/55 backdrop-blur-xl border border-white/25 flex items-center justify-center text-white shadow-lg group-active/sub:scale-90 transition-transform">
+                          <Icon icon="mage:gif-fill" className="w-6 h-6" />
+                        </div>
+                      </button>
+
+                      {/* Emoji Sticker */}
+                      <button
+                        onClick={() => {
+                          setShowEmojiPicker(!showEmojiPicker);
+                          setShowTextInput(false);
+                          setShowDrawing(false);
+                          setShowGiphyPicker(false);
+                          setShowCreativeMenu(false);
+                        }}
+                        className="flex items-center gap-2 group/sub"
+                      >
+                        <span className="text-[11px] text-white/80 font-medium px-2 py-1 bg-black/50 backdrop-blur-md rounded-lg border border-white/15 whitespace-nowrap">Stiker</span>
+                        <div className="w-10 h-10 rounded-xl bg-black/55 backdrop-blur-xl border border-white/25 flex items-center justify-center text-white shadow-lg group-active/sub:scale-90 transition-transform">
+                          <Smile className="w-4 h-4" />
+                        </div>
+                      </button>
+
+                      {/* Image upload */}
+                      <button
+                        onClick={() => {
+                          stickerInputRef.current?.click();
+                          setShowEmojiPicker(false);
+                          setShowTextInput(false);
+                          setShowDrawing(false);
+                          setShowCreativeMenu(false);
+                        }}
+                        className="flex items-center gap-2 group/sub"
+                      >
+                        <span className="text-[11px] text-white/80 font-medium px-2 py-1 bg-black/50 backdrop-blur-md rounded-lg border border-white/15 whitespace-nowrap">Rasm</span>
+                        <div className="w-10 h-10 rounded-xl bg-black/55 backdrop-blur-xl border border-white/25 flex items-center justify-center text-white shadow-lg group-active/sub:scale-90 transition-transform">
+                          <ImagePlus className="w-4 h-4" />
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Drawing undo/redo — only when drawing canvas is open */}
+                {showDrawing && (
+                  <>
+                    <button onClick={() => drawingCanvasRef.current?.undo()} className="flex flex-col items-center gap-0.5">
+                      <div className="w-11 h-11 rounded-xl bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-lg">
+                        <Undo2 className="w-5 h-5" />
+                      </div>
+                      <span className="text-[9px] text-white/70 font-medium">Bekor</span>
+                    </button>
+                    <button onClick={() => drawingCanvasRef.current?.redo()} className="flex flex-col items-center gap-0.5">
+                      <div className="w-11 h-11 rounded-xl bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-lg">
+                        <Redo2 className="w-5 h-5" />
+                      </div>
+                      <span className="text-[9px] text-white/70 font-medium">Qayta</span>
+                    </button>
+                  </>
+                )}
+
+
+                {/* Text tool — always visible in main toolbar */}
                 <button
                   onClick={() => {
                     setShowTextInput(true);
                     setShowEmojiPicker(false);
+                    setShowDrawing(false);
+                    setShowCreativeMenu(false);
                   }}
-                  className="flex flex-col items-center gap-0.5"
+                  className="flex flex-col items-center gap-0.5 group"
                 >
-                  <div className="w-11 h-11 rounded-xl bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-lg">
+                  <div className="w-11 h-11 rounded-xl bg-black/40 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-lg group-active:scale-90 transition-transform">
                     <Type className="w-5 h-5" />
                   </div>
                   <span className="text-[9px] text-white/70 font-medium">Matn</span>
@@ -1787,6 +2209,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                       setShowCaptionInput(true);
                       setShowEmojiPicker(false);
                       setShowTextInput(false);
+                      setShowDrawing(false);
                     }}
                     className="flex flex-col items-center gap-0.5"
                   >
@@ -1796,6 +2219,47 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                     <span className="text-[9px] text-white/70 font-medium">Izoh</span>
                   </button>
                 )}
+
+                {/* Music tool in Edit sidebar */}
+                <div className="relative flex flex-col items-center gap-0.5 group">
+                  <button
+                    onClick={() => {
+                      setShowMusicPicker(true);
+                      setShowEmojiPicker(false);
+                      setShowTextInput(false);
+                      setShowDrawing(false);
+                      setShowGiphyPicker(false);
+                    }}
+                    className={cn(
+                      "w-11 h-11 rounded-xl bg-black/40 backdrop-blur-xl border flex items-center justify-center text-white shadow-lg overflow-hidden transition-all duration-300",
+                      selectedMusic ? "border-primary/50 shadow-[0_0_15px_rgba(var(--primary),0.3)]" : "border-white/20"
+                    )}
+                  >
+                    {selectedMusic ? (
+                      <div className="w-full h-full p-1 bg-black/50">
+                        <div className="w-full h-full rounded-full bg-gradient-to-tr from-zinc-800 to-zinc-600 animate-spin flex items-center justify-center border border-white/10" style={{ animationDuration: '4s' }}>
+                          <Disc className="w-4 h-4 text-primary fill-primary/20" />
+                        </div>
+                      </div>
+                    ) : (
+                      <Music2 className="w-5 h-5" />
+                    )}
+                  </button>
+                  {selectedMusic && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeSelectedMusic();
+                      }}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black border border-white/20 flex items-center justify-center text-white hover:bg-destructive hover:border-destructive hover:text-white transition-colors z-10"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                  <span className="text-[9px] text-white/70 font-medium whitespace-nowrap">
+                    Musiqa
+                  </span>
+                </div>
 
                 {isVideo && (
                   <button
@@ -1812,72 +2276,45 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                     <span className="text-[9px] text-white/70 font-medium">Ovoz</span>
                   </button>
                 )}
+
               </div>
 
+
+
               {showEmojiPicker && (
-                <div className="absolute bottom-24 right-2 bg-black/60 backdrop-blur-xl border border-white/20 rounded-2xl p-3 grid grid-cols-6 gap-2 max-w-[260px] z-50">
+                <div className="absolute bottom-24 right-14 bg-black/60 backdrop-blur-xl border border-white/20 rounded-2xl p-3 grid grid-cols-8 gap-1.5 max-w-[300px] max-h-[220px] overflow-y-auto z-50" style={{ scrollbarWidth: 'none' }}>
                   {EMOJIS.map(emoji => (
-                    <button key={emoji} onClick={() => addEmoji(emoji)} className="text-2xl p-1 rounded-lg hover:bg-white/10 transition-colors">
+                    <button key={emoji} onClick={() => addEmoji(emoji)} className="text-2xl p-0.5 rounded-lg hover:bg-white/10 transition-colors">
                       {emoji}
                     </button>
                   ))}
                 </div>
               )}
-            </div>
 
-            <div className="flex-shrink-0 pb-4">
-              <FilterStrip selectedFilter={active.filter} onSelectFilter={(f) => updateActive({ filter: f })} />
-              {active.images.length > 0 && (
-                <div className="px-3 pt-2">
-                  <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-                    {active.images.map((img) => (
-                      <button
-                        key={img.id}
-                        onClick={() => removeSticker(img.id)}
-                        className="relative flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden border border-white/15 bg-black/30"
-                        title="Remove"
-                      >
-                        <img src={img.url} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 flex items-center justify-center">
-                          <X className="w-3 h-3 text-white" />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              {/* GIPHY Picker */}
+              {showGiphyPicker && active && (
+                <GiphyPicker
+                  onSelect={addGif}
+                  onClose={() => setShowGiphyPicker(false)}
+                />
               )}
             </div>
 
-            {showTextInput && (
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-                <div className="bg-black/70 backdrop-blur-xl border border-white/20 rounded-2xl p-5 w-full max-w-sm space-y-4">
-                  <h3 className="font-semibold text-lg text-white">Matn qo'shish</h3>
-                  <textarea
-                    autoFocus
-                    value={textValue}
-                    onChange={(e) => setTextValue(e.target.value)}
-                    placeholder="Matn, @mention, #hashtag..."
-                    className="w-full h-24 p-3 bg-white/10 border border-white/20 rounded-xl text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-                  <div className="flex gap-2 justify-end">
-                    <button
-                      onClick={() => {
-                        setShowTextInput(false);
-                        setTextValue('');
-                      }}
-                      className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-sm text-white font-medium"
-                    >
-                      Bekor
-                    </button>
-                    <button
-                      onClick={addText}
-                      className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
-                    >
-                      Qo'shish
-                    </button>
-                  </div>
-                </div>
+            {!showGiphyPicker && (
+              <div className="flex-shrink-0 pb-[max(4.7rem,calc(env(safe-area-inset-bottom)+1.25rem))]">
+                <FilterStrip
+                  selectedFilter={active.filter}
+                  onSelectFilter={(f) => updateActive({ filter: f })}
+                  previewSrc={active.media.type === 'photo' ? active.media.url : active.media.thumbnail}
+                />
               </div>
+            )}
+
+            {showTextInput && (
+              <TextEditModal
+                onConfirm={addText}
+                onCancel={() => setShowTextInput(false)}
+              />
             )}
 
             {showCaptionInput && (
@@ -1914,93 +2351,95 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
         />
 
         {/* Bottom tray */}
-        <div
-          className={cn(
-            'absolute left-0 right-0 z-40 transition-transform duration-250 pointer-events-none',
-            trayOpen ? 'translate-y-0' : 'translate-y-[calc(100%_-_5.25rem)]'
-          )}
-          style={{ bottom: 0 }}
-          onTouchStart={handleTrayTouchStart}
-          onTouchEnd={handleTrayTouchEnd}
-        >
-          <div className="bg-black/70 backdrop-blur-xl border-t border-white/10 rounded-t-3xl overflow-hidden pointer-events-auto">
-            <div className="flex items-center justify-center py-2">
-              <div className="w-10 h-1 rounded-full bg-white/30" />
-            </div>
+        {!showGiphyPicker && (
+          <div
+            className={cn(
+              'absolute left-0 right-0 z-40 transition-transform duration-250 pointer-events-none',
+              trayOpen ? 'translate-y-0' : 'translate-y-[calc(100%_-_5.25rem)]'
+            )}
+            style={{ bottom: 0 }}
+            onTouchStart={handleTrayTouchStart}
+            onTouchEnd={handleTrayTouchEnd}
+          >
+            <div className="bg-black/70 backdrop-blur-xl border-t border-white/10 rounded-t-3xl overflow-hidden pointer-events-auto">
+              <div className="flex items-center justify-center py-2">
+                <div className="w-10 h-1 rounded-full bg-white/30" />
+              </div>
 
-            {/* Collapsed row: last 3 previews + gallery */}
-            {!trayOpen && (
-              <div className="px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-                <div className="grid grid-cols-4 gap-2 items-center">
-                  {Array.from({ length: 3 }).map((_, i) => {
-                    const it = lastThree[i];
-                    if (!it) return <div key={`empty-${i}`} className="w-12 h-12" />;
-                    const idx = items.length - lastThree.length + i;
-                    return (
+              {/* Collapsed row: last 3 previews + gallery */}
+              {!trayOpen && (
+                <div className="px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+                  <div className="grid grid-cols-4 gap-2 items-center">
+                    {Array.from({ length: 3 }).map((_, i) => {
+                      const it = lastThree[i];
+                      if (!it) return <div key={`empty-${i}`} className="w-12 h-12" />;
+                      const idx = items.length - lastThree.length + i;
+                      return (
+                        <button
+                          key={it.media.id}
+                          onClick={() => handleSelectFromStrip(idx)}
+                          className={cn(
+                            'w-12 h-12 rounded-xl overflow-hidden border-2',
+                            idx === activeIndex ? 'border-primary' : 'border-white/15'
+                          )}
+                        >
+                          <img src={it.media.thumbnail || it.media.url} alt="" className="w-full h-full object-cover" />
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={!canAddMore}
+                      className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center disabled:opacity-30 active:scale-90 transition-transform"
+                    >
+                      <ImageIcon className="w-5 h-5 text-white" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Expanded: grid of selected items */}
+              {trayOpen && (
+                <div className="px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-white/70 text-xs font-semibold">Tanlanganlar</span>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={!canAddMore}
+                      className="text-white/80 text-xs font-semibold px-3 py-2 rounded-full bg-white/10 border border-white/15 disabled:opacity-30"
+                    >
+                      Galereya
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 max-h-[52vh] overflow-y-auto">
+                    {items.map((it, idx) => (
                       <button
                         key={it.media.id}
-                        onClick={() => handleSelectFromStrip(idx)}
+                        onClick={() => {
+                          setTrayOpen(false);
+                          setActiveIndex(idx);
+                          setFocusedMediaId(it.media.id);
+                        }}
                         className={cn(
-                          'w-12 h-12 rounded-xl overflow-hidden border-2',
+                          'relative aspect-square rounded-xl overflow-hidden border-2',
                           idx === activeIndex ? 'border-primary' : 'border-white/15'
                         )}
                       >
                         <img src={it.media.thumbnail || it.media.url} alt="" className="w-full h-full object-cover" />
+                        {it.media.type === 'video' && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <Play className="w-5 h-5 text-white fill-white" />
+                          </div>
+                        )}
                       </button>
-                    );
-                  })}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={!canAddMore}
-                    className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center disabled:opacity-30 active:scale-90 transition-transform"
-                  >
-                    <ImageIcon className="w-5 h-5 text-white" />
-                  </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Expanded: grid of selected items */}
-            {trayOpen && (
-              <div className="px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-white/70 text-xs font-semibold">Tanlanganlar</span>
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={!canAddMore}
-                    className="text-white/80 text-xs font-semibold px-3 py-2 rounded-full bg-white/10 border border-white/15 disabled:opacity-30"
-                  >
-                    Galereya
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 max-h-[52vh] overflow-y-auto">
-                  {items.map((it, idx) => (
-                    <button
-                      key={it.media.id}
-                      onClick={() => {
-                        setTrayOpen(false);
-                        setActiveIndex(idx);
-                        setFocusedMediaId(it.media.id);
-                      }}
-                      className={cn(
-                        'relative aspect-square rounded-xl overflow-hidden border-2',
-                        idx === activeIndex ? 'border-primary' : 'border-white/15'
-                      )}
-                    >
-                      <img src={it.media.thumbnail || it.media.url} alt="" className="w-full h-full object-cover" />
-                      {it.media.type === 'video' && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                          <Play className="w-5 h-5 text-white fill-white" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Music & Camera switch buttons — rendered AFTER tray so z-50 beats tray's z-40 */}
         {showCaptureUi && (

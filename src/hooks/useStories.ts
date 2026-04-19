@@ -2,6 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+export interface GifOverlay {
+  id: string;
+  url: string;
+  originalUrl?: string;
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+}
+
 export interface Story {
   id: string;
   user_id: string;
@@ -14,6 +24,7 @@ export interface Story {
   ring_id: string;
   created_at: string;
   expires_at: string;
+  media_metadata?: { gifOverlays?: GifOverlay[] } | null;
   author?: {
     id: string;
     name: string | null;

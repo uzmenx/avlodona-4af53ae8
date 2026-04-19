@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Paperclip, X, Mic, Lock, Trash2 } from 'lucide-react';
+import { Send, Paperclip, X, Mic, Lock, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import GiphyPicker from '@/components/create/GiphyPicker';
 import { cn } from '@/lib/utils';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,6 +32,7 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
   const inputRef = useRef<HTMLInputElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const [showMediaMenu, setShowMediaMenu] = useState(false);
+  const [showGIFPicker, setShowGIFPicker] = useState(false);
 
   // Voice recording - Telegram style
   const {
@@ -378,11 +382,21 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
           <button 
             type="button"
             onClick={() => mediaInputRef.current?.click()}
-            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors"
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors flex-shrink-0"
           >
-            <Paperclip className="h-5 w-5 text-muted-foreground" />
+            <Paperclip className="h-5.5 w-5.5 text-muted-foreground" />
           </button>
         </div>
+
+        {/* GIF button - standalone premium */}
+        <button
+          type="button"
+          onClick={() => setShowGIFPicker(true)}
+          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-violet-500/15 transition-all active:scale-90 flex-shrink-0"
+          aria-label="GIF qidirish"
+        >
+          <Icon icon="mage:gif-fill" className="h-7 w-7 text-violet-500" />
+        </button>
 
         {/* Text input */}
         <input
@@ -418,6 +432,29 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
           </div>
         )}
       </div>
+
+      {/* GIF Picker Overlay */}
+      {showGIFPicker && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-background">
+          <GiphyPicker
+            onSelect={async (gif) => {
+              const url = gif.originalUrl || gif.previewUrl;
+              if (!isUploading && url) {
+                setIsUploading(true);
+                try {
+                  await onSendMessage('', url, 'image');
+                } catch (e) {
+                  toast.error('Xatolik yuz berdi');
+                } finally {
+                  setIsUploading(false);
+                  setShowGIFPicker(false);
+                }
+              }
+            }}
+            onClose={() => setShowGIFPicker(false)}
+          />
+        </div>
+      )}
     </div>
   );
 };

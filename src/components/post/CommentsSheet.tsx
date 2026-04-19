@@ -4,12 +4,14 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Heart, Send, Trash2 } from 'lucide-react';
+import { Heart, Send, Trash2, X } from 'lucide-react';
+import { Icon } from '@iconify/react';
 
 import { formatDistanceToNow } from 'date-fns';
 import { useComments, Comment } from '@/hooks/useComments';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import GiphyPicker, { type GiphyItem } from '@/components/create/GiphyPicker';
 
 interface CommentsSheetProps {
   open: boolean;
@@ -25,6 +27,7 @@ export const CommentsSheet = ({ open, onOpenChange, postId }: CommentsSheetProps
   const [replyTo, setReplyTo] = useState<{id: string;name: string;} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [showGIFPicker, setShowGIFPicker] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -141,7 +144,14 @@ export const CommentsSheet = ({ open, onOpenChange, postId }: CommentsSheetProps
                 {' • '}
                 <span className="text-muted-foreground text-xs">{timeAgo}</span>
               </p>
-              <p className="text-sm mt-0.5">{comment.content}</p>
+              
+              {comment.content.startsWith('[GIF]:') ? (
+                <div className="mt-1.5 rounded-xl overflow-hidden max-w-[200px] border relative bg-muted">
+                  <img src={comment.content.substring(6)} alt="GIF izoh" className="w-full h-auto object-cover max-h-[250px]" loading="lazy" />
+                </div>
+              ) : (
+                <p className="text-sm mt-0.5">{comment.content}</p>
+              )}
               
               <div className="flex items-center gap-4 mt-1.5">
                 <button
@@ -224,64 +234,89 @@ export const CommentsSheet = ({ open, onOpenChange, postId }: CommentsSheetProps
           }
         </ScrollArea>
         
-        {/* Input area */}
-        <div className="flex-shrink-0 border-t pt-4 px-6 pb-6">
-          {replyTo &&
-          <div className="flex items-center justify-between bg-muted/50 px-3 py-2 rounded-lg mb-2 text-sm">
-              <span>
-                <span className="text-muted-foreground">Javob: </span>
-                <span className="font-medium">{replyTo.name}</span>
+        {/* Input area - Redesigned for Premium Look */}
+        <div className="flex-shrink-0 border-t bg-background/95 backdrop-blur-xl pt-3 px-4 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(0,0,0,0.04)]">
+          {replyTo && (
+            <div className="flex items-center justify-between bg-primary/5 border border-primary/10 px-3 py-1.5 rounded-full mb-3 text-xs animate-in slide-in-from-bottom-2 duration-300">
+              <span className="truncate">
+                <span className="text-muted-foreground">Javob berilmoqda: </span>
+                <span className="font-semibold text-primary">{replyTo.name}</span>
               </span>
-              <button
-              onClick={() => setReplyTo(null)}
-              className="text-muted-foreground hover:text-foreground">
-
-                ✕
+              <button 
+                onClick={() => setReplyTo(null)}
+                className="ml-2 w-5 h-5 flex items-center justify-center rounded-full hover:bg-primary/10 text-primary transition-colors"
+                aria-label="Javobni bekor qilish"
+              >
+                <X className="w-3 h-3" />
               </button>
             </div>
-          }
+          )}
           
-          {user ?
-          <div className="flex items-center gap-2">
-              {!isInputFocused ?
-            <button
-              onClick={handleInputButtonClick}
-              className="flex-1 text-left px-4 py-3 bg-muted/50 rounded-full text-muted-foreground text-sm">
+          {user ? (
+            <div className="flex items-end gap-2.5">
+              <div className="flex-1 relative bg-muted/30 hover:bg-muted/50 focus-within:bg-background focus-within:ring-2 focus-within:ring-primary/20 rounded-[22px] border border-border/40 transition-all duration-200">
+                <div className="flex items-center pr-1 min-h-[44px]">
+                  <textarea
+                    ref={inputRef}
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    onFocus={() => setIsInputFocused(true)}
+                    placeholder="Izoh yozing..."
+                    className="flex-1 px-4 py-2.5 text-[15px] bg-transparent outline-none resize-none min-h-[40px] max-h-[140px] leading-snug placeholder:text-muted-foreground/60"
+                    rows={1}
+                    disabled={isSubmitting}
+                    style={{ overflowY: (newComment.split('\n').length > 4) ? 'auto' : 'hidden' }}
+                  />
+                  
+                  <button
+                    type="button"
+                    onClick={() => setShowGIFPicker(true)}
+                    disabled={isSubmitting}
+                    className="h-10 w-10 flex items-center justify-center rounded-xl text-violet-500 hover:bg-violet-500/10 transition-all active:scale-95 flex-shrink-0 group"
+                  >
+                    <Icon icon="mage:gif-fill" className="h-9 w-9 transition-transform group-hover:scale-110" />
+                  </button>
+                </div>
+              </div>
 
-                  Izoh yozing...
-                </button> :
-
-            <textarea
-              ref={inputRef}
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyPress={handleKeyPress}
-              onBlur={() => {
-                if (!newComment.trim()) {
-                  setTimeout(() => setIsInputFocused(false), 100);
-                }
-              }}
-              placeholder="Izoh yozing..."
-              className="flex-1 resize-none bg-muted/50 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[44px] max-h-[120px]"
-              rows={1}
-              disabled={isSubmitting} />
-
-            }
-              <Button
-              size="icon"
-              onClick={handleSubmit}
-              disabled={!newComment.trim() || isSubmitting}
-              className="rounded-full h-10 w-10 flex-shrink-0">
-
-                <Send className="h-4 w-4" />
-              </Button>
-            </div> :
-
-          <p className="text-center text-sm text-muted-foreground py-2">
+              <button
+                onClick={handleSubmit}
+                disabled={!newComment.trim() || isSubmitting}
+                className={cn(
+                  "h-11 w-11 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm active:scale-90 flex-shrink-0",
+                  newComment.trim() ? "bg-primary text-primary-foreground shadow-primary/25" : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
+                )}
+              >
+                <Send className={cn("h-5 w-5 transition-transform", newComment.trim() && "translate-x-0.5 -translate-y-0.5")} />
+              </button>
+            </div>
+          ) : (
+            <p className="text-center text-sm text-muted-foreground py-2 font-medium">
               Izoh qoldirish uchun tizimga kiring
             </p>
-          }
+          )}
         </div>
+
+        {/* GIF Picker Overlay */}
+        {showGIFPicker && (
+          <div className="absolute inset-0 z-[100] bg-background rounded-t-xl overflow-hidden flex flex-col">
+            <GiphyPicker
+              onSelect={(gif) => {
+                const url = gif.originalUrl || gif.previewUrl;
+                if (!isSubmitting && url) {
+                  setIsSubmitting(true);
+                  addComment(`[GIF]:${url}`, replyTo?.id).finally(() => {
+                    setIsSubmitting(false);
+                    setShowGIFPicker(false);
+                    setReplyTo(null);
+                  });
+                }
+              }}
+              onClose={() => setShowGIFPicker(false)}
+            />
+          </div>
+        )}
       </DrawerContent>
     </Drawer>);
 

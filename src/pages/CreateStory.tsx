@@ -19,6 +19,7 @@ const CreateStory = () => {
   
   const [step, setStep] = useState<'media' | 'publish'>('media');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [gifOverlays, setGifOverlays] = useState<Array<{ id: string; url: string; originalUrl?: string; x: number; y: number; scale: number; rotation: number }>>([]);
   const [preview, setPreview] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -34,9 +35,10 @@ const CreateStory = () => {
     return () => URL.revokeObjectURL(url);
   }, [selectedFile]);
 
-  const handleMediaFromCapture = useCallback((items: { file: File; filter: string }[]) => {
-    const file = items[0]?.file;
-    if (!file) return;
+  const handleMediaFromCapture = useCallback((items: { file: File; filter: string; gifOverlays?: Array<{ id: string; url: string; originalUrl?: string; x: number; y: number; scale: number; rotation: number }> }[]) => {
+    const item = items[0];
+    if (!item?.file) return;
+    const file = item.file;
 
     const isImage = file.type.startsWith('image/');
     const isVideo = file.type.startsWith('video/');
@@ -52,6 +54,8 @@ const CreateStory = () => {
     }
 
     setSelectedFile(file);
+    // Store GIF overlays to be saved as metadata (not baked into the media file)
+    setGifOverlays(item.gifOverlays || []);
     setStep('publish');
   }, []);
 
@@ -74,6 +78,8 @@ const CreateStory = () => {
           media_type: mediaType,
           caption: caption || null,
           ring_id: selectedRingId,
+          // Store GIF overlays as metadata so they animate as live HTML overlays in the viewer
+          media_metadata: gifOverlays.length > 0 ? { gifOverlays } : null,
         })
         .select()
         .single();

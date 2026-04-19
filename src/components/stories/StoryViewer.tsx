@@ -599,6 +599,24 @@ export const StoryViewer = ({
           />
         )}
 
+        {/* Live animated GIF overlays — rendered as HTML images (Instagram-style, never baked in) */}
+        {currentStory.media_metadata?.gifOverlays?.map(gif => (
+          <img
+            key={gif.id}
+            src={gif.originalUrl || gif.url}
+            alt="gif sticker"
+            className="absolute pointer-events-none select-none"
+            style={{
+              left: `${gif.x}%`,
+              top: `${gif.y}%`,
+              transform: `translate(-50%, -50%) scale(${gif.scale}) rotate(${gif.rotation}deg)`,
+              width: '28%',
+              maxWidth: '160px',
+              zIndex: 11,
+            }}
+          />
+        ))}
+
         {/* Overlay gradient */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/50 pointer-events-none" />
 

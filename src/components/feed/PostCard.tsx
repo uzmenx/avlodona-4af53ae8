@@ -412,6 +412,7 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
             <div className="relative">
               <MediaCarousel
                 mediaUrls={mediaUrls}
+                mediaMetadata={post.media_metadata}
                 onVideoDoubleTap={() => {
                   const anims = ['animate-heartBurst', 'animate-likePop', 'animate-likeSwing', 'animate-likeFloat', 'animate-likePulse'];
                   setHeartAnimClass(anims[Math.floor(Math.random() * anims.length)]);

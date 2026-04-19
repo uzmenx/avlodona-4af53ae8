@@ -1580,7 +1580,24 @@ export const UnifiedFullScreenViewer = ({
 
           }
 
-
+          {/* Live animated GIF overlays — displayed on top of media (Instagram-style) */}
+          {currentPost.media_metadata?.[currentMediaIndex]?.gifOverlays?.map(gif => (
+            <img
+              key={gif.id}
+              src={(gif as any).originalUrl || gif.url}
+              alt="gif sticker"
+              loading="lazy"
+              className="absolute pointer-events-none select-none"
+              style={{
+                left: `${gif.x}%`,
+                top: `${gif.y}%`,
+                transform: `translate(-50%, -50%) scale(${gif.scale}) rotate(${gif.rotation}deg)`,
+                width: '28%',
+                maxWidth: '160px',
+                zIndex: 20,
+              }}
+            />
+          ))}
 
           {showDoubleTapHeart &&
 

@@ -30,6 +30,7 @@ interface MediaFile {
   preview: string;
   type: 'image' | 'video';
   filter?: string;
+  gifOverlays?: Array<{ id: string; url: string; originalUrl?: string; x: number; y: number; scale: number; rotation: number }>;
 }
 
 type Step = 'media' | 'caption';
@@ -83,12 +84,13 @@ const CreatePost = () => {
   const [autoLocationEnabled, setAutoLocationEnabled] = useState(false);
   const [detectingLocation, setDetectingLocation] = useState(false);
 
-  const handleMediaFromCapture = (items: { file: File; filter: string }[]) => {
+  const handleMediaFromCapture = (items: { file: File; filter: string; gifOverlays?: Array<{ id: string; url: string; originalUrl?: string; x: number; y: number; scale: number; rotation: number }> }[]) => {
     const newMedia: MediaFile[] = items.map((item) => ({
       file: item.file,
       preview: URL.createObjectURL(item.file),
       type: item.file.type.startsWith('video/') ? 'video' : 'image',
       filter: item.filter,
+      gifOverlays: item.gifOverlays,
     }));
     setSelectedMedia(newMedia);
     setStep('caption');
@@ -253,6 +255,10 @@ const CreatePost = () => {
           audio_artist: selectedMusic?.audio_artist ?? null,
           target_member_id: targetMemberId || null,
           visibility: targetMemberId ? 'profile' : 'public',
+          // Store GIF overlay metadata per media index so they can be displayed as live animated overlays
+          media_metadata: selectedMedia.some(m => m.gifOverlays?.length)
+            ? selectedMedia.map(m => ({ gifOverlays: m.gifOverlays || [] }))
+            : null,
         })
         .select()
         .single();
