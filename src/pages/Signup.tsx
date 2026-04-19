@@ -59,7 +59,7 @@ const Signup = () => {
 
       if (data.user) {
         // Create/update profile
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const sb: any = supabase;
         const { error: profileError } = await sb.from('profiles').upsert([
           {
@@ -81,7 +81,7 @@ const Signup = () => {
         navigate("/");
       }
     } catch (err: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const error = err as any;
       if (error?.message?.includes('duplicate key') || error?.code === '23505') {
         toast({ title: t("error"), description: "Ushbu foydalanuvchi nomi band qilingan, iltimos boshqa email bilan qayta urinib ko'ring yoki birozdan so'ng xarakat qiling.", variant: "destructive" });

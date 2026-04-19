@@ -905,7 +905,7 @@ const Messages = () => {
                               </div>
                             );
                           }
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                           
                           return <GroupChatItem key={item.id} chat={item as any} onClick={() => handleGroupClick(item.id)} />;
                         })}
 

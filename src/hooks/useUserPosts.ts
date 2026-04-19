@@ -9,7 +9,7 @@ const fetchMentionPostIdsForMember = async (memberId: string) => {
   const columnErrors: string[] = [];
   for (const col of MEMBER_MENTION_COLUMNS) {
     // Prevent excessively deep type instantiation when using dynamic column names
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const sb: any = supabase;
     const { data, error } = await sb
       .from('post_mentions')

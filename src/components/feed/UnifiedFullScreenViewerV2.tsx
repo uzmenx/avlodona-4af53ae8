@@ -520,7 +520,7 @@ export const UnifiedFullScreenViewer = ({
 
     }
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
 
   }, [postIndex, shortIndex, activeTab]);
 
@@ -780,7 +780,7 @@ export const UnifiedFullScreenViewer = ({
 
       });
 
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+       
 
       mutedMediaRef.current.clear();
 

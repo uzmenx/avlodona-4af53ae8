@@ -43,7 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const sb: any = supabase;
       const { data, error } = await sb
         .from('profiles')
@@ -120,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     
     const updateLastSeen = () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const sb: any = supabase;
       sb.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', user.id).then();
     };

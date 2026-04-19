@@ -108,7 +108,7 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
         ...allMsgs.map(h => ({ role: h.role, content: h.content }))
       ];
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const body: any = { messages: apiMessages };
       if (audioData) {
         body.audio = audioData.base64;

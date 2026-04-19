@@ -22,9 +22,9 @@ interface GiphyPickerProps {
 
 type Tab = 'gif' | 'sticker';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function parseGiphy(data: Record<string, any>[], isSticker: boolean): GiphyItem[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return data.map((item: Record<string, any>) => ({
     id: item.id,
     title: item.title ?? '',

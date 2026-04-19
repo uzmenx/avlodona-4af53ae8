@@ -10,7 +10,7 @@ const fetchMentionPostIdsForMembers = async (memberIds: string[]) => {
   let lastErr: any = null;
   const columnErrors: string[] = [];
   for (const col of MEMBER_MENTION_COLUMNS) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const sb: any = supabase;
     const { data, error } = await sb
       .from('post_mentions')

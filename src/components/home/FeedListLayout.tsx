@@ -45,7 +45,7 @@ export const FeedListLayout = ({
   // (needed so openPostViewer receives the correct index into the posts array)
   const postIndexMap = useMemo(() => {
     const map = new Map<number, number>();
-    let postIdx = 0;
+    const postIdx = 0;
     // posts are sorted by created_at desc already, same order as in the unified list
     // We need to iterate unified and track the original post index
     const postOrder = posts.map(p => p.id);

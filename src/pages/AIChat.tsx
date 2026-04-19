@@ -431,7 +431,7 @@ const AIChat = () => {
         }
 
         {/* Main */}
-        <main ref={swipeTabRef} className="flex-1 flex flex-col relative z-0 overflow-hidden">
+        <main ref={swipeTabRef} className="flex-1 flex flex-col relative z-0 min-h-0 overflow-hidden">
           {activeTab === 'chat' &&
             <AIChatView
               messages={activeSession?.messages || []}

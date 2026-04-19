@@ -240,12 +240,6 @@ const CreateContent = () => {
   // Publish form - minimalist modern design
   return (
     <div className="fixed inset-0 z-[60] bg-background flex flex-col">
-      {isUploading && false &&
-      <div className="absolute top-0 left-0 right-0 z-50">
-          <Progress value={uploadProgress} className="h-0.5 rounded-none" />
-        </div>
-      }
-
       {/* Header */}
       <header className="flex items-center justify-between px-3 py-2.5 border-b border-border/50">
         <button onClick={handleBack} className="flex items-center gap-0.5 text-sm text-muted-foreground active:scale-95 transition-transform">
