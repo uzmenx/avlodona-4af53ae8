@@ -60,7 +60,8 @@ const VideoTrimmer = ({ src, file, maxDuration = 15, onTrimmed, onCancel }: Vide
   }, [currentTime, range, playing]);
 
   const handleRangeChange = (vals: number[]) => {
-    let [start, end] = vals;
+    const start = vals[0];
+    let end = vals[1];
     if (end - start > maxDuration) {
       end = start + maxDuration;
     }

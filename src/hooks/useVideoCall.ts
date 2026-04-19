@@ -113,21 +113,23 @@ export const useVideoCall = (otherUserId: string | null) => {
           }
         });
       } catch (e) {
-        // usually fails on web/iOS, ignore
+        // usually fails on web/iOS, ignore listener setup error
       }
     };
     
     setupForegroundListener();
 
     return () => {
-      try { ForegroundService.removeAllListeners(); } catch (e) {}
+      try { ForegroundService.removeAllListeners(); } catch (e) {
+        // Ignore removal error
+      }
       const co = callObjectRef.current;
       if (co) {
         try {
           co.leave();
           co.destroy();
         } catch {
-          // ignore
+          // ignore leave/destroy error
         }
       }
     };
@@ -212,7 +214,7 @@ export const useVideoCall = (otherUserId: string | null) => {
           await callObjectRef.current.leave();
           callObjectRef.current.destroy();
         } catch {
-          // ignore
+          // ignore previous call cleanup
         }
         setCallObject(null);
         callObjectRef.current = null;
@@ -255,7 +257,9 @@ export const useVideoCall = (otherUserId: string | null) => {
         
         try {
           ForegroundService.stopForegroundService();
-        } catch (e) {}
+        } catch (e) {
+          // Ignore service stop error
+        }
       });
 
       newCallObject.on('participant-joined', (event: DailyEventObject) => {
@@ -323,7 +327,7 @@ export const useVideoCall = (otherUserId: string | null) => {
             newCallObject.setLocalVideo(false);
             setCameraOn(false);
           } catch {
-            // ignore
+            // ignore video toggle error
           }
           return;
         }
@@ -380,12 +384,12 @@ export const useVideoCall = (otherUserId: string | null) => {
         try {
           await callObject.leave();
         } catch {
-          // ignore
+          // ignore leave
         }
         try {
           callObject.destroy();
         } catch {
-          // ignore
+          // ignore destroy
         }
         setCallObject(null);
         callObjectRef.current = null;
@@ -393,7 +397,9 @@ export const useVideoCall = (otherUserId: string | null) => {
       
       try {
         await ForegroundService.stopForegroundService();
-      } catch (e) {}
+      } catch (e) {
+        // Ignore service stop error
+      }
 
       if (currentCall) {
         try {

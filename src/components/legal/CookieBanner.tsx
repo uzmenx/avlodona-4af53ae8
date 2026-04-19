@@ -42,7 +42,9 @@ export const CookieBanner = () => {
   const acceptAll = () => {
     try {
       localStorage.setItem(STORAGE_KEY, 'accepted');
-    } catch {}
+    } catch {
+      // Ignore localStorage error
+    }
     applyConsent('accepted');
     setOpen(false);
   };
@@ -50,7 +52,9 @@ export const CookieBanner = () => {
   const necessaryOnly = () => {
     try {
       localStorage.setItem(STORAGE_KEY, 'necessary');
-    } catch {}
+    } catch {
+      // Ignore localStorage error
+    }
     applyConsent('necessary');
     setOpen(false);
   };

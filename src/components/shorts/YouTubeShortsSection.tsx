@@ -35,11 +35,15 @@ function markSeen(ids: string[]) {
     const arr = [...seen];
     if (arr.length > SEEN_MAX) arr.splice(0, arr.length - SEEN_MAX);
     localStorage.setItem(SEEN_KEY, JSON.stringify(arr));
-  } catch {}
+  } catch {
+    // Ignore error
+  }
 }
 
 function clearSeenCache() {
-  try { localStorage.removeItem(SEEN_KEY); } catch {}
+  try { localStorage.removeItem(SEEN_KEY); } catch {
+    // Ignore error
+  }
 }
 
 // Rotating search queries for variety
@@ -221,7 +225,7 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
   }, [hasMore, isBlocked, isLikelyMusic, shorts.length]);
 
   useEffect(() => {
-    onSearchClick;
+    // onSearchClick triggered by UI
   }, [onSearchClick]);
 
   useEffect(() => {
@@ -242,8 +246,6 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
   useEffect(() => {
     // keep parent in sync
     // (prop is optional)
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    onShortClick;
   }, [onShortClick]);
 
   useEffect(() => {
@@ -303,7 +305,9 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
     try {
       const lastId = allShorts[index]?.id;
       if (lastId) localStorage.setItem('yt_shorts_last_id', lastId);
-    } catch {}
+    } catch {
+      // Ignore localStorage error
+    }
     onShortClick?.(allShorts, index);
   }, [onShortClick]);
 

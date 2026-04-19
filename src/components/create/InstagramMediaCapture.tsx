@@ -190,7 +190,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   // Premium haptic feedback when entering trash boundary
   useEffect(() => {
     if (isOverTrashId && typeof navigator !== 'undefined' && navigator.vibrate) {
-      try { navigator.vibrate(20); } catch (e) {} // Vibrate for 20ms Android
+      try { navigator.vibrate(20); } catch {
+        // Ignore vibration error
+      }
     }
   }, [isOverTrashId]);
 
@@ -548,7 +550,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
     if (musicAudioRef.current) {
       try {
         musicAudioRef.current.pause();
-      } catch {}
+      } catch {
+        // Ignore pause error
+      }
     }
     setIsMusicPlaying(false);
     setSelectedMusic(null);
@@ -603,7 +607,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
       if (musicAudioRef.current) {
         try {
           musicAudioRef.current.pause();
-        } catch {}
+        } catch {
+          // Ignore pause error
+        }
       }
 
       const url = URL.createObjectURL(file);
@@ -1234,7 +1240,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
       const onErr = () => reject(new Error('video load error'));
       offscreenVideo.addEventListener('loadedmetadata', onLoaded, { once: true });
       offscreenVideo.addEventListener('error', onErr, { once: true });
-      try { offscreenVideo.load(); } catch {}
+      try { offscreenVideo.load(); } catch {
+        // Ignore load error
+      }
     });
 
     const w = offscreenVideo.videoWidth || 720;
@@ -1430,7 +1438,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
       clearTimeout(musicStopTimerRef.current);
       try {
         musicAudioRef.current.currentTime = Math.min(Math.max(0, musicTrimStart), Math.max(0, (musicTrimEnd || 0) - 0.05));
-      } catch {}
+      } catch {
+        // Ignore seek error
+      }
       musicAudioRef.current.play();
       setIsMusicPlaying(true);
 
@@ -1702,7 +1712,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                         onPointerDown={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          try { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); } catch {}
+                          try { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); } catch {
+                            // Ignore capture error
+                          }
                           musicTrimDraggingRef.current = 'start';
                           setTrimFromClientX(e.clientX, 'start');
                         }}
@@ -1713,7 +1725,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                         onPointerDown={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          try { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); } catch {}
+                          try { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); } catch {
+                            // Ignore capture error
+                          }
                           musicTrimDraggingRef.current = 'end';
                           setTrimFromClientX(e.clientX, 'end');
                         }}
@@ -1729,7 +1743,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                           const distStart = Math.abs(t - musicTrimStart);
                           const distEnd = Math.abs(t - musicTrimEnd);
                           const which: 'start' | 'end' = distStart <= distEnd ? 'start' : 'end';
-                          try { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); } catch {}
+                          try { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); } catch {
+                            // Ignore capture error
+                          }
                           musicTrimDraggingRef.current = which;
                           setTrimFromClientX(e.clientX, which);
                         }}

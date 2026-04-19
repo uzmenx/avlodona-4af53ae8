@@ -98,7 +98,9 @@ const getVideoDurationSeconds = async (file: File): Promise<number> => {
       video.addEventListener('error', err, { once: true });
       try {
         video.load();
-      } catch {}
+      } catch {
+        // Ignore load
+      }
     });
     const d = Number.isFinite(video.duration) ? video.duration : 0;
     return d > 0 ? d : 0;
@@ -123,7 +125,9 @@ const recordVideoSegment = async (file: File, startSec: number, endSec: number):
       video.addEventListener('error', err, { once: true });
       try {
         video.load();
-      } catch {}
+      } catch {
+        // Ignore load
+      }
     });
 
     await new Promise<void>((resolve) => {
@@ -173,7 +177,9 @@ const recordVideoSegment = async (file: File, startSec: number, endSec: number):
 
     try {
       video.pause();
-    } catch {}
+    } catch {
+      // Ignore pause error
+    }
     recorder.stop();
 
     const blob = await done;
@@ -214,7 +220,9 @@ const mixAudioIntoVideo = async (videoFile: File, audioFile: File): Promise<File
       const onErr = () => reject(new Error('video load error'));
       videoEl.addEventListener('loadedmetadata', onLoaded, { once: true });
       videoEl.addEventListener('error', onErr, { once: true });
-      try { videoEl.load(); } catch {}
+      try { videoEl.load(); } catch {
+        // Ignore load error
+      }
     });
 
     const w = videoEl.videoWidth || 720;
@@ -245,7 +253,9 @@ const mixAudioIntoVideo = async (videoFile: File, audioFile: File): Promise<File
         const err = () => reject(new Error('audio load error'));
         audioEl.addEventListener('canplay', ok, { once: true });
         audioEl.addEventListener('error', err, { once: true });
-        try { audioEl.load(); } catch {}
+        try { audioEl.load(); } catch {
+          // Ignore load error
+        }
       });
 
       const audioSource = audioCtx.createMediaElementSource(audioEl);
