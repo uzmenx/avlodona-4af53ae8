@@ -287,7 +287,8 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
               key={gif.id}
               src={gif.originalUrl || gif.url}
               alt="gif sticker"
-              loading="lazy"
+              decoding="async"
+              draggable={false}
               className="absolute pointer-events-none select-none"
               style={{
                 left: `${gif.x}%`,
@@ -296,6 +297,7 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
                 width: '28%',
                 maxWidth: '160px',
                 zIndex: 20,
+                willChange: 'transform',
               }}
             />
           ));
