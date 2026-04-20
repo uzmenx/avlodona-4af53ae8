@@ -85,6 +85,9 @@ const CreateStory = () => {
           media_type: mediaType,
           caption: caption || null,
           ring_id: selectedRingId,
+          audio_url: selectedMusic?.audio_url ?? null,
+          audio_title: selectedMusic?.audio_title ?? null,
+          audio_artist: selectedMusic?.audio_artist ?? null,
           // Store GIF overlays as metadata so they animate as live HTML overlays in the viewer
           media_metadata: gifOverlays.length > 0 ? { gifOverlays } : null,
         })
