@@ -88,11 +88,11 @@ const handler = async (req: Request): Promise<Response> => {
     const fakeEmail = `${cleanPhone}@phone.oilaviy.uz`;
     const tempPassword = crypto.randomUUID();
 
-    // Use targeted lookup instead of listUsers()
+    // Lookup by email via listUsers (SDK has no getUserByEmail)
     let existingUser: any = null;
     try {
-      const { data } = await supabase.auth.admin.getUserByEmail(fakeEmail);
-      existingUser = data?.user || null;
+      const { data } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 } as any);
+      existingUser = (data?.users || []).find((u: any) => u.email?.toLowerCase() === fakeEmail.toLowerCase()) || null;
     } catch {
       existingUser = null;
     }

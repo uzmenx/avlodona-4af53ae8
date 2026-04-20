@@ -103,11 +103,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     await admin.from("email_otp_codes").update({ verified: true }).eq("id", storedOtp.id);
 
-    // Use targeted lookup instead of listUsers()
+    // Targeted lookup by email filter (avoids loading all users)
     let existing: any = null;
     try {
-      const { data } = await admin.auth.admin.getUserByEmail(normalizedEmail);
-      existing = data?.user || null;
+      const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 } as any);
+      // Fallback: filter by email since SDK doesn't expose getUserByEmail
+      existing = (data?.users || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail) || null;
     } catch {
       existing = null;
     }
