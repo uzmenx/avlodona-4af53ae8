@@ -222,7 +222,7 @@ export const useNotifications = () => {
         (payload) => {
           const updated = payload.new as RawNotification;
           setNotifications(prev =>
-            prev.map(n => n.id === updated.id ? { ...n, ...updated } : n)
+            prev.map(n => n.id === updated.id ? { ...n, ...updated } as Notification : n)
           );
           // Recompute unread count
           setNotifications(prev => {

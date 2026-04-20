@@ -257,7 +257,7 @@ const Messages = () => {
       const normalizedStories: Story[] = stories.map((s: Record<string, unknown>) => ({
         ...s,
         media_type: s.media_type as 'image' | 'video',
-        ring_id: s.ring_id || 'default',
+        ring_id: (s.ring_id as string) || 'default',
         author: authorProfile ?
         {
           id: authorProfile.id,
@@ -266,9 +266,9 @@ const Messages = () => {
           avatar_url: authorProfile.avatar_url
         } :
         undefined,
-        has_viewed: viewerId ? viewedStoryIds.has(s.id) : false,
-        has_liked: viewerId ? likedStoryIds.has(s.id) : false
-      }));
+        has_viewed: viewerId ? viewedStoryIds.has(s.id as string) : false,
+        has_liked: viewerId ? likedStoryIds.has(s.id as string) : false
+      })) as unknown as Story[];
 
       return {
         user_id: targetUserId,
