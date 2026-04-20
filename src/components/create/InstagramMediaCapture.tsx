@@ -108,7 +108,11 @@ function ImageOverlay({
 
 interface InstagramMediaCaptureProps {
   onClose: () => void;
-  onNext: (items: { file: File; filter: string; gifOverlays?: ImageSticker[] }[], captionText?: string) => void;
+  onNext: (
+    items: { file: File; filter: string; gifOverlays?: ImageSticker[] }[],
+    captionText?: string,
+    music?: SelectedMusic | null,
+  ) => void;
   maxItems?: number;
   memoryMemberId?: string | null;
 }
@@ -1421,11 +1425,11 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
           edited.push({ file: f, filter: 'original' });
         }
       }
-      onNext(edited, postCaption);
+      onNext(edited, postCaption, selectedMusicMeta);
     } finally {
       setIsExporting(false);
     }
-  }, [exportPhoto, exportVideo, isExporting, items, onNext, postCaption]);
+  }, [exportPhoto, exportVideo, isExporting, items, onNext, postCaption, selectedMusicMeta]);
 
   const toggleMusicPlayback = useCallback(() => {
     if (!musicAudioRef.current || !selectedMusic) return;

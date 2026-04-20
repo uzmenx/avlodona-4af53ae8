@@ -35,7 +35,13 @@ const CreateStory = () => {
     return () => URL.revokeObjectURL(url);
   }, [selectedFile]);
 
-  const handleMediaFromCapture = useCallback((items: { file: File; filter: string; gifOverlays?: Array<{ id: string; url: string; originalUrl?: string; x: number; y: number; scale: number; rotation: number }> }[]) => {
+  const [selectedMusic, setSelectedMusic] = useState<{ audio_url: string; audio_title: string; audio_artist?: string } | null>(null);
+
+  const handleMediaFromCapture = useCallback((
+    items: { file: File; filter: string; gifOverlays?: Array<{ id: string; url: string; originalUrl?: string; x: number; y: number; scale: number; rotation: number }> }[],
+    _captionText?: string,
+    music?: { audio_url: string; audio_title: string; audio_artist?: string } | null,
+  ) => {
     const item = items[0];
     if (!item?.file) return;
     const file = item.file;
@@ -56,6 +62,7 @@ const CreateStory = () => {
     setSelectedFile(file);
     // Store GIF overlays to be saved as metadata (not baked into the media file)
     setGifOverlays(item.gifOverlays || []);
+    if (music) setSelectedMusic(music);
     setStep('publish');
   }, []);
 
@@ -78,6 +85,9 @@ const CreateStory = () => {
           media_type: mediaType,
           caption: caption || null,
           ring_id: selectedRingId,
+          audio_url: selectedMusic?.audio_url ?? null,
+          audio_title: selectedMusic?.audio_title ?? null,
+          audio_artist: selectedMusic?.audio_artist ?? null,
           // Store GIF overlays as metadata so they animate as live HTML overlays in the viewer
           media_metadata: gifOverlays.length > 0 ? { gifOverlays } : null,
         })
