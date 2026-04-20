@@ -492,7 +492,7 @@ const Messages = () => {
   return (
     <AppLayout>
       <div ref={(n) => {topRef.current = n;}} />
-      <div className="h-[100dvh] overflow-y-auto pb-20 overscroll-contain">
+      <div className="pb-20">
 
         {/* Header */}
         <div className="sticky top-0 z-40 bg-gradient-to-b from-indigo-500/25 via-violet-500/20 to-background/10 backdrop-blur-xl">
@@ -543,12 +543,12 @@ const Messages = () => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all active:scale-95 group">
                       <Icon 
-                        icon="heroicons:sparkles-20-solid" 
-                        className="h-5 w-5 text-primary/80 group-hover:text-primary transition-colors" 
+                        icon="lets-icons:setting-alt-fill" 
+                        className="h-6 w-6 text-primary/80 group-hover:text-primary transition-colors" 
                       />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-60 border-white/10 bg-background/60 backdrop-blur-2xl rounded-[24px] p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                  <DropdownMenuContent align="end" className="z-[250] min-w-60 bg-popover border-white/10 shadow-xl rounded-[24px] p-2">
                     <div className="px-3 py-2 mb-1">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Amallar</p>
                     </div>
