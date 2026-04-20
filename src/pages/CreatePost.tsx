@@ -84,7 +84,11 @@ const CreatePost = () => {
   const [autoLocationEnabled, setAutoLocationEnabled] = useState(false);
   const [detectingLocation, setDetectingLocation] = useState(false);
 
-  const handleMediaFromCapture = (items: { file: File; filter: string; gifOverlays?: Array<{ id: string; url: string; originalUrl?: string; x: number; y: number; scale: number; rotation: number }> }[]) => {
+  const handleMediaFromCapture = (
+    items: { file: File; filter: string; gifOverlays?: Array<{ id: string; url: string; originalUrl?: string; x: number; y: number; scale: number; rotation: number }> }[],
+    _captionText?: string,
+    music?: SelectedMusic | null,
+  ) => {
     const newMedia: MediaFile[] = items.map((item) => ({
       file: item.file,
       preview: URL.createObjectURL(item.file),
@@ -93,6 +97,7 @@ const CreatePost = () => {
       gifOverlays: item.gifOverlays,
     }));
     setSelectedMedia(newMedia);
+    if (music) setSelectedMusic(music);
     setStep('caption');
   };
 
