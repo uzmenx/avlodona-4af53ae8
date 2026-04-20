@@ -1,5 +1,4 @@
 import { RefObject, useMemo } from "react";
-import { Virtuoso } from "react-virtuoso";
 import { TreePostCard } from "@/components/feed/TreePostCard";
 import { PostCard } from "@/components/feed/PostCard";
 import { PostCardSkeleton } from "@/components/feed/PostCardSkeleton";
@@ -32,9 +31,8 @@ export const FeedListLayout = ({
   t,
   scrollContainerRef,
   loadMoreSentinelRef,
-  openPostViewer
+  openPostViewer,
 }: FeedListLayoutProps) => {
-  // Merge tree posts and regular posts into one list sorted by created_at desc
   const unified = useMemo(() => {
     const items: FeedItem[] = [
       ...posts.map((p): FeedItem => ({ kind: 'post', data: p, created_at: p.created_at })),
@@ -44,50 +42,39 @@ export const FeedListLayout = ({
     return items;
   }, [posts, treePosts]);
 
-  // Build a mapping from unified index to the original posts-only index
-  // (needed so openPostViewer receives the correct index into the posts array)
-  const postIndexMap = useMemo(() => {
-    const map = new Map<number, number>();
-    const postIdx = 0;
-    // posts are sorted by created_at desc already, same order as in the unified list
-    // We need to iterate unified and track the original post index
-    const postOrder = posts.map(p => p.id);
-    const postIdToIdx = new Map(postOrder.map((id, i) => [id, i]));
-    unified.forEach((item, i) => {
-      if (item.kind === 'post') {
-        map.set(i, postIdToIdx.get((item.data as Post).id) ?? 0);
-      }
-    });
-    return map;
-  }, [unified, posts]);
+  const postIdToIdx = useMemo(
+    () => new Map(posts.map((p, i) => [p.id, i])),
+    [posts]
+  );
 
   return (
     <div ref={scrollContainerRef} className="space-y-3 pb-20 px-[5px]">
       {isInitialLoading && unified.length === 0 && <PostCardSkeleton count={4} />}
-      <Virtuoso
-        useWindowScroll
-        data={unified}
-        itemContent={(index, item) => (
-          <div className="mb-3">
-            {item.kind === 'tree' ? (
-              <TreePostCard
-                post={item.data as FeedTreePost}
-                author={(item.data as FeedTreePost).author}
-                index={index}
-              />
-            ) : (
-              <PostCard
-                post={item.data as Post}
-                onMediaClick={() => openPostViewer(postIndexMap.get(index) ?? 0)}
-                index={index}
-              />
-            )}
-          </div>
-        )}
-      />
+
+      {unified.map((item, index) => (
+        <div key={`${item.kind}-${(item.data as { id: string }).id}`} className="mb-3">
+          {item.kind === 'tree' ? (
+            <TreePostCard
+              post={item.data as FeedTreePost}
+              author={(item.data as FeedTreePost).author}
+              index={index}
+            />
+          ) : (
+            <PostCard
+              post={item.data as Post}
+              onMediaClick={() =>
+                openPostViewer(postIdToIdx.get((item.data as Post).id) ?? 0)
+              }
+              index={index}
+            />
+          )}
+        </div>
+      ))}
 
       <div ref={loadMoreSentinelRef} className="h-4 min-h-4" aria-hidden />
-      {isLoadingMore && <div className="text-center py-4 text-muted-foreground text-sm">{t('loading')}</div>}
+      {isLoadingMore && (
+        <div className="text-center py-4 text-muted-foreground text-sm">{t('loading')}</div>
+      )}
       {!hasMore && posts.length > 0 && <EndOfFeed />}
     </div>
   );

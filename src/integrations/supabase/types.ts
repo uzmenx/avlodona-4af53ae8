@@ -1003,6 +1003,7 @@ export type Database = {
         Row: {
           id: string
           member_id: string
+          network_id: string
           owner_id: string
           updated_at: string
           updated_by: string | null
@@ -1012,6 +1013,7 @@ export type Database = {
         Insert: {
           id?: string
           member_id: string
+          network_id: string
           owner_id: string
           updated_at?: string
           updated_by?: string | null
@@ -1021,6 +1023,7 @@ export type Database = {
         Update: {
           id?: string
           member_id?: string
+          network_id?: string
           owner_id?: string
           updated_at?: string
           updated_by?: string | null
@@ -1033,6 +1036,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: true
             referencedRelation: "family_tree_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "node_positions_network_id_fkey"
+            columns: ["network_id"]
+            isOneToOne: false
+            referencedRelation: "family_networks"
             referencedColumns: ["id"]
           },
         ]
@@ -1311,6 +1321,7 @@ export type Database = {
           created_at: string
           id: string
           likes_count: number | null
+          media_metadata: Json | null
           media_urls: string[] | null
           target_member_id: string | null
           updated_at: string
@@ -1327,6 +1338,7 @@ export type Database = {
           created_at?: string
           id?: string
           likes_count?: number | null
+          media_metadata?: Json | null
           media_urls?: string[] | null
           target_member_id?: string | null
           updated_at?: string
@@ -1343,6 +1355,7 @@ export type Database = {
           created_at?: string
           id?: string
           likes_count?: number | null
+          media_metadata?: Json | null
           media_urls?: string[] | null
           target_member_id?: string | null
           updated_at?: string
@@ -1368,6 +1381,7 @@ export type Database = {
           cover_url: string | null
           created_at: string
           family_network_id: string | null
+          fcm_token: string | null
           gender: string | null
           hide_collections: boolean
           hide_highlights: boolean
@@ -1381,8 +1395,6 @@ export type Database = {
           my_node_id: string | null
           name: string | null
           social_links: Json | null
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
           subscription_tier: string | null
           theme_mode: string | null
           updated_at: string
@@ -1395,6 +1407,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           family_network_id?: string | null
+          fcm_token?: string | null
           gender?: string | null
           hide_collections?: boolean
           hide_highlights?: boolean
@@ -1408,8 +1421,6 @@ export type Database = {
           my_node_id?: string | null
           name?: string | null
           social_links?: Json | null
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
           subscription_tier?: string | null
           theme_mode?: string | null
           updated_at?: string
@@ -1422,6 +1433,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           family_network_id?: string | null
+          fcm_token?: string | null
           gender?: string | null
           hide_collections?: boolean
           hide_highlights?: boolean
@@ -1435,8 +1447,6 @@ export type Database = {
           my_node_id?: string | null
           name?: string | null
           social_links?: Json | null
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
           subscription_tier?: string | null
           theme_mode?: string | null
           updated_at?: string
@@ -1458,6 +1468,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string | null
+          id: string
+          reason: string | null
+          reporter_id: string | null
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          reporter_id?: string | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          reporter_id?: string | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: []
       }
       saved_posts: {
         Row: {
@@ -1551,6 +1621,7 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          media_metadata: Json | null
           media_type: string
           media_url: string
           ring_id: string
@@ -1564,6 +1635,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          media_metadata?: Json | null
           media_type?: string
           media_url: string
           ring_id?: string
@@ -1577,6 +1649,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          media_metadata?: Json | null
           media_type?: string
           media_url?: string
           ring_id?: string
@@ -1907,6 +1980,7 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      join_group_via_invite: { Args: { invite_str: string }; Returns: boolean }
       reset_daily_usage: { Args: never; Returns: undefined }
     }
     Enums: {
