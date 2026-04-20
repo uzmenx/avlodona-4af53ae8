@@ -12,31 +12,32 @@ export const MergedBadges = ({ mergedNames, gender }: MergedBadgesProps) => {
 
   return (
     <div className="absolute -bottom-2 -right-2 flex -space-x-2">
-      {mergedNames.slice(0, 3).map((name, idx) => {}
-
-
-
-
-
-
-
-
-
-
-
-      )}
-      {mergedNames.length > 3 &&
-      <div
-        className={cn(
-          "w-6 h-6 rounded-full flex items-center justify-center",
-          "border-2 border-background shadow-md",
-          "text-[10px] font-bold text-white",
-          isMale ? "bg-sky-700" : "bg-pink-700"
-        )}>
-        
+      {mergedNames.slice(0, 3).map((name, idx) => (
+        <div
+          key={`${name}-${idx}`}
+          className={cn(
+            "w-6 h-6 rounded-full flex items-center justify-center",
+            "border-2 border-background shadow-md",
+            "text-[10px] font-bold text-white",
+            isMale ? "bg-sky-600" : "bg-pink-600"
+          )}
+          title={name}
+        >
+          {name.charAt(0).toUpperCase()}
+        </div>
+      ))}
+      {mergedNames.length > 3 && (
+        <div
+          className={cn(
+            "w-6 h-6 rounded-full flex items-center justify-center",
+            "border-2 border-background shadow-md",
+            "text-[10px] font-bold text-white",
+            isMale ? "bg-sky-700" : "bg-pink-700"
+          )}
+        >
           +{mergedNames.length - 3}
         </div>
-      }
-    </div>);
-
+      )}
+    </div>
+  );
 };
