@@ -25,7 +25,7 @@ type GridLayout = 1 | 2;
 const Home = () => {
   const { t } = useLanguage();
   const { storyGroups, refetch: refetchStories } = useStories();
-  const { posts, isLoading, isLoadingMore, hasMore, fetchPosts, loadMore } = usePostsCache();
+  const { posts, isLoading, isLoadingMore, hasMore, fetchPosts, forceRefresh, loadMore } = usePostsCache();
   const { treePosts, refetch: refetchTrees } = useTreeFeed();
   const { unreadCount } = useNotifications();
   const { anyBlockedIds } = useBlockedUsers();
@@ -89,8 +89,8 @@ const Home = () => {
 
   const handleRefresh = useCallback(async () => {
     window.dispatchEvent(new Event('refresh-shorts'));
-    await Promise.all([fetchPosts(true), refetchStories(), refetchTrees()]);
-  }, [fetchPosts, refetchStories, refetchTrees]);
+    await Promise.all([forceRefresh(), refetchStories(), refetchTrees()]);
+  }, [forceRefresh, refetchStories, refetchTrees]);
 
   useEffect(() => {
     const onNavHome = (e: Event) => {
@@ -139,11 +139,7 @@ const Home = () => {
         />
         
         <PullToRefresh onRefresh={handleRefresh} useWindowScroll={true}>
-          {isLoading && visiblePosts.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">{t('loading')}</p>
-            </div>
-          ) : visiblePosts.length === 0 ? (
+          {visiblePosts.length === 0 && visibleTreePosts.length === 0 && !isLoading ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">{t('noPostsYet')}</p>
               <p className="text-sm text-muted-foreground mt-2">{t('createFirstPost')}</p>
@@ -154,6 +150,7 @@ const Home = () => {
               treePosts={visibleTreePosts}
               isLoadingMore={isLoadingMore}
               hasMore={hasMore}
+              isInitialLoading={isLoading}
               t={t}
               scrollContainerRef={scrollContainerRef}
               loadMoreSentinelRef={loadMoreSentinelRef}

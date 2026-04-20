@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { clearLocalCallNotification } from '@/lib/pushNotifications';
 import { ForegroundService } from '@capawesome-team/capacitor-android-foreground-service';
+import { Capacitor } from '@capacitor/core';
 
 interface Call {
   id: string;
@@ -104,10 +105,13 @@ export const useVideoCall = (otherUserId: string | null) => {
   useEffect(() => {
     // Listen for foreground service button clicks (e.g. "Tugatish" button)
     const setupForegroundListener = async () => {
+      if (Capacitor.getPlatform() !== 'android') return;
       try {
         await ForegroundService.removeAllListeners();
-        await ForegroundService.addListener('buttonTapped', (event) => {
-          if (event.buttonId === 1) {
+        await ForegroundService.addListener('buttonClicked', (event) => {
+          const id = (event as unknown as { buttonId?: number; id?: number } | null)?.buttonId ??
+            (event as unknown as { buttonId?: number; id?: number } | null)?.id;
+          if (id === 1) {
             // "Tugatish" was clicked
             leaveCall();
           }
@@ -120,9 +124,12 @@ export const useVideoCall = (otherUserId: string | null) => {
     setupForegroundListener();
 
     return () => {
-      try { ForegroundService.removeAllListeners(); } catch (e) {
-        // Ignore removal error
+      if (Capacitor.getPlatform() === 'android') {
+        try { void ForegroundService.removeAllListeners(); } catch {
+          // ignore
+        }
       }
+      // Ignore removal error
       const co = callObjectRef.current;
       if (co) {
         try {
@@ -234,19 +241,21 @@ export const useVideoCall = (otherUserId: string | null) => {
         reconnectAttemptsRef.current = 0;
 
         // Start Foreground Service so call doesn't drop when app is backgrounded
-        try {
-          await ForegroundService.startForegroundService({
-            id: 2,
-            title: "Avlodona Video Qo'ng'iroq",
-            body: "Suhbat davom etmoqda... Qaytish uchun bosing",
-            smallIcon: 'ic_stat_icon_config_sample',
-            buttons: [
-              { title: 'Tugatish', id: 1 }
-            ],
-            silent: true,
-          });
-        } catch (e) {
-          console.error('Failed to start foreground service:', e);
+        if (Capacitor.getPlatform() === 'android') {
+          try {
+            await ForegroundService.startForegroundService({
+              id: 2,
+              title: "Avlodona Video Qo'ng'iroq",
+              body: "Suhbat davom etmoqda... Qaytish uchun bosing",
+              smallIcon: 'ic_stat_icon_config_sample',
+              buttons: [
+                { title: 'Tugatish', id: 1 }
+              ],
+              silent: true,
+            });
+          } catch (e) {
+            console.error('Failed to start foreground service:', e);
+          }
         }
       });
 
@@ -254,11 +263,13 @@ export const useVideoCall = (otherUserId: string | null) => {
         setIsInCall(false);
         setRemoteParticipant(null);
         setPartnerLeft(false);
-        
-        try {
-          ForegroundService.stopForegroundService();
-        } catch (e) {
-          // Ignore service stop error
+
+        if (Capacitor.getPlatform() === 'android') {
+          try {
+            void ForegroundService.stopForegroundService();
+          } catch {
+            // ignore
+          }
         }
       });
 
@@ -396,7 +407,9 @@ export const useVideoCall = (otherUserId: string | null) => {
       }
       
       try {
-        await ForegroundService.stopForegroundService();
+        if (Capacitor.getPlatform() === 'android') {
+          await ForegroundService.stopForegroundService();
+        }
       } catch (e) {
         // Ignore service stop error
       }

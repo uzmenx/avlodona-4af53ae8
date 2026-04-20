@@ -24,7 +24,7 @@ import { useMentionsCollabs } from '@/hooks/useMentionsCollabs';
 import { useSavedPosts } from '@/hooks/useSavedPosts';
 import { PostCard } from '@/components/feed/PostCard';
 import { MemorialPostCard } from '@/components/post/MemorialPostCard';
-import { FullScreenViewer } from '@/components/feed/FullScreenViewer';
+import { UnifiedFullScreenViewer } from '@/components/feed/UnifiedFullScreenViewer';
 import { PullToRefresh } from '@/components/feed/PullToRefresh';
 import { EndOfFeed } from '@/components/feed/EndOfFeed';
 import { FollowButton } from '@/components/user/FollowButton';
@@ -1608,8 +1608,10 @@ export const UserProfilePage = () => {
 
         {/* Full screen viewer */}
         {isViewerOpen &&
-          <FullScreenViewer
+          <UnifiedFullScreenViewer
             posts={viewerPosts.length > 0 ? viewerPosts : filteredPosts}
+            shorts={[]}
+            initialTab="posts"
             initialIndex={viewerStartIndex}
             onClose={() => setIsViewerOpen(false)} />
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Post } from '@/types';
 
@@ -11,14 +11,16 @@ interface CacheData {
 }
 
 // Global cache - persists across component mounts
-let globalCache: CacheData | null = null;
+const globalCacheByKey: Record<string, CacheData | undefined> = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-async function fetchPostsPage(from: number, pageSize: number): Promise<Post[]> {
+type PostVisibility = 'public' | 'friends_only' | 'private' | 'profile';
+
+async function fetchPostsPage(from: number, pageSize: number, visibilities: PostVisibility[]): Promise<Post[]> {
   const { data: postsData, error } = await supabase
     .from('posts')
     .select('*')
-    .eq('visibility', 'public')
+    .in('visibility', visibilities)
     .order('created_at', { ascending: false })
     .range(from, from + pageSize - 1);
 
@@ -59,7 +61,21 @@ async function fetchPostsPage(from: number, pageSize: number): Promise<Post[]> {
   return postsWithAuthors;
 }
 
-export const usePostsCache = () => {
+interface UsePostsCacheOptions {
+  visibilities?: PostVisibility[];
+}
+
+export const usePostsCache = (options?: UsePostsCacheOptions) => {
+  const normalizedVisibilities = useMemo(() => {
+    const base = (options?.visibilities && options.visibilities.length > 0)
+      ? options.visibilities
+      : (['public', 'profile', 'friends_only'] as PostVisibility[]);
+    return base.slice().sort();
+  }, [options?.visibilities?.join('|')]);
+
+  const cacheKey = useMemo(() => normalizedVisibilities.join('|'), [normalizedVisibilities]);
+  const globalCache = globalCacheByKey[cacheKey];
+
   const [posts, setPosts] = useState<Post[]>(globalCache?.posts || []);
   const [isLoading, setIsLoading] = useState(!globalCache);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -68,18 +84,21 @@ export const usePostsCache = () => {
   const isFetchingRef = useRef(false);
 
   const isCacheValid = useCallback(() => {
-    if (!globalCache) return false;
+    const cache = globalCacheByKey[cacheKey];
+    if (!cache) return false;
     const now = Date.now();
-    return (now - globalCache.fetchedAt) < CACHE_TTL;
-  }, []);
+    return (now - cache.fetchedAt) < CACHE_TTL;
+  }, [cacheKey]);
 
   const fetchPosts = useCallback(async (forceRefresh = false) => {
     if (isFetchingRef.current) return;
 
-    if (globalCache && !forceRefresh) {
+    const cache = globalCacheByKey[cacheKey];
+
+    if (cache && !forceRefresh) {
       // SWR: show stale instantly
-      setPosts(globalCache.posts);
-      setHasMore(globalCache.hasMore);
+      setPosts(cache.posts);
+      setHasMore(cache.hasMore);
       setIsLoading(false);
 
       // If cache is still fully valid, don't even fetch in background
@@ -93,11 +112,13 @@ export const usePostsCache = () => {
     isFetchingRef.current = true;
 
     try {
-      const postsWithAuthors = await fetchPostsPage(0, PAGE_SIZE);
+      console.log('Fetching posts with visibilities:', normalizedVisibilities);
+      const postsWithAuthors = await fetchPostsPage(0, PAGE_SIZE, normalizedVisibilities);
+      console.log('Fetched posts count:', postsWithAuthors.length);
 
       const hasMoreData = postsWithAuthors.length >= PAGE_SIZE;
 
-      globalCache = {
+      globalCacheByKey[cacheKey] = {
         posts: postsWithAuthors,
         fetchedAt: Date.now(),
         hasMore: hasMoreData,
@@ -106,13 +127,13 @@ export const usePostsCache = () => {
       setPosts(postsWithAuthors);
       setHasMore(hasMoreData);
     } catch (error) {
-      console.error('Error fetching posts:', error);
+      console.error('Error fetching posts in cache hook:', error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
       isFetchingRef.current = false;
     }
-  }, [isCacheValid]);
+  }, [cacheKey, isCacheValid, normalizedVisibilities]);
 
   const loadMore = useCallback(async () => {
     if (isFetchingRef.current || !hasMore || posts.length === 0) return;
@@ -121,15 +142,16 @@ export const usePostsCache = () => {
     setIsLoadingMore(true);
 
     try {
-      const nextPosts = await fetchPostsPage(posts.length, PAGE_SIZE);
+      const nextPosts = await fetchPostsPage(posts.length, PAGE_SIZE, normalizedVisibilities);
       const hasMoreData = nextPosts.length >= PAGE_SIZE;
 
       const updatedPosts = [...posts, ...nextPosts];
 
-      if (globalCache) {
-        globalCache.posts = updatedPosts;
-        globalCache.hasMore = hasMoreData;
-        globalCache.fetchedAt = Date.now();
+      const cache = globalCacheByKey[cacheKey];
+      if (cache) {
+        cache.posts = updatedPosts;
+        cache.hasMore = hasMoreData;
+        cache.fetchedAt = Date.now();
       }
 
       setPosts(updatedPosts);
@@ -140,25 +162,27 @@ export const usePostsCache = () => {
       setIsLoadingMore(false);
       isFetchingRef.current = false;
     }
-  }, [hasMore, posts]);
+  }, [cacheKey, hasMore, posts, normalizedVisibilities]);
 
   // Add new post to cache (optimistic)
   const addPostToCache = useCallback((newPost: Post) => {
     const updatedPosts = [newPost, ...posts];
     setPosts(updatedPosts);
-    if (globalCache) {
-      globalCache.posts = updatedPosts;
+    const cache = globalCacheByKey[cacheKey];
+    if (cache) {
+      cache.posts = updatedPosts;
     }
-  }, [posts]);
+  }, [cacheKey, posts]);
 
   // Remove post from cache
   const removePostFromCache = useCallback((postId: string) => {
     const updatedPosts = posts.filter(p => p.id !== postId);
     setPosts(updatedPosts);
-    if (globalCache) {
-      globalCache.posts = updatedPosts;
+    const cache = globalCacheByKey[cacheKey];
+    if (cache) {
+      cache.posts = updatedPosts;
     }
-  }, [posts]);
+  }, [cacheKey, posts]);
 
   // Update post in cache (for like counts, etc.)
   const updatePostInCache = useCallback((postId: string, updates: Partial<Post>) => {
@@ -166,17 +190,23 @@ export const usePostsCache = () => {
       p.id === postId ? { ...p, ...updates } : p
     );
     setPosts(updatedPosts);
-    if (globalCache) {
-      globalCache.posts = updatedPosts;
+    const cache = globalCacheByKey[cacheKey];
+    if (cache) {
+      cache.posts = updatedPosts;
     }
-  }, [posts]);
+  }, [cacheKey, posts]);
 
   // Clear cache
   const clearCache = useCallback(() => {
-    globalCache = null;
+    delete globalCacheByKey[cacheKey];
     setPosts([]);
     setHasMore(true);
-  }, []);
+  }, [cacheKey]);
+
+  const forceRefresh = useCallback(async () => {
+    delete globalCacheByKey[cacheKey];
+    await fetchPosts(true);
+  }, [cacheKey, fetchPosts]);
 
   return {
     posts,
@@ -185,6 +215,7 @@ export const usePostsCache = () => {
     isLoadingMore,
     hasMore,
     fetchPosts,
+    forceRefresh,
     loadMore,
     addPostToCache,
     removePostFromCache,

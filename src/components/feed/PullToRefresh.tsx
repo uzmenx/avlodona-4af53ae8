@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +12,7 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
   const startY = useRef(0);
   const isPulling = useRef(false);
   const canPull = useRef(false);
@@ -19,7 +20,7 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
   const threshold = 80;
   const maxPull = 120;
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+  const handleTouchStart = useCallback((e: TouchEvent) => {
     const el = containerRef.current;
     if (!el) return;
 
@@ -44,7 +45,7 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
     }
   }, [useWindowScroll]);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+  const handleTouchMove = useCallback((e: TouchEvent) => {
     if (isRefreshing) return;
 
     const el = containerRef.current;
@@ -62,14 +63,12 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
       return;
     }
 
-    if (el.scrollTop > 0) return;
-    if (useWindowScroll && window.scrollY > 0) return;
-
     if (!isPulling.current) {
       if (diff <= 10) return;
       isPulling.current = true;
     }
 
+    // Prevent scroll bounce while we're actively pulling
     e.preventDefault();
     const resistance = 0.4;
     const distance = Math.min(diff * resistance, maxPull);
@@ -92,14 +91,35 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
     setPullDistance(0);
   }, [pullDistance, isRefreshing, onRefresh]);
 
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onStart = (e: TouchEvent) => handleTouchStart(e);
+    const onMove = (e: TouchEvent) => handleTouchMove(e);
+    const onEnd = () => {
+      void handleTouchEnd();
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    el.addEventListener('touchcancel', onEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+      el.removeEventListener('touchcancel', onEnd);
+    };
+  }, [handleTouchEnd, handleTouchMove, handleTouchStart]);
+
   return (
     <div
       ref={containerRef}
       className="relative h-full overflow-y-auto smooth-scroll-momentum py-0"
       style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}>
+    >
 
       {/* Pull indicator */}
       <div

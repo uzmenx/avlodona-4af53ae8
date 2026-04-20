@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 
 import { createPortal } from 'react-dom';
 
-import { Play, Pause, ChevronLeft, ChevronRight, Heart, X, Send, Loader2 } from 'lucide-react';
+import { Play, Pause, ChevronLeft, ChevronRight, Heart, X, Send, Loader2, Volume2, VolumeX } from 'lucide-react';
 
 import { Post } from '@/types';
 
@@ -48,6 +48,8 @@ import { playExclusiveAudio, stopActiveAudio } from '@/lib/audioController';
 
 import { useSavedMusic } from '@/hooks/useSavedMusic';
 
+import { useAudio } from '@/contexts/AudioContext';
+
 
 
 type TabType = 'shorts' | 'posts';
@@ -85,6 +87,8 @@ export const UnifiedFullScreenViewer = ({
 }: UnifiedFullScreenViewerProps) => {
 
   const { user } = useAuth();
+
+  const { isMuted, toggleMute } = useAudio();
 
   const { getStoryInfo } = useActiveStories();
 
@@ -132,16 +136,12 @@ export const UnifiedFullScreenViewer = ({
 
   const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
-
     const h = container.clientHeight;
-
     if (h === 0) return;
 
     // Debounce index update until scroll settles — avoids rapid state changes during snapping
-
     if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
 
     scrollDebounceRef.current = setTimeout(() => {
@@ -153,7 +153,16 @@ export const UnifiedFullScreenViewer = ({
         setShortIndex(newIndex);
       }
     }, 10);
-  };
+  }, [activeTab, postIndex, shortIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollDebounceRef.current) {
+        clearTimeout(scrollDebounceRef.current);
+        scrollDebounceRef.current = null;
+      }
+    };
+  }, []);
 
 
 
@@ -186,6 +195,18 @@ export const UnifiedFullScreenViewer = ({
     }
 
   }, [activeTab, postIndex, shortIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
+      if (playIndicatorTimeout.current) {
+        clearTimeout(playIndicatorTimeout.current);
+      }
+    };
+  }, []);
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -577,7 +598,7 @@ export const UnifiedFullScreenViewer = ({
 
      
 
-  }, [postIndex, shortIndex, activeTab]);
+  }, [activeTab, audioKey, currentPost?.audio_url, playAudio, postIndex, shortIndex, stopAudio]);
 
 
 
@@ -781,7 +802,9 @@ export const UnifiedFullScreenViewer = ({
 
     if (activeTab !== 'shorts') {
 
-      mutedMediaRef.current.forEach((prev, el) => {
+      const mutedMap = mutedMediaRef.current;
+
+      mutedMap.forEach((prev, el) => {
 
         el.muted = prev.muted;
 
@@ -789,7 +812,7 @@ export const UnifiedFullScreenViewer = ({
 
       });
 
-      mutedMediaRef.current.clear();
+      mutedMap.clear();
 
       return;
 
@@ -799,6 +822,8 @@ export const UnifiedFullScreenViewer = ({
 
     const container = containerRef.current;
 
+    const mutedMap = mutedMediaRef.current;
+
     const media = Array.from(document.querySelectorAll('video, audio')) as HTMLMediaElement[];
 
 
@@ -807,9 +832,9 @@ export const UnifiedFullScreenViewer = ({
 
       if (container && container.contains(el)) continue;
 
-      if (!mutedMediaRef.current.has(el)) {
+      if (!mutedMap.has(el)) {
 
-        mutedMediaRef.current.set(el, { muted: el.muted, volume: el.volume });
+        mutedMap.set(el, { muted: el.muted, volume: el.volume });
 
       }
 
@@ -823,7 +848,7 @@ export const UnifiedFullScreenViewer = ({
 
 
 
-    const previousMutedMedia = new Map(mutedMediaRef.current);
+    const previousMutedMedia = new Map(mutedMap);
 
     return () => {
 
@@ -837,7 +862,7 @@ export const UnifiedFullScreenViewer = ({
 
        
 
-      mutedMediaRef.current.clear();
+      mutedMap.clear();
 
     };
 
@@ -1530,7 +1555,24 @@ export const UnifiedFullScreenViewer = ({
 
           <>
 
-              <video ref={videoRef} src={currentMediaUrl} className="max-w-full max-h-full object-contain" loop playsInline autoPlay />
+              <video ref={videoRef} src={currentMediaUrl} className="max-w-full max-h-full object-contain" loop playsInline autoPlay muted={isMuted} />
+
+              <button
+                type="button"
+                aria-label={isMuted ? 'Unmute' : 'Mute'}
+                className="absolute right-3 top-3 z-30 p-2 rounded-full bg-black/35 backdrop-blur-sm border border-white/10"
+                onPointerUp={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleMute();
+                }}
+              >
+                {isMuted ? (
+                  <VolumeX className="h-4 w-4 text-white" />
+                ) : (
+                  <Volume2 className="h-4 w-4 text-white" />
+                )}
+              </button>
 
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
 
@@ -1919,15 +1961,11 @@ export const UnifiedFullScreenViewer = ({
 
 
   useEffect(() => {
-
+    const key = audioKey;
     return () => {
-
-      stopActiveAudio(audioKey || undefined);
-
+      stopActiveAudio(key || undefined);
       stopAudio();
-
     };
-
   }, [audioKey, stopAudio]);
 
 

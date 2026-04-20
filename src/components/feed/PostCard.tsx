@@ -51,6 +51,8 @@ import { playExclusiveAudio, stopActiveAudio } from '@/lib/audioController';
 import { useSavedMusic } from '@/hooks/useSavedMusic';
 
 import { cn } from '@/lib/utils';
+import { useProgressiveLoading } from '@/hooks/useProgressiveLoading';
+import { PostCardSkeleton } from '@/components/feed/PostCardSkeleton';
 
 interface PostCardProps {
   post: Post;
@@ -66,6 +68,8 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
   const { isLiked, toggleLike } = usePostLikes(post.id);
 
   const cardRef = useRef<HTMLDivElement>(null);
+
+  const { stage, setRef, setPreviewReady } = useProgressiveLoading();
 
   const { viewsCount, trackView } = usePostViews(post.id, post.views_count ?? 0);
 
@@ -413,6 +417,8 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
               <MediaCarousel
                 mediaUrls={mediaUrls}
                 mediaMetadata={post.media_metadata}
+                stage={stage}
+                onPreviewReady={setPreviewReady}
                 onVideoDoubleTap={() => {
                   const anims = ['animate-heartBurst', 'animate-likePop', 'animate-likeSwing', 'animate-likeFloat', 'animate-likePulse'];
                   setHeartAnimClass(anims[Math.floor(Math.random() * anims.length)]);
@@ -539,10 +545,13 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
   return (
     <>
       <div
-        ref={cardRef}
+        ref={(el) => {
+          cardRef.current = el;
+          setRef(el);
+        }}
         className="py-0 my-[5px] animate-fadeIn"
       >
-        {card}
+        {stage === 'skeleton' ? <PostCardSkeleton /> : card}
       </div>
 
       {typeof document !== 'undefined' && videoPlayerOverlay && createPortal(videoPlayerOverlay, document.body)}

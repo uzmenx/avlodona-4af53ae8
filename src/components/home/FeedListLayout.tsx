@@ -2,6 +2,7 @@ import { RefObject, useMemo } from "react";
 import { Virtuoso } from "react-virtuoso";
 import { TreePostCard } from "@/components/feed/TreePostCard";
 import { PostCard } from "@/components/feed/PostCard";
+import { PostCardSkeleton } from "@/components/feed/PostCardSkeleton";
 import { EndOfFeed } from "@/components/feed/EndOfFeed";
 import { Post } from "@/types";
 import { FeedTreePost } from "@/hooks/useTreeFeed";
@@ -15,6 +16,7 @@ interface FeedListLayoutProps {
   treePosts: FeedTreePost[];
   isLoadingMore: boolean;
   hasMore: boolean;
+  isInitialLoading?: boolean;
   t: (key: string) => string;
   scrollContainerRef: RefObject<HTMLDivElement>;
   loadMoreSentinelRef: RefObject<HTMLDivElement>;
@@ -26,6 +28,7 @@ export const FeedListLayout = ({
   treePosts,
   isLoadingMore,
   hasMore,
+  isInitialLoading,
   t,
   scrollContainerRef,
   loadMoreSentinelRef,
@@ -60,6 +63,7 @@ export const FeedListLayout = ({
 
   return (
     <div ref={scrollContainerRef} className="space-y-3 pb-20 px-[5px]">
+      {isInitialLoading && unified.length === 0 && <PostCardSkeleton count={4} />}
       <Virtuoso
         useWindowScroll
         data={unified}

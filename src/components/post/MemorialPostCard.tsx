@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatCount } from '@/lib/formatCount';
 import { cn } from '@/lib/utils';
 import { useMemorialPostSocial } from '@/hooks/useMemorialPostSocial';
+import { useProgressiveLoading } from '@/hooks/useProgressiveLoading';
 import { MemorialCommentsSheet } from './MemorialCommentsSheet';
 import type { MemorialPost } from '@/hooks/useMemorialPosts';
 
@@ -20,6 +21,7 @@ export const MemorialPostCard = ({ post, onMediaClick }: MemorialPostCardProps) 
   const cardRef = useRef<HTMLDivElement>(null);
   const captionRef = useRef<HTMLParagraphElement>(null);
   const { isLiked, likesCount, commentsCount, isSaved, toggleLike, toggleSave, trackView, handleShare } = useMemorialPostSocial(post.id);
+  const { stage, setRef, setPreviewReady, isVisible } = useProgressiveLoading();
   
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
@@ -62,7 +64,13 @@ export const MemorialPostCard = ({ post, onMediaClick }: MemorialPostCardProps) 
   }, [post.caption]);
 
   return (
-    <div ref={cardRef} className="py-0 my-[4px] animate-fadeIn">
+    <div
+      ref={(el) => {
+        cardRef.current = el;
+        setRef(el);
+      }}
+      className="py-0 my-[4px] animate-fadeIn"
+    >
       <Card className="overflow-hidden rounded-[20px] border border-white/20 bg-white/10 backdrop-blur-[10px] shadow-xl shadow-black/20">
         <CardContent className="p-0">
           {/* Minimalist Header removed as requested */}
@@ -73,22 +81,39 @@ export const MemorialPostCard = ({ post, onMediaClick }: MemorialPostCardProps) 
               className={cn('relative mt-0', onMediaClick ? 'cursor-pointer' : '')}
               onClick={onMediaClick}
             >
+              {stage === 'meta' && <div className="absolute inset-0 shimmer" />}
+
               {isVideo ? (
                 <video
                   ref={videoRef}
                   src={post.media_url}
-                  className="w-full max-h-[480px] object-cover"
+                  className={cn(
+                    "w-full max-h-[480px] object-cover transition-[filter,opacity] duration-300",
+                    stage === 'meta' || stage === 'preview' ? 'blur-8' : 'blur-0',
+                    stage === 'full' ? 'fade-in' : ''
+                  )}
                   muted
                   playsInline
                   loop
-                  preload="metadata"
+                  preload={stage === 'full' ? 'auto' : 'metadata'}
+                  autoPlay={stage === 'full' && isVisible}
+                  onLoadedData={() => {
+                    setPreviewReady();
+                  }}
                 />
               ) : (
                 <img
                   src={post.media_url}
                   alt=""
-                  className="w-full max-h-[480px] object-cover"
+                  className={cn(
+                    "w-full max-h-[480px] object-cover transition-[filter,opacity] duration-300",
+                    stage === 'meta' || stage === 'preview' ? 'blur-8' : 'blur-0',
+                    stage === 'full' ? 'fade-in' : ''
+                  )}
                   loading="lazy"
+                  onLoad={() => {
+                    setPreviewReady();
+                  }}
                 />
               )}
             </div>

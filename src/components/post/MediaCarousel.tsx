@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useAudio } from '@/contexts/AudioContext';
+import type { ProgressiveStage } from '@/hooks/useProgressiveLoading';
 
 interface GifOverlay {
   id: string;
@@ -21,9 +22,11 @@ interface MediaCarouselProps {
   onVideoDoubleTap?: () => void;
   onVideoSingleTap?: () => void;
   mediaMetadata?: Array<{ gifOverlays?: GifOverlay[] }> | null;
+  stage?: ProgressiveStage;
+  onPreviewReady?: () => void;
 }
 
-export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoSingleTap, mediaMetadata }: MediaCarouselProps) => {
+export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoSingleTap, mediaMetadata, stage = 'full', onPreviewReady }: MediaCarouselProps) => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -118,7 +121,7 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
     const video = videoRef.current;
     if (!video || !isVideo(mediaUrls[currentIndex])) return;
 
-    if (isVisible) {
+    if (stage === 'full' && isVisible) {
       window.dispatchEvent(
         new CustomEvent('avlodona:video:request-play', { detail: { id: instanceIdRef.current } })
       );
@@ -126,12 +129,12 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
     } else {
       video.pause();
     }
-  }, [isVisible, currentIndex, mediaUrls]);
+  }, [isVisible, currentIndex, mediaUrls, stage]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (video && isVideo(mediaUrls[currentIndex])) {
-      if (isVisible) {
+      if (stage === 'full' && isVisible) {
         video.currentTime = 0;
         window.dispatchEvent(
           new CustomEvent('avlodona:video:request-play', { detail: { id: instanceIdRef.current } })
@@ -141,7 +144,7 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
         video.pause();
       }
     }
-  }, [currentIndex, isVisible, mediaUrls]);
+  }, [currentIndex, isVisible, mediaUrls, stage]);
 
   // Sync video audio level with isMuted state
   useEffect(() => {
@@ -193,6 +196,8 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
     if (dx > 8 || dy > 8) touchMoved.current = true;
   };
 
+  const showMute = isVideo(mediaUrls[currentIndex]);
+
   return (
     <div
       ref={containerRef}
@@ -202,45 +207,76 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
       onTouchMove={handleTouchMove}
     >
       <div className="relative w-full overflow-hidden bg-white/10 backdrop-blur-[10px] border border-white/20 flex items-center justify-center" style={{ maxHeight: '80vh', minHeight: '200px', touchAction: 'pan-y' }}>
-        {isVideo(mediaUrls[currentIndex]) ?
+        {stage === 'meta' && (
+          <div className="absolute inset-0 shimmer" />
+        )}
+
+        {showMute && stage === 'full' && (
+          <button
+            type="button"
+            aria-label={isMuted ? 'Unmute' : 'Mute'}
+            className="absolute right-2 top-2 z-30 p-2 rounded-full bg-black/35 backdrop-blur-sm border border-white/10"
+            onPointerUp={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleMute();
+            }}
+          >
+            {isMuted ? (
+              <VolumeX className="h-4 w-4 text-white" />
+            ) : (
+              <Volume2 className="h-4 w-4 text-white" />
+            )}
+          </button>
+        )}
+
+        {isVideo(mediaUrls[currentIndex]) ? (
           <>
-            <video
-              ref={videoRef}
-              src={mediaUrls[currentIndex]}
-              className="w-full h-auto object-contain cursor-pointer"
-              style={{ maxHeight: '80vh', maxWidth: '100%' }}
-              loop
-              muted={isMuted}
-              playsInline
-              autoPlay
-              onClick={handleVideoTap}
-              onTouchEnd={handleVideoTap}
-            />
-            {/* Global Volume Toggle Floating Button */}
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleMute();
-              }}
-              className="absolute top-3 right-3 z-30 p-2.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md shadow-lg transition-all duration-300 active:scale-90"
-              aria-label={isMuted ? "Ovozni yoqish" : "Ovozni o'chirish"}
-            >
-              {isMuted ? (
-                <VolumeX className="w-5 h-5 text-white" />
-              ) : (
-                <Volume2 className="w-5 h-5 text-white" />
-              )}
-            </button>
+            {(stage === 'meta' || stage === 'preview' || stage === 'full') && (
+              <video
+                ref={videoRef}
+                src={mediaUrls[currentIndex]}
+                className={cn(
+                  "w-full h-auto object-contain cursor-pointer transition-[filter,opacity] duration-700",
+                  stage === 'meta' ? 'blur-xl grayscale opacity-40' :
+                  stage === 'preview' ? 'blur-lg grayscale opacity-100' : 'blur-0 grayscale-0',
+                  stage === 'full' ? 'fade-in' : ''
+                )}
+                style={{ maxHeight: '80vh', maxWidth: '100%' }}
+                loop
+                muted={isMuted}
+                playsInline
+                autoPlay={stage === 'full'}
+                onClick={handleVideoTap}
+                onTouchEnd={handleVideoTap}
+                preload={stage === 'full' ? 'auto' : 'metadata'}
+                onLoadedData={() => {
+                  if (stage === 'preview' || stage === 'meta') onPreviewReady?.();
+                }}
+              />
+            )}
           </>
-          :
-          <img
-            src={mediaUrls[currentIndex]}
-            alt={`Media ${currentIndex + 1}`}
-            className="w-full h-auto object-contain"
-            style={{ maxHeight: '80vh', maxWidth: '100%' }}
-          />
-        }
+        ) : (
+          <>
+            {(stage === 'meta' || stage === 'preview' || stage === 'full') && (
+              <img
+                src={stage === 'preview' ? `${mediaUrls[currentIndex]}?width=400&quality=20` : mediaUrls[currentIndex]}
+                alt="Post media"
+                className={cn(
+                  "w-full h-auto object-contain transition-[filter,opacity,transform] duration-700",
+                  stage === 'meta' ? 'blur-xl opacity-40' :
+                  stage === 'preview' ? 'blur-lg scale-105 opacity-100' : 'blur-0 scale-100',
+                  stage === 'full' ? 'fade-in' : ''
+                )}
+                style={{ maxHeight: '80vh', maxWidth: '100%' }}
+                loading="lazy"
+                onLoad={() => {
+                  if (stage === 'preview' || stage === 'meta') onPreviewReady?.();
+                }}
+              />
+            )}
+          </>
+        )}
 
         {/* GIF Overlays — rendered as live animated images on top of media (Instagram-style) */}
         {(() => {
