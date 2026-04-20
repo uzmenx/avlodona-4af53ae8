@@ -240,14 +240,14 @@ export const FamilyTreeV2 = () => {
     if (data) { setMergeData(data); setShowMergeDialog(true); }
   }, [computeMergeData, setMergeData, setShowMergeDialog]);
 
-  const handleAcceptInvitation = async (invitation: { id: string; [key: string]: unknown }) => {
+  const handleAcceptInvitation = async (invitation: Parameters<typeof acceptInvitation>[0]) => {
     setProcessingInvitation(invitation.id);
-    await acceptInvitation(invitation as Parameters<typeof acceptInvitation>[0]);
+    await acceptInvitation(invitation);
     setProcessingInvitation(null);
   };
-  const handleRejectInvitation = async (invitation: { id: string; [key: string]: unknown }) => {
+  const handleRejectInvitation = async (invitation: Parameters<typeof rejectInvitation>[0]) => {
     setProcessingInvitation(invitation.id);
-    await rejectInvitation(invitation as Parameters<typeof rejectInvitation>[0]);
+    await rejectInvitation(invitation);
     setProcessingInvitation(null);
   };
 
