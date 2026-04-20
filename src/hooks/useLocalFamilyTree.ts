@@ -273,8 +273,8 @@ export const useLocalFamilyTree = () => {
       ]);
 
       await supabase.from('node_positions').insert([
-        { member_id: husbandId, owner_id: user.id, x: 0, y: 0, updated_by: CLIENT_ID },
-        { member_id: wifeId, owner_id: user.id, x: 180, y: 0, updated_by: CLIENT_ID },
+        { member_id: husbandId, owner_id: user.id, network_id: networkId!, x: 0, y: 0, updated_by: CLIENT_ID },
+        { member_id: wifeId, owner_id: user.id, network_id: networkId!, x: 180, y: 0, updated_by: CLIENT_ID },
       ]);
 
       setMembers({
@@ -431,8 +431,8 @@ export const useLocalFamilyTree = () => {
       ]);
 
       await supabase.from('node_positions').insert([
-        { member_id: fatherId, owner_id: user.id, x: fatherPos.x, y: fatherPos.y, updated_by: CLIENT_ID },
-        { member_id: motherId, owner_id: user.id, x: motherPos.x, y: motherPos.y, updated_by: CLIENT_ID },
+        { member_id: fatherId, owner_id: user.id, network_id: networkId!, x: fatherPos.x, y: fatherPos.y, updated_by: CLIENT_ID },
+        { member_id: motherId, owner_id: user.id, network_id: networkId!, x: motherPos.x, y: motherPos.y, updated_by: CLIENT_ID },
       ]);
 
       setMembers((prev) => ({
@@ -494,6 +494,7 @@ export const useLocalFamilyTree = () => {
       await supabase.from('node_positions').insert({
         member_id: spouseId,
         owner_id: user.id,
+        network_id: networkId!,
         x: spousePos.x,
         y: spousePos.y,
         updated_by: CLIENT_ID,
@@ -553,6 +554,7 @@ export const useLocalFamilyTree = () => {
       await supabase.from('node_positions').insert({
         member_id: childId,
         owner_id: user.id,
+        network_id: networkId!,
         x: childPos.x,
         y: childPos.y,
         updated_by: CLIENT_ID,
@@ -643,6 +645,7 @@ export const useLocalFamilyTree = () => {
       await supabase.from('node_positions').insert({
         member_id: selfId,
         owner_id: user.id,
+        network_id: networkId!,
         x: 0,
         y: 0,
         updated_by: CLIENT_ID,
