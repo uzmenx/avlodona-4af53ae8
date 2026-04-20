@@ -24,7 +24,7 @@ export interface Story {
   ring_id: string;
   created_at: string;
   expires_at: string;
-  media_metadata?: { gifOverlays?: GifOverlay[] } | null;
+  media_metadata?: any;
   author?: {
     id: string;
     name: string | null;
