@@ -428,7 +428,7 @@ export const UserProfilePage = () => {
           maybeSingle();
 
           if (error) throw error;
-          memberRow = (data as typeof memberRow) || null;
+          memberRow = (data as unknown as typeof memberRow) || null;
         }
 
         // Fallback: sometimes we might be routed with a linked user id
@@ -441,7 +441,7 @@ export const UserProfilePage = () => {
           maybeSingle();
 
           if (error) throw error;
-          memberRow = (data as typeof memberRow) || null;
+          memberRow = (data as unknown as typeof memberRow) || null;
         }
 
         if (memberRow) {
@@ -490,7 +490,7 @@ export const UserProfilePage = () => {
             .maybeSingle();
 
           if (fallbackData) {
-            data = fallbackData;
+            data = fallbackData as unknown as typeof data;
             error = null;
           }
         }
