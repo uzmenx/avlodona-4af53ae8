@@ -41,14 +41,14 @@ interface FamilyTreeCanvasProps {
    onViewportChange?: (viewport: { x: number; y: number; zoom: number }) => void;
 }
 
-const nodeTypes: NodeTypes = {
-  familyMember: FamilyMemberNode as unknown as React.ComponentType<unknown>,
-};
+const nodeTypes = {
+  familyMember: FamilyMemberNode,
+} as unknown as NodeTypes;
 
-const edgeTypes: EdgeTypes = {
-  spouse: SpouseEdge as unknown as React.ComponentType<unknown>,
-  child: ChildEdge as unknown as React.ComponentType<unknown>,
-};
+const edgeTypes = {
+  spouse: SpouseEdge,
+  child: ChildEdge,
+} as unknown as EdgeTypes;
 
 const EMPTY_MAP = new Map();
 const EMPTY_ARRAY: string[] = [];
