@@ -25,15 +25,25 @@ type Tab = 'gif' | 'sticker';
  
 function parseGiphy(data: Record<string, any>[], isSticker: boolean): GiphyItem[] {
    
-  return data.map((item: Record<string, any>) => ({
-    id: item.id,
-    title: item.title ?? '',
-    previewUrl: item.images?.fixed_height_small?.url ?? item.images?.fixed_width?.url ?? '',
-    originalUrl: item.images?.original?.url ?? item.images?.fixed_height?.url ?? '',
-    width: parseInt(item.images?.fixed_height_small?.width ?? '100', 10),
-    height: parseInt(item.images?.fixed_height_small?.height ?? '100', 10),
-    isSticker,
-  }));
+  return data.map((item: Record<string, any>) => {
+    // Prefer fixed_height (200px tall, ~200-500KB) for reliable mobile animation.
+    // `original` can be 5-10MB+ which mobile browsers freeze. fixed_height is the
+    // sweet spot used by Instagram/WhatsApp for sticker overlays.
+    const optimized =
+      item.images?.fixed_height?.url ??
+      item.images?.fixed_width?.url ??
+      item.images?.original?.url ??
+      '';
+    return {
+      id: item.id,
+      title: item.title ?? '',
+      previewUrl: item.images?.fixed_height_small?.url ?? item.images?.fixed_width_small?.url ?? optimized,
+      originalUrl: optimized,
+      width: parseInt(item.images?.fixed_height_small?.width ?? '100', 10),
+      height: parseInt(item.images?.fixed_height_small?.height ?? '100', 10),
+      isSticker,
+    };
+  });
 }
 
 async function fetchGiphy(
