@@ -709,13 +709,16 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
 
   const addGif = useCallback((gif: GiphyItem) => {
     if (!active) return;
+    // Use optimized fixed_height URL for both live preview and saved overlay.
+    // Guarantees `url` is never empty and animates reliably on mobile.
+    const animatedUrl = gif.originalUrl || gif.previewUrl;
     updateActive({
       images: [
         ...active.images,
         {
           id: gif.id + '_' + Date.now(),
-          url: gif.previewUrl,
-          originalUrl: gif.originalUrl,
+          url: animatedUrl,
+          originalUrl: animatedUrl,
           isGif: true,
           x: 50,
           y: 50,
