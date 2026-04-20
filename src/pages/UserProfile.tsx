@@ -428,7 +428,7 @@ export const UserProfilePage = () => {
           maybeSingle();
 
           if (error) throw error;
-          memberRow = data || null;
+          memberRow = (data as typeof memberRow) || null;
         }
 
         // Fallback: sometimes we might be routed with a linked user id
@@ -441,7 +441,7 @@ export const UserProfilePage = () => {
           maybeSingle();
 
           if (error) throw error;
-          memberRow = data || null;
+          memberRow = (data as typeof memberRow) || null;
         }
 
         if (memberRow) {
@@ -483,11 +483,11 @@ export const UserProfilePage = () => {
 
         if (error || !data) {
           // Fallback to user_id if id query fails or returns nothing
-          const { data: fallbackData } = await supabase.
-          from('profiles').
-          select('*').
-          eq('user_id', userId).
-          maybeSingle();
+          const { data: fallbackData } = await (supabase as unknown as { from: (t: string) => { select: (s: string) => { eq: (c: string, v: string) => { maybeSingle: () => Promise<{ data: Record<string, unknown> | null }> } } } })
+            .from('profiles')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle();
 
           if (fallbackData) {
             data = fallbackData;
@@ -1419,7 +1419,7 @@ export const UserProfilePage = () => {
                 </div>
               )
             }
-            const allSaved = [...savedPosts, ...savedMemorialPosts].sort((a,b) => new Date((b as Record<string, unknown>).savedAt as string || b.created_at).getTime() - new Date((a as Record<string, unknown>).savedAt as string || a.created_at).getTime());
+            const allSaved = [...savedPosts, ...savedMemorialPosts].sort((a,b) => new Date((a as unknown as Record<string, unknown>).savedAt as string || a.created_at).getTime() - new Date((b as unknown as Record<string, unknown>).savedAt as string || b.created_at).getTime());
             return allSaved.length === 0 ? (
                 <div className="text-center py-12 px-4">
                 <Bookmark className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
@@ -1428,10 +1428,10 @@ export const UserProfilePage = () => {
             ) : (
                 <div className="columns-2 gap-2 sm:gap-4 pb-8 px-2 sm:px-4">
                   {allSaved.map((post, index) =>
-                    <div key={post.id} onClick={() => openViewer(allSaved as Post[], index)} className="cursor-pointer mb-2 sm:mb-4 break-inside-avoid">
-                      {(post as Record<string, unknown>).isMemorial ?
-                        <MemorialPostCard post={post as Parameters<typeof MemorialPostCard>[0]['post']} /> :
-                        <PostCard post={post as Parameters<typeof PostCard>[0]['post']} />}
+                    <div key={post.id} onClick={() => openViewer(allSaved as unknown as Post[], index)} className="cursor-pointer mb-2 sm:mb-4 break-inside-avoid">
+                      {(post as unknown as Record<string, unknown>).isMemorial ?
+                        <MemorialPostCard post={post as unknown as Parameters<typeof MemorialPostCard>[0]['post']} /> :
+                        <PostCard post={post as unknown as Parameters<typeof PostCard>[0]['post']} />}
                     </div>
                   )}
                 </div>

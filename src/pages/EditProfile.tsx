@@ -150,7 +150,7 @@ const EditProfile = () => {
         avatar_url: formData.avatar_url,
         cover_url: formData.cover_url,
         gender: formData.gender || null,
-        social_links: formData.social_links.filter((l) => l.url.trim()) as unknown as Json
+        social_links: formData.social_links.filter((l) => l.url.trim()) as unknown as never
       }).
       eq('id', user.id);
 
