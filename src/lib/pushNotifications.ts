@@ -129,7 +129,6 @@ let customAudioEl: HTMLAudioElement | null = null;
 export async function saveSubscription(subscription: PushSubscription, userId: string) {
   try {
     const subJSON = subscription.toJSON();
-    // @ts-expect-error: types are not updated yet
     await supabase.from('push_subscriptions').upsert({
       user_id: userId,
       endpoint: subJSON.endpoint,

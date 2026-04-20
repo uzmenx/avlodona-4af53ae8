@@ -61,7 +61,7 @@ const EditProfile = () => {
         avatar_url: profile.avatar_url || '',
         cover_url: (profile as { cover_url?: string }).cover_url || '',
         gender: profile.gender as 'male' | 'female' || '',
-        social_links: profile.social_links as SocialLink[] || []
+        social_links: ((profile as { social_links?: unknown }).social_links as SocialLink[]) || []
       });
     } else if (user && !isLoading) {
       // Fallback: only fetch if profile from context is completely missing
@@ -81,7 +81,7 @@ const EditProfile = () => {
             avatar_url: data.avatar_url || '',
             cover_url: (data as { cover_url?: string }).cover_url || '',
             gender: data.gender as 'male' | 'female' || '',
-            social_links: data.social_links as SocialLink[] || []
+            social_links: (data.social_links as unknown as SocialLink[]) || []
           });
         }
       };
@@ -150,7 +150,7 @@ const EditProfile = () => {
         avatar_url: formData.avatar_url,
         cover_url: formData.cover_url,
         gender: formData.gender || null,
-        social_links: formData.social_links.filter((l) => l.url.trim())
+        social_links: formData.social_links.filter((l) => l.url.trim()) as unknown as Json
       }).
       eq('id', user.id);
 

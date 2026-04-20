@@ -184,11 +184,11 @@ export const UserProfilePage = () => {
       media_urls: mp.media_url ? [mp.media_url] : [],
       created_at: mp.created_at || '',
       likes_count: mp.likes_count || 0,
-      comments_count: mp.comments_count || 0,
+      comments_count: (mp as { comments_count?: number }).comments_count || 0,
       views_count: mp.views_count || 0,
       author: mp.author as unknown as { id: string; name: string; username: string; avatar_url: string },
       is_memorial: true
-    })) as Post[];
+    })) as unknown as Post[];
   }, [memorialPosts]);
 
 
@@ -287,7 +287,7 @@ export const UserProfilePage = () => {
     const normalizedStories: Story[] = stories.map((s: Record<string, unknown>) => ({
       ...s,
       media_type: s.media_type as 'image' | 'video',
-      ring_id: s.ring_id || 'default',
+      ring_id: (s.ring_id as string) || 'default',
       author: authorProfile ?
       {
         id: authorProfile.id,
@@ -296,9 +296,9 @@ export const UserProfilePage = () => {
         avatar_url: authorProfile.avatar_url
       } :
       undefined,
-      has_viewed: viewerId ? viewedStoryIds.has(s.id) : false,
-      has_liked: viewerId ? likedStoryIds.has(s.id) : false
-    }));
+      has_viewed: viewerId ? viewedStoryIds.has(s.id as string) : false,
+      has_liked: viewerId ? likedStoryIds.has(s.id as string) : false
+    })) as unknown as Story[];
 
     const hasUnviewed = normalizedStories.some((s) => !s.has_viewed);
 
