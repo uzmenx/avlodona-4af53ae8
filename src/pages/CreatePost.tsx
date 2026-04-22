@@ -528,7 +528,8 @@ const CreatePost = () => {
               )}
             </div>
 
-            {/* Music */}
+            {/* Music — vaqtinchalik yashirilgan */}
+            {false && (
             <div className="space-y-2">
               <button
                 onClick={() => setShowMusicPicker(true)}
@@ -546,6 +547,7 @@ const CreatePost = () => {
                 </div>
               </button>
             </div>
+            )}
 
             {/* Selected mention/collab chips */}
             {(mentionProfiles.length > 0 || collabProfiles.length > 0) && (
