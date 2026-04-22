@@ -288,7 +288,7 @@ const AIChat = () => {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
+    <div className="h-[100dvh] w-full bg-background flex flex-col overflow-hidden relative">
       {/* Header */}
       <div className="sticky top-0 z-40 border-b border-white/10 bg-background/30 backdrop-blur-2xl">
         <div className="px-4 py-3 flex items-center gap-3">

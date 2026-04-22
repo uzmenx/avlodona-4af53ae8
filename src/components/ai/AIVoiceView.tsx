@@ -287,7 +287,7 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
   const dynamicScale = 1 + (volume / 255) * 0.4;
 
   return (
-    <div className="h-full flex flex-col items-center justify-between pb-6 px-4">
+    <div className="h-full w-full flex flex-col items-center justify-between pb-[max(1.5rem,env(safe-area-inset-bottom))] px-4 relative min-h-0">
 
       {/* 3D Modern AI Orb Visualizer */}
       <div className="flex-1 flex flex-col items-center justify-center w-full relative gap-8">

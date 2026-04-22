@@ -198,7 +198,7 @@ const AIImageView = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 pb-[calc(2rem + env(safe-area-inset-bottom, 0px))] max-w-lg mx-auto w-full min-h-0">
+    <div className="flex-1 flex flex-col items-center justify-center px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] max-w-lg mx-auto w-full min-h-0 h-full">
       {/* Preview Area */}
       <div className="w-full aspect-square mb-6 relative group">
         <AnimatePresence mode="wait">
