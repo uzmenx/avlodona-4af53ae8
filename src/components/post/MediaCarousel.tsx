@@ -216,7 +216,7 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
             type="button"
             aria-label={isMuted ? 'Unmute' : 'Mute'}
             className="absolute right-2 top-2 z-30 p-2 rounded-full bg-black/35 backdrop-blur-sm border border-white/10"
-            onPointerUp={(e) => {
+            onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               toggleMute();

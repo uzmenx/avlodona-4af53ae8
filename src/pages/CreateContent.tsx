@@ -123,16 +123,17 @@ const CreateContent = () => {
     };
   }, [locationQuery, showLocationSearch, selectedLocation]);
 
-  const handleMediaFromCapture = useCallback((items: {file: File;filter: string;}[], captureCaption?: string) => {
+  const handleMediaFromCapture = useCallback((items: {file: File;filter: string;}[], captureCaption?: string, music?: SelectedMusic | null) => {
     setEditedFiles(items);
+    setSelectedMusic(music || null);
     if (memoryMemberId && user) {
       startBackgroundPublish({
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         userId: user.id,
         files: items.map((m) => m.file),
         storyFiles: [],
-        audioFile: null,
-        audioMeta: null,
+        audioFile: music?.file || null,
+        audioMeta: music || null,
         caption: captureCaption || '',
         sharePost: true,
         shareStory: false,
@@ -199,7 +200,7 @@ const CreateContent = () => {
         userId: user.id,
         files: editedFiles.map((m) => m.file),
         storyFiles: shareStory ? storyFiles : [],
-        audioFile: null,
+        audioFile: selectedMusic?.file || null,
         audioMeta: selectedMusic,
         caption: finalCaption,
         sharePost,
@@ -464,8 +465,7 @@ const CreateContent = () => {
             </div>
           }
 
-          {/* Audio/Music picker — vaqtinchalik yashirilgan */}
-          {false && (
+          {/* Audio/Music picker */}
           <div className="rounded-xl border border-border/50 overflow-hidden">
             <button
               onClick={() => setShowMusicPicker(true)}
@@ -481,7 +481,6 @@ const CreateContent = () => {
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
             </button>
           </div>
-          )}
 
           {/* Selected chips */}
           {!memoryMemberId && (mentionProfiles.length > 0 || collabProfiles.length > 0) &&

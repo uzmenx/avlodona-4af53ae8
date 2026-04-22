@@ -1557,23 +1557,6 @@ export const UnifiedFullScreenViewer = ({
 
               <video ref={videoRef} src={currentMediaUrl} className="max-w-full max-h-full object-contain" loop playsInline autoPlay muted={isMuted} />
 
-              <button
-                type="button"
-                aria-label={isMuted ? 'Unmute' : 'Mute'}
-                className="absolute right-3 top-3 z-30 p-2 rounded-full bg-black/35 backdrop-blur-sm border border-white/10"
-                onPointerUp={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleMute();
-                }}
-              >
-                {isMuted ? (
-                  <VolumeX className="h-4 w-4 text-white" />
-                ) : (
-                  <Volume2 className="h-4 w-4 text-white" />
-                )}
-              </button>
-
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
 
                 <div className={cn("p-4 rounded-full bg-black/30 backdrop-blur-sm transition-opacity", isPlaying ? "opacity-0" : "opacity-100")}>
@@ -2040,7 +2023,7 @@ export const UnifiedFullScreenViewer = ({
             <X className="w-4 h-4 text-white" />
           </button>
 
-          <div className="flex gap-0.5 bg-white/10 backdrop-blur-md rounded-full p-0.5 border border-white/10 py-[2px] my-[23px]">
+          <div className="flex gap-0.5 bg-white/10 backdrop-blur-md rounded-full p-0.5 border border-white/10 py-[2px] my-0">
             <button
               onClick={() => handleTabSwitch('shorts')}
               className={cn(
@@ -2059,7 +2042,24 @@ export const UnifiedFullScreenViewer = ({
             </button>
           </div>
 
-          <div className="w-7" />
+          {activeTab === 'posts' && isVideo(currentMediaUrl) ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleMute();
+              }}
+              className="p-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 my-0"
+              aria-label={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted ? (
+                <VolumeX className="w-4 h-4 text-white" />
+              ) : (
+                <Volume2 className="w-4 h-4 text-white" />
+              )}
+            </button>
+          ) : (
+            <div className="w-7" />
+          )}
         </div>
 
         {/* Scrollable Feed */}

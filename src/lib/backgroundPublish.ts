@@ -376,9 +376,6 @@ const runPublish = async (task: PublishTask) => {
         })
       );
       postUrls = uploads.filter(Boolean);
-
-      // If we uploaded audio separately, keep it as part of post media urls as well.
-      if (audioUrl) postUrls = [...postUrls, audioUrl];
     }
 
     const storyUrls: { url: string; mediaType: 'image' | 'video' }[] = [];
@@ -414,7 +411,7 @@ const runPublish = async (task: PublishTask) => {
           user_id: task.userId,
           content: task.caption || null,
           media_urls: postUrls,
-          audio_url: task.audioMeta?.audio_url ?? null,
+          audio_url: audioUrl || task.audioMeta?.audio_url || null,
           audio_title: task.audioMeta?.audio_title ?? null,
           audio_artist: task.audioMeta?.audio_artist ?? null,
         })

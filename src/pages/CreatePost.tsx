@@ -97,7 +97,7 @@ const CreatePost = () => {
       gifOverlays: item.gifOverlays,
     }));
     setSelectedMedia(newMedia);
-    if (music) setSelectedMusic(music);
+    setSelectedMusic(music || null);
     setStep('caption');
   };
 
@@ -528,8 +528,7 @@ const CreatePost = () => {
               )}
             </div>
 
-            {/* Music — vaqtinchalik yashirilgan */}
-            {false && (
+            {/* Music */}
             <div className="space-y-2">
               <button
                 onClick={() => setShowMusicPicker(true)}
@@ -547,7 +546,6 @@ const CreatePost = () => {
                 </div>
               </button>
             </div>
-            )}
 
             {/* Selected mention/collab chips */}
             {(mentionProfiles.length > 0 || collabProfiles.length > 0) && (

@@ -1428,7 +1428,11 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
           edited.push({ file: f, filter: 'original' });
         }
       }
-      onNext(edited, postCaption, selectedMusicMeta);
+      const musicPayload = selectedMusicMeta ? {
+        ...selectedMusicMeta,
+        file: selectedMusic?.file,
+      } : null;
+      onNext(edited, postCaption, musicPayload);
     } finally {
       setIsExporting(false);
     }
@@ -2138,7 +2142,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                       </button>
 
                       {/* GIF — vaqtinchalik yashirilgan */}
-                      {false && (
+                      {/* {false && ( */}
                       <button
                         onClick={() => {
                           setShowGiphyPicker(g => !g);
@@ -2154,7 +2158,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                           <Icon icon="mage:gif-fill" className="w-6 h-6" />
                         </div>
                       </button>
-                      )}
+                      {/* )} */}
 
                       {/* Emoji Sticker */}
                       <button
@@ -2245,8 +2249,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                   </button>
                 )}
 
-                {/* Music tool in Edit sidebar — vaqtinchalik yashirilgan */}
-                {false && (
+                {/* Music tool in Edit sidebar */}
                 <div className="relative flex flex-col items-center gap-0.5 group">
                   <button
                     onClick={() => {
@@ -2286,7 +2289,6 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                     Musiqa
                   </span>
                 </div>
-                )}
 
                 {isVideo && (
                   <button
@@ -2471,8 +2473,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
         {/* Music & Camera switch buttons — rendered AFTER tray so z-50 beats tray's z-40 */}
         {showCaptureUi && (
           <>
-            {/* Music capture button — vaqtinchalik yashirilgan */}
-            {false && (
+            {/* Music capture button */}
             <button
               type="button"
               onClick={() => setShowMusicPicker(true)}
@@ -2490,7 +2491,6 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                 </span>
               )}
             </button>
-            )}
 
             <button
               onClick={() => setFacingMode(f => (f === 'environment' ? 'user' : 'environment'))}

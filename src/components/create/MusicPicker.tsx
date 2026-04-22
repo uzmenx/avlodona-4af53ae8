@@ -16,6 +16,7 @@ export type SelectedMusic = {
   audio_url: string;
   audio_title: string;
   audio_artist: string;
+  file?: File;
 };
 
 type Tab = 'search' | 'saved';
