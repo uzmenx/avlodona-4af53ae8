@@ -600,7 +600,7 @@ export const StoryViewer = ({
         )}
 
         {/* Live animated GIF overlays — rendered as HTML images (Instagram-style, never baked in) */}
-        {currentStory.media_metadata?.gifOverlays?.map(gif => (
+        {currentStory.media_type === 'image' && currentStory.media_metadata?.gifOverlays?.map(gif => (
           <img
             key={gif.id}
             src={gif.originalUrl || gif.url}

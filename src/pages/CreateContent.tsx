@@ -41,7 +41,7 @@ const CreateContent = () => {
   const { highlights: storyHighlights, createHighlight: createStoryHighlight } = useStoryHighlights();
 
   const [step, setStep] = useState<Step>('media');
-  const [editedFiles, setEditedFiles] = useState<{file: File;filter: string;}[]>([]);
+  const [editedFiles, setEditedFiles] = useState<{file: File;filter: string;gifOverlays?: any[];}[]>([]);
   const [caption, setCaption] = useState('');
   const [sharePost, setSharePost] = useState(true);
   const [shareStory, setShareStory] = useState(false);
@@ -123,7 +123,7 @@ const CreateContent = () => {
     };
   }, [locationQuery, showLocationSearch, selectedLocation]);
 
-  const handleMediaFromCapture = useCallback((items: {file: File;filter: string;}[], captureCaption?: string, music?: SelectedMusic | null) => {
+  const handleMediaFromCapture = useCallback((items: {file: File;filter: string;gifOverlays?: any[]}[], captureCaption?: string, music?: SelectedMusic | null) => {
     setEditedFiles(items);
     setSelectedMusic(music || null);
     if (memoryMemberId && user) {
@@ -142,6 +142,7 @@ const CreateContent = () => {
         collabIds: [],
         postCollectionIds: [],
         storyHighlightId: null,
+        mediaMetadata: items.map(it => it.gifOverlays ? { gifOverlays: it.gifOverlays } : null),
         memoryMemberId
       });
       toast.success('Xotira yuklanmoqda…');
@@ -210,6 +211,7 @@ const CreateContent = () => {
         collabIds,
         postCollectionIds: sharePost ? Array.from(selectedPostCollectionIds) : [],
         storyHighlightId: shareStory ? selectedStoryHighlightId : null,
+        mediaMetadata: editedFiles.map(it => it.gifOverlays ? { gifOverlays: it.gifOverlays } : null),
         memoryMemberId
       });
 

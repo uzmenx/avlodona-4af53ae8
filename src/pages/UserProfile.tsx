@@ -77,6 +77,30 @@ const UserProfileMasonryItem = ({ post }: {post: Post;}) => {
       <div className="w-full h-full bg-muted" />
       }
 
+      {/* Live animated GIF overlays for grid preview */}
+      {(() => {
+        if (isVideo) return null;
+        // In the grid we only show GIFs for the first media item
+        const overlays = post.media_metadata?.[0]?.gifOverlays;
+        if (!overlays || overlays.length === 0) return null;
+        return overlays.map(gif => (
+          <img
+            key={gif.id}
+            src={gif.originalUrl || gif.url}
+            alt=""
+            className="absolute pointer-events-none select-none"
+            style={{
+              left: `${gif.x}%`,
+              top: `${gif.y}%`,
+              transform: `translate(-50%, -50%) scale(${gif.scale * 0.6}) rotate(${gif.rotation}deg)`,
+              width: '28%',
+              maxWidth: '80px',
+              zIndex: 5,
+            }}
+          />
+        ));
+      })()}
+
       <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
         <div className="text-white text-[11px] leading-tight">
           <div className="flex items-center gap-1">
@@ -1262,8 +1286,8 @@ export const UserProfilePage = () => {
                 postsLayout === 'list' ?
                 <div className="space-y-4 px-0 md:px-4">
                 {filteredPosts.map((post, index) =>
-                  <div key={post.id} onClick={() => openViewer(filteredPosts, index)} className="cursor-pointer">
-                    <PostCard post={post} />
+                  <div key={post.id}>
+                    <PostCard post={post} onMediaClick={() => openViewer(filteredPosts, index)} />
                   </div>
                   )}
                 {hasMore === false && filteredPosts.length > 0 &&
@@ -1428,10 +1452,10 @@ export const UserProfilePage = () => {
             ) : (
                 <div className="columns-2 gap-2 sm:gap-4 pb-8 px-2 sm:px-4">
                   {allSaved.map((post, index) =>
-                    <div key={post.id} onClick={() => openViewer(allSaved as unknown as Post[], index)} className="cursor-pointer mb-2 sm:mb-4 break-inside-avoid">
+                    <div key={post.id} className="mb-2 sm:mb-4 break-inside-avoid">
                       {(post as unknown as Record<string, unknown>).isMemorial ?
-                        <MemorialPostCard post={post as unknown as Parameters<typeof MemorialPostCard>[0]['post']} /> :
-                        <PostCard post={post as unknown as Parameters<typeof PostCard>[0]['post']} />}
+                        <MemorialPostCard post={post as unknown as Parameters<typeof MemorialPostCard>[0]['post']} onMediaClick={() => openViewer(allSaved as unknown as Post[], index)} /> :
+                        <PostCard post={post as unknown as Parameters<typeof PostCard>[0]['post']} onMediaClick={() => openViewer(allSaved as unknown as Post[], index)} />}
                     </div>
                   )}
                 </div>
@@ -1592,10 +1616,10 @@ export const UserProfilePage = () => {
               filter((v, i, a) => a.findIndex((p) => p.id === v.id) === i).
               sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).
               map((post, index) =>
-              <div key={post.id} onClick={() => openViewer([...userMentionedPosts, ...userCollabPosts].
+              <div key={post.id}>
+                        <PostCard post={post} onMediaClick={() => openViewer([...userMentionedPosts, ...userCollabPosts].
               filter((v, i, a) => a.findIndex((p) => p.id === v.id) === i).
-              sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()), index)} className="cursor-pointer">
-                        <PostCard post={post} />
+              sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()), index)} />
                       </div>
               )}
                   <EndOfFeed />

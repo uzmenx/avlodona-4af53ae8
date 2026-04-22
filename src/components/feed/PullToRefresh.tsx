@@ -9,30 +9,37 @@ interface PullToRefreshProps {
 }
 
 export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: PullToRefreshProps) => {
-  const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
   const startY = useRef(0);
   const isPulling = useRef(false);
   const canPull = useRef(false);
+
+  const pullDistanceRef = useRef(0);
+  const [pullDistance, _setPullDistance] = useState(0);
+
+  const setPullDistance = (val: number) => {
+    pullDistanceRef.current = val;
+    _setPullDistance(val);
+  };
 
   const threshold = 80;
   const maxPull = 120;
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
+    if (isRefreshing) return;
+
     const el = containerRef.current;
     if (!el) return;
 
     const target = e.target as HTMLElement | null;
-    if (target?.closest('video, iframe, [data-no-pull-to-refresh="true"]')) {
+    if (target?.closest('video, iframe, [data-no-pull-to-refresh="true"], .no-pull')) {
       canPull.current = false;
-      isPulling.current = false;
       return;
     }
 
     const isAtTop = useWindowScroll 
-      ? window.scrollY <= 0 && el.scrollTop <= 0
+      ? window.scrollY <= 1 // Allow small margin for mobile headers
       : el.scrollTop <= 0;
 
     if (isAtTop) {
@@ -41,55 +48,62 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
       isPulling.current = false;
     } else {
       canPull.current = false;
-      isPulling.current = false;
     }
-  }, [useWindowScroll]);
+  }, [isRefreshing, useWindowScroll]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (isRefreshing) return;
-
-    const el = containerRef.current;
-    if (!el) return;
-
-    if (!canPull.current && !isPulling.current) return;
+    if (isRefreshing || !canPull.current) return;
 
     const currentY = e.touches[0].clientY;
     const diff = currentY - startY.current;
 
-    if (diff <= 0) {
-      canPull.current = false;
-      isPulling.current = false;
-      if (pullDistance !== 0) setPullDistance(0);
+    // If already pulling, we must handle it
+    if (isPulling.current) {
+      if (diff <= 0) {
+        setPullDistance(0);
+        isPulling.current = false;
+        return;
+      }
+      e.preventDefault();
+      const resistance = 0.4;
+      const distance = Math.min(diff * resistance, maxPull);
+      setPullDistance(distance);
       return;
     }
 
-    if (!isPulling.current) {
-      if (diff <= 10) return;
+    // Start pulling only if diff > 0 and we haven't scrolled down
+    if (diff > 10) {
       isPulling.current = true;
+      e.preventDefault();
+    } else if (diff < -10) {
+      // User is scrolling down, definitely can't pull anymore in this gesture
+      canPull.current = false;
     }
-
-    // Prevent scroll bounce while we're actively pulling
-    e.preventDefault();
-    const resistance = 0.4;
-    const distance = Math.min(diff * resistance, maxPull);
-    setPullDistance(distance);
-  }, [isRefreshing, pullDistance, useWindowScroll]);
+  }, [isRefreshing]);
 
   const handleTouchEnd = useCallback(async () => {
-    if (!canPull.current && !isPulling.current) return;
+    const dist = pullDistanceRef.current;
+    if (!canPull.current && !isPulling.current) {
+      setPullDistance(0);
+      return;
+    }
+    
     canPull.current = false;
     isPulling.current = false;
 
-    if (pullDistance >= threshold && !isRefreshing) {
+    if (dist >= threshold && !isRefreshing) {
       setIsRefreshing(true);
       setPullDistance(50);
-
-      await onRefresh();
-      setIsRefreshing(false);
+      try {
+        await onRefresh();
+      } finally {
+        setIsRefreshing(false);
+        setPullDistance(0);
+      }
+    } else {
+      setPullDistance(0);
     }
-
-    setPullDistance(0);
-  }, [pullDistance, isRefreshing, onRefresh]);
+  }, [isRefreshing, onRefresh]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -97,9 +111,7 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
 
     const onStart = (e: TouchEvent) => handleTouchStart(e);
     const onMove = (e: TouchEvent) => handleTouchMove(e);
-    const onEnd = () => {
-      void handleTouchEnd();
-    };
+    const onEnd = () => handleTouchEnd();
 
     el.addEventListener('touchstart', onStart, { passive: true });
     el.addEventListener('touchmove', onMove, { passive: false });
@@ -117,8 +129,11 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
   return (
     <div
       ref={containerRef}
-      className="relative h-full overflow-y-auto smooth-scroll-momentum py-0"
-      style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+      className={cn(
+        "relative py-0",
+        !useWindowScroll && "h-full overflow-y-auto smooth-scroll-momentum"
+      )}
+      style={{ WebkitOverflowScrolling: 'touch', touchAction: useWindowScroll ? 'auto' : 'pan-y' }}
     >
 
       {/* Pull indicator */}

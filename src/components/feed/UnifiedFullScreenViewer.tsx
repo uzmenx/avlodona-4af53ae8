@@ -1575,6 +1575,119 @@ export const UnifiedFullScreenViewer = ({
 
 
 
+          {/* Horizontal Carousel Navigation */}
+
+          {mediaUrls.length > 1 && (
+
+            <>
+
+              {/* Previous button */}
+
+              {currentMediaIndex > 0 && (
+
+                <button
+
+                  onClick={(e) => {
+
+                    e.stopPropagation();
+
+                    setCurrentMediaIndex(prev => prev - 1);
+
+                  }}
+
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/20 backdrop-blur-sm border border-white/10 hover:bg-black/30 transition-colors"
+
+                >
+
+                  <ChevronLeft className="h-6 w-6 text-white" />
+
+                </button>
+
+              )}
+
+
+
+              {/* Next button */}
+
+              {currentMediaIndex < mediaUrls.length - 1 && (
+
+                <button
+
+                  onClick={(e) => {
+
+                    e.stopPropagation();
+
+                    setCurrentMediaIndex(prev => prev + 1);
+
+                  }}
+
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/20 backdrop-blur-sm border border-white/10 hover:bg-black/30 transition-colors"
+
+                >
+
+                  <ChevronRight className="h-6 w-6 text-white" />
+
+                </button>
+
+              )}
+
+
+
+              {/* Indicator Dots */}
+
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex gap-1.5 p-2 rounded-full bg-black/10 backdrop-blur-sm">
+
+                {mediaUrls.map((_, i) => (
+
+                  <div
+
+                    key={i}
+
+                    className={cn(
+
+                      "h-1.5 w-1.5 rounded-full transition-all duration-300",
+
+                      i === currentMediaIndex ? "bg-white w-3" : "bg-white/40"
+
+                    )}
+
+                  />
+
+                ))}
+
+              </div>
+
+            </>
+
+          )}
+
+
+
+
+
+          {/* Live animated GIF overlays — rendered as HTML images (Instagram-style) */}
+          {(() => {
+            if (isVideo(currentMediaUrl)) return null;
+            const overlays = currentPost.media_metadata?.[currentMediaIndex]?.gifOverlays;
+            if (!overlays || overlays.length === 0) return null;
+            return overlays.map(gif => (
+              <img
+                key={gif.id}
+                src={gif.originalUrl || gif.url}
+                alt="gif sticker"
+                className="absolute pointer-events-none select-none"
+                style={{
+                  left: `${gif.x}%`,
+                  top: `${gif.y}%`,
+                  transform: `translate(-50%, -50%) scale(${gif.scale}) rotate(${gif.rotation}deg)`,
+                  width: '28%',
+                  maxWidth: '160px',
+                  zIndex: 11,
+                }}
+              />
+            ));
+          })()}
+
           {showDoubleTapHeart &&
 
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">

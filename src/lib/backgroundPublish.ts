@@ -20,6 +20,7 @@ export type PublishTask = {
     audio_title?: string | null;
     audio_artist?: string | null;
   };
+  mediaMetadata?: any[]; // Metadata for each file (e.g. GIF stickers)
   memoryMemberId?: string;
 };
 
@@ -414,6 +415,7 @@ const runPublish = async (task: PublishTask) => {
           audio_url: audioUrl || task.audioMeta?.audio_url || null,
           audio_title: task.audioMeta?.audio_title ?? null,
           audio_artist: task.audioMeta?.audio_artist ?? null,
+          media_metadata: task.mediaMetadata || null,
         })
         .select()
         .single();
@@ -486,6 +488,7 @@ const runPublish = async (task: PublishTask) => {
             audio_url: task.audioMeta?.audio_url ?? null,
             audio_title: task.audioMeta?.audio_title ?? null,
             audio_artist: task.audioMeta?.audio_artist ?? null,
+            media_metadata: task.mediaMetadata ? task.mediaMetadata[storyUrls.indexOf(s)] : null,
           })
           .select('id')
           .single();

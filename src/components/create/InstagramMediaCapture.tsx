@@ -439,7 +439,6 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
               window.clearTimeout(t);
               done();
             };
-
             tempVideo.addEventListener('seeked', onDone, { once: true });
             // If seek never fires (some browsers), resolve on next loadeddata/timeupdate.
             tempVideo.addEventListener('loadeddata', onDone, { once: true });
@@ -893,11 +892,15 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   }, [active, updateActive]);
 
   const handleEditTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && containerRef.current && active) {
-      e.preventDefault();
-      e.stopPropagation();
-      isPinchingMediaRef.current = true;
+    if (!containerRef.current || !active) return;
+    
+    // Stop event propagation to prevent unexpected behavior
+    e.stopPropagation();
 
+    isPinchingMediaRef.current = true;
+    const rect = containerRef.current.getBoundingClientRect();
+
+    if (e.touches.length >= 2) {
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
@@ -915,38 +918,62 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
         scale: active.mediaTransform.scale,
         rotation: active.mediaTransform.rotation,
       };
-      return;
-    }
-
-    if (e.touches.length === 1 && !isPinchingMediaRef.current) {
+    } else if (e.touches.length === 1) {
+      const t = e.touches[0];
+      mediaPinchRef.current = {
+        dist: 0,
+        angle: 0,
+        midX: t.clientX,
+        midY: t.clientY,
+        x: active.mediaTransform.x,
+        y: active.mediaTransform.y,
+        scale: active.mediaTransform.scale,
+        rotation: active.mediaTransform.rotation,
+      };
+      // Still allow swipe tracking for filters if the drag isn't significant
       handleSwipeStart(e);
     }
   }, [active, handleSwipeStart]);
 
   const handleEditTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isPinchingMediaRef.current || e.touches.length !== 2 || !mediaPinchRef.current || !containerRef.current || !active) return;
+    if (!isPinchingMediaRef.current || !mediaPinchRef.current || !containerRef.current || !active) return;
 
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     e.stopPropagation();
 
     const rect = containerRef.current.getBoundingClientRect();
-    const t1 = e.touches[0];
-    const t2 = e.touches[1];
-    const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-    const angle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * (180 / Math.PI);
-    const midX = (t1.clientX + t2.clientX) / 2;
-    const midY = (t1.clientY + t2.clientY) / 2;
-
     const start = mediaPinchRef.current;
-    const scale = Math.max(0.5, Math.min(5, start.scale * (dist / start.dist)));
-    const rotation = start.rotation + (angle - start.angle);
 
-    const dxPercent = ((midX - start.midX) / rect.width) * 100;
-    const dyPercent = ((midY - start.midY) / rect.height) * 100;
-    const x = Math.max(-50, Math.min(50, start.x + dxPercent));
-    const y = Math.max(-50, Math.min(50, start.y + dyPercent));
+    if (e.touches.length >= 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const angle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * (180 / Math.PI);
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
 
-    updateActive({ mediaTransform: { x, y, scale, rotation } });
+      // Calculate scale (min 0.5, max 3)
+      const scale = Math.max(0.5, Math.min(3, start.scale * (dist / start.dist)));
+      // Calculate rotation
+      const rotation = start.rotation + (angle - start.angle);
+      
+      // Calculate position delta based on midpoint movement
+      const dxPercent = ((midX - start.midX) / rect.width) * 100;
+      const dyPercent = ((midY - start.midY) / rect.height) * 100;
+      const x = Math.max(-100, Math.min(100, start.x + dxPercent));
+      const y = Math.max(-100, Math.min(100, start.y + dyPercent));
+
+      updateActive({ mediaTransform: { x, y, scale, rotation } });
+    } else if (e.touches.length === 1) {
+      const t = e.touches[0];
+      const dxPercent = ((t.clientX - start.midX) / rect.width) * 100;
+      const dyPercent = ((t.clientY - start.midY) / rect.height) * 100;
+      
+      const x = Math.max(-100, Math.min(100, start.x + dxPercent));
+      const y = Math.max(-100, Math.min(100, start.y + dyPercent));
+
+      updateActive({ mediaTransform: { ...active.mediaTransform, x, y } });
+    }
   }, [active, updateActive]);
 
   const handleEditTouchEnd = useCallback((e: React.TouchEvent) => {
@@ -962,7 +989,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
 
   const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
-  const drawCover = (
+  const drawCover = useCallback((
     ctx: CanvasRenderingContext2D,
     srcW: number,
     srcH: number,
@@ -984,9 +1011,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
       sy = (srcH - sh) / 2;
     }
     ctx.drawImage((ctx as any).__srcEl, sx, sy, sw, sh, 0, 0, dstW, dstH);
-  };
+  }, []);
 
-  const renderFrame = async (
+  const renderFrame = useCallback(async (
     ctx: CanvasRenderingContext2D,
     baseEl: HTMLImageElement | HTMLVideoElement,
     editable: EditableItem,
@@ -1044,6 +1071,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
     }
 
     for (const img of editable.images) {
+      if (img.isGif) continue; // Live overlays are handled separately, don't bake into static photo
       const bmp = stickerBitmaps.get(img.id);
       if (!bmp) continue;
       ctx.save();
@@ -1060,7 +1088,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
       ctx.drawImage(bmp, -drawW / 2, -drawH / 2, drawW, drawH);
       ctx.restore();
     }
-  };
+  }, [drawCover]);
 
   const exportPhoto = useCallback(async (editable: EditableItem): Promise<File> => {
     const isGif =
@@ -1088,6 +1116,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
 
     const stickerBitmaps = new Map<string, ImageBitmap>();
     for (const s of editable.images) {
+      if (s.isGif) continue; // Don't bake in GIFs for static photos
       try {
         const bmp = await createImageBitmap(await (await fetch(s.url)).blob());
         stickerBitmaps.set(s.id, bmp);
@@ -1436,7 +1465,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
     } finally {
       setIsExporting(false);
     }
-  }, [exportPhoto, exportVideo, isExporting, items, onNext, postCaption, selectedMusicMeta]);
+  }, [exportPhoto, exportVideo, isExporting, items, onNext, postCaption, selectedMusicMeta, selectedMusic?.file]);
 
   const toggleMusicPlayback = useCallback(() => {
     if (!musicAudioRef.current || !selectedMusic) return;
@@ -1939,7 +1968,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
             <div className="flex-1 relative overflow-hidden flex items-center justify-center px-1 pt-24 pb-10">
               <div
                 ref={containerRef}
-                className="relative w-full max-w-md aspect-[9/16] max-h-[calc(100vh-280px)] rounded-2xl overflow-hidden border border-white/20 shadow-2xl"
+                className="relative w-full max-w-md aspect-[9/16] max-h-[calc(100vh-280px)] rounded-2xl overflow-hidden border border-white/20 shadow-2xl touch-none"
                 onTouchStart={handleEditTouchStart}
                 onTouchMove={handleEditTouchMove}
                 onTouchEnd={handleEditTouchEnd}

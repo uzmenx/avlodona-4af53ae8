@@ -278,8 +278,10 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
           </>
         )}
 
-        {/* GIF Overlays — rendered as live animated images on top of media (Instagram-style) */}
+        {/* GIF Overlays — rendered as live animated images on top of media (Instagram-style)
+            Only render for photos, because for videos they are already baked into the MP4 file. */}
         {(() => {
+          if (isVideo(mediaUrls[currentIndex])) return null;
           const overlays = mediaMetadata?.[currentIndex]?.gifOverlays;
           if (!overlays || overlays.length === 0) return null;
           return overlays.map(gif => (

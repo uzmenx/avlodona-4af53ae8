@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -117,15 +117,7 @@ const CreatePost = () => {
   }, [collabIds]);
 
   // Auto-detect location on mount if enabled
-  useEffect(() => {
-    const saved = localStorage.getItem('avlodona_auto_location');
-    if (saved === 'true') {
-      setAutoLocationEnabled(true);
-      detectCurrentLocation();
-    }
-  }, []);
-
-  const detectCurrentLocation = async () => {
+  const detectCurrentLocation = useCallback(async () => {
     if (!navigator.geolocation) {
       toast({ title: "Xatolik", description: "Geolokatsiya qo'llab-quvvatlanmaydi", variant: "destructive" });
       return;
@@ -138,25 +130,36 @@ const CreatePost = () => {
       const { latitude, longitude } = pos.coords;
       // Reverse geocode via edge function
       const { data, error } = await supabase.functions.invoke('nominatim-search', {
-        body: { q: `${latitude},${longitude}`, limit: 1, lang: 'uz', reverse: true, lat: latitude, lon: longitude },
+        body: { 
+          lat: latitude.toString(), 
+          lon: longitude.toString(),
+          reverse: true 
+        }
       });
+
       if (error) throw error;
-      const results = Array.isArray(data) ? data : [];
-      if (results.length > 0) {
-        setSelectedLocation(results[0]);
-      } else {
-        // Fallback: just use coords
-        setSelectedLocation({ place_id: 0, display_name: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, lat: String(latitude), lon: String(longitude) });
+      if (data && data.length > 0) {
+        const place = data[0];
+        setSelectedLocation(place);
+        setLocationQuery(place.display_name);
+        toast({ title: "Manzil aniqlandi", description: place.display_name });
       }
     } catch (err: any) {
-      console.error('Location detect error:', err);
-      if (err?.code === 1) {
-        toast({ title: "Ruxsat berilmadi", description: "Joylashuvga ruxsat bering", variant: "destructive" });
-      }
+      console.error('Auto detect error:', err);
+      toast({ title: "Xatolik", description: "Manzilni aniqlab bo'lmadi", variant: "destructive" });
     } finally {
       setDetectingLocation(false);
     }
-  };
+  }, [toast]);
+
+  // Auto-detect location on mount if enabled
+  useEffect(() => {
+    const saved = localStorage.getItem('avlodona_auto_location');
+    if (saved === 'true') {
+      setAutoLocationEnabled(true);
+      detectCurrentLocation();
+    }
+  }, [detectCurrentLocation]);
 
   const toggleAutoLocation = () => {
     const next = !autoLocationEnabled;
