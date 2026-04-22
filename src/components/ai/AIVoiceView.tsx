@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Send, Loader2, Square, Keyboard, Mic } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 const GEMINI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
@@ -102,6 +103,9 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
     setMessages(prev => [...prev, userMsg]);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       const allMsgs = [...messagesRef.current, userMsg];
       const apiMessages = [
         { role: 'system', content: VOICE_SYSTEM_PROMPT },
@@ -119,7 +123,7 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
       });
@@ -165,7 +169,7 @@ const AIVoiceView = ({ messages, setMessages }: AIVoiceViewProps) => {
                   role: 'assistant', 
                   content: result, 
                   timestamp: new Date(),
-                  model: 'Gemini 1.5 Flash'
+                  model: 'avlodona grok (Voice)'
                 }];
               });
             }

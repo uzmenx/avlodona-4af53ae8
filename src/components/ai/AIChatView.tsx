@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Paperclip, X, Cpu, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AIChatMessage {
   id: string;
@@ -78,7 +79,7 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
     setIsLoading(true);
 
     let assistantContent = '';
-    const usedModel = hasAttachments ? 'Gemini Flash' : 'Groq Llama 3';
+    const usedModel = hasAttachments ? 'avlodona gemini (Vision)' : 'avlodona grok';
 
     const upsertAssistant = (chunk: string) => {
       assistantContent += chunk;
@@ -92,6 +93,9 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
     };
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       // Use Gemini for attachments, Groq for text-only
       const url = hasAttachments ? GEMINI_URL : GROQ_URL;
       const allMessages = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
@@ -100,7 +104,7 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ messages: allMessages })
       });
@@ -119,7 +123,7 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
+              Authorization: `Bearer ${token}`
             },
             body: JSON.stringify({ messages: allMessages })
           });
