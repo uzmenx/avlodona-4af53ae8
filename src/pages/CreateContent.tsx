@@ -464,7 +464,8 @@ const CreateContent = () => {
             </div>
           }
 
-          {/* Audio/Music picker */}
+          {/* Audio/Music picker — vaqtinchalik yashirilgan */}
+          {false && (
           <div className="rounded-xl border border-border/50 overflow-hidden">
             <button
               onClick={() => setShowMusicPicker(true)}
@@ -480,6 +481,7 @@ const CreateContent = () => {
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
             </button>
           </div>
+          )}
 
           {/* Selected chips */}
           {!memoryMemberId && (mentionProfiles.length > 0 || collabProfiles.length > 0) &&
