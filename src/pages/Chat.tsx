@@ -45,6 +45,9 @@ import ChatWallpaperPicker from '@/components/chat/ChatWallpaperPicker';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { toast } from 'sonner';
 import { useBlockedUsers } from '@/hooks/useBlockedUsers';
+import { useReactions } from '@/hooks/useReactions';
+import { ReactionSummary } from '@/components/post/ReactionSummary';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface UserProfile {
   id: string;
@@ -65,6 +68,28 @@ type InvitePreview = {
   owner_id: string;
   invite_link: string | null;
 };
+
+// Small component so each message can independently subscribe to its reactions
+const PrivateMessageReactions = ({ messageId, isMine }: { messageId: string; isMine: boolean }) => {
+  const { reactions, toggleReaction } = useReactions({ type: 'message', targetId: messageId });
+  if (reactions.length === 0) return null;
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.85 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.85 }}
+        className="mt-0.5"
+      >
+        <ReactionSummary
+          reactions={reactions}
+          onReactionClick={(emoji) => void toggleReaction(emoji)}
+        />
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 
 const Chat = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -1022,16 +1047,19 @@ const Chat = () => {
                         </span>
                       </div>
                     )}
-                    <div className={cn(
-                      "flex",
-                      isMine ? "justify-end" : "justify-start",
-                      !isLastInGroup ? "mb-[2px]" : "mb-1.5"
-                    )}>
+                  <div className={cn(
+                    "flex",
+                    isMine ? "justify-end" : "justify-start",
+                    !isLastInGroup ? "mb-[2px]" : "mb-1.5"
+                  )}>
+                    <div className={cn('flex flex-col', isMine ? 'items-end' : 'items-start')}>
                       <MessageContextMenu
                         messageContent={msg.content}
                         messageId={msg.id}
                         isMine={isMine}
                         isPrivateChat={true}
+                        showReactions={true}
+                        reactionType="message"
                         onReply={handleReply}
                         onForward={handleForward}
                         onDeleteForMe={handleDeleteForMe}
@@ -1063,11 +1091,13 @@ const Chat = () => {
                           </div>
                         </div>
                       </MessageContextMenu>
+                      {/* Reaction summary below bubble */}
+                      <PrivateMessageReactions messageId={msg.id} isMine={isMine} />
                     </div>
                   </div>
+                </div>
                 );
               })}
-              
               {/* Typing indicator */}
               {otherUserTyping && (
                 <div className="flex justify-start">

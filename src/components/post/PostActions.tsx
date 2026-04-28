@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Heart, MessageCircle, Share2, Bookmark, Film, Eye } from 'lucide-react';
 import { usePostLikes } from '@/hooks/usePostLikes';
 import { useSavedPosts } from '@/hooks/useSavedPosts';
@@ -10,6 +10,9 @@ import { CommentsSheet } from './CommentsSheet';
 import { ShareDialog } from './ShareDialog';
 import { cn } from '@/lib/utils';
 import { formatCount } from '@/lib/formatCount';
+import { ReactionPicker } from './ReactionPicker';
+import { ReactionSummary } from './ReactionSummary';
+import { useReactions } from '@/hooks/useReactions';
 
 interface PostActionsProps {
   postId: string;
@@ -31,6 +34,8 @@ export const PostActions = ({
   onOpenVideoPlayer
 }: PostActionsProps) => {
   const { isLiked, likesCount, likedUsers, toggleLike, fetchLikedUsers, isLoading } = usePostLikes(postId);
+  const { reactions, toggleReaction } = useReactions({ type: 'post', targetId: postId });
+  const myReaction = reactions.find((r) => r.reactedByMe)?.emoji;
   const { viewsCount: viewsFromHook, viewedUsers, fetchViewedUsers } = usePostViews(postId, initialViewsCount);
   const viewsCount = viewsCountProp ?? viewsFromHook;
   const { isPostSaved, toggleSavePost } = useSavedPosts();
@@ -95,56 +100,68 @@ export const PostActions = ({
     <>
       {/* Glass morphism action bar */}
       <div className="flex items-center justify-between px-4 rounded-2xl bg-white/10 backdrop-blur-[10px] border border-white/20 shadow-lg hover:bg-white/15 transition-all duration-300 py-[4px]">
-
-
-        
         {/* Left side: Like, Comment, Share */}
         <div className="flex items-center gap-6">
-          {/* Like with count */}
-          <div className="flex items-center gap-2">
-            <motion.button
-              className="flex items-center gap-2 text-white/90 hover:text-white transition-colors"
-              onClick={handleLikeClick}
-              disabled={isLoading}
-              whileTap={{ scale: 0.9 }}>
 
-              <motion.div
-                animate={{
-                  scale: isAnimating ? [1, 1.35, 1.15] : 1
-                }}
-                transition={{ duration: 0.4, times: [0, 0.4, 1] }}>
-
-                <Heart
-                  className={cn(
-                    "h-5 w-5 transition-colors duration-200",
-                    isLiked && "fill-red-500 text-red-500"
-                  )} />
-
-              </motion.div>
-            </motion.button>
-
+          {/* Like + Reaction Picker */}
+          <div className="flex items-center gap-1.5">
+            <ReactionPicker
+              onSelect={(emoji) => {
+                void toggleReaction(emoji);
+                // Also fire a regular like when heart is first-tapped via picker
+                if (!isLiked && emoji === '❤️') void toggleLike();
+              }}
+              currentEmoji={myReaction}
+              align="left"
+              trigger={
+                <motion.button
+                  className="flex items-center text-white/90 hover:text-white transition-colors"
+                  onClick={handleLikeClick}
+                  disabled={isLoading}
+                  whileTap={{ scale: 0.9 }}
+                  type="button"
+                >
+                  <motion.div
+                    animate={{ scale: isAnimating ? [1, 1.35, 1.15] : 1 }}
+                    transition={{ duration: 0.4, times: [0, 0.4, 1] }}
+                  >
+                    {myReaction ? (
+                      <span className="text-[20px] leading-none">{myReaction}</span>
+                    ) : (
+                      <Heart
+                        className={cn(
+                          'h-5 w-5 transition-colors duration-200',
+                          isLiked && 'fill-red-500 text-red-500'
+                        )}
+                      />
+                    )}
+                  </motion.div>
+                </motion.button>
+              }
+            />
             <button
               className="text-sm font-bold text-white/90 hover:text-white hover:underline transition-colors"
               onClick={handleLikesCountClick}
-              type="button">
-
+              type="button"
+            >
               {formatCount(displayLikesCount)}
             </button>
           </div>
-          
+
           {/* Comment with count */}
           <button
             className="flex items-center gap-2 text-white/90 hover:text-white transition-colors"
-            onClick={handleCommentsClick}>
-
+            onClick={handleCommentsClick}
+          >
             <MessageCircle className="h-5 w-5" />
             <span className="text-sm font-bold">{formatCount(initialCommentsCount)}</span>
           </button>
-          
+
           {/* Share */}
           <button
             className="text-white/90 hover:text-white transition-colors"
-            onClick={handleShareClick}>
+            onClick={handleShareClick}
+          >
             <Share2 className="h-5 w-5" />
           </button>
 
@@ -152,37 +169,55 @@ export const PostActions = ({
           <button
             type="button"
             className="flex items-center gap-2 text-white/90 text-sm font-bold hover:text-white hover:underline transition-colors"
-            onClick={handleViewsCountClick}>
-
+            onClick={handleViewsCountClick}
+          >
             <Eye className="h-5 w-5" />
             {formatCount(viewsCount)}
           </button>
         </div>
-        
-        {/* Right side: Bookmark */}
+
+        {/* Right side: Bookmark + Video */}
         <div className="flex items-center gap-3">
-          {videoUrl && onOpenVideoPlayer &&
-          <button
-            className="text-white/80 hover:text-white transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenVideoPlayer(videoUrl);
-            }}>
+          {videoUrl && onOpenVideoPlayer && (
+            <button
+              className="text-white/80 hover:text-white transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenVideoPlayer(videoUrl);
+              }}
+            >
               <Film className="h-5 w-5" />
             </button>
-          }
-          
+          )}
           <button
             className="text-white/80 hover:text-white transition-colors"
             onClick={handleSaveClick}
-            disabled={isSaving}>
-            <Bookmark className={cn(
-              "h-5 w-5 transition-all",
-              isSaved && "fill-primary text-primary"
-            )} />
+            disabled={isSaving}
+          >
+            <Bookmark
+              className={cn('h-5 w-5 transition-all', isSaved && 'fill-primary text-primary')}
+            />
           </button>
         </div>
       </div>
+
+      {/* Reaction summary row */}
+      <AnimatePresence>
+        {reactions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ReactionSummary
+              reactions={reactions}
+              onReactionClick={(emoji) => void toggleReaction(emoji)}
+              className="pt-1 px-1"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Dialogs */}
       <LikersDialog

@@ -31,7 +31,10 @@ export const TreePostStaticPreview = ({
   }, [positions]);
 
   return (
-    <div className={cn('relative w-full overflow-hidden bg-card/50 pointer-events-none', className)} style={{ aspectRatio: '4/3' }}>
+    <div
+      className={cn('relative w-full overflow-hidden bg-card/50 pointer-events-none', className)}
+      style={{ height: '220px', maxHeight: '220px' }}
+    >
       <div className="absolute inset-0">
         <FamilyTreeCanvas
           members={members}

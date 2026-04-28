@@ -143,7 +143,7 @@ export const TreePostEditor = ({
         <div className="p-3">
           <div
             className="relative w-full rounded-[28px] overflow-hidden border border-border/50 bg-card/30 shadow-[0_18px_50px_rgba(0,0,0,0.18)]"
-            style={{ aspectRatio: '4/3', maxHeight: '55vh' }}
+            style={{ aspectRatio: '4/3', maxHeight: '40vh' }}
           >
             {/* Tree canvas fills the frame */}
             <div className="absolute inset-0">

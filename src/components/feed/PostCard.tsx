@@ -1,58 +1,32 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
-
 import { createPortal } from 'react-dom';
-
-
-
 import { Card, CardContent } from '@/components/ui/card';
-
 import { Post } from '@/types';
-
 import { formatDistanceToNow } from 'date-fns';
-
 import { MediaCarousel } from '@/components/post/MediaCarousel';
-
 import { PostActions } from '@/components/post/PostActions';
-
 import { PostCaption } from '@/components/post/PostCaption';
-
 import { PostMenu } from '@/components/post/PostMenu';
-
 import { UserAvatar } from '@/components/user/UserAvatar';
-
 import { UserInfo } from '@/components/user/UserInfo';
-
 import { FollowButton } from '@/components/user/FollowButton';
-
 import { SamsungUltraVideoPlayer } from '@/components/video/SamsungUltraVideoPlayer';
-
-import { Heart } from 'lucide-react';
-
+import { Heart, MessageCircle } from 'lucide-react';
 import { Icon } from '@iconify/react';
-
 import { usePostViews, useIntersectionObserver } from '@/hooks/usePostViews';
-
 import { supabase } from '@/integrations/supabase/client';
-
 import { useActiveStories } from '@/hooks/useActiveStories';
-
 import { useAuth } from '@/contexts/AuthContext';
-
 import { StoryViewer } from '@/components/stories/StoryViewer';
-
 import type { StoryGroup, Story } from '@/hooks/useStories';
-
 import { usePostLikes } from '@/hooks/usePostLikes';
-
 import { MusicOverlay } from '@/components/music/MusicOverlay';
-
 import { playExclusiveAudio, stopActiveAudio } from '@/lib/audioController';
-
 import { useSavedMusic } from '@/hooks/useSavedMusic';
-
 import { cn } from '@/lib/utils';
 import { useProgressiveLoading } from '@/hooks/useProgressiveLoading';
 import { PostCardSkeleton } from '@/components/feed/PostCardSkeleton';
+import { CommentsSheet } from '@/components/post/CommentsSheet';
 
 interface PostCardProps {
   post: Post;
@@ -86,6 +60,8 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
 
   const [storyViewerOpen, setStoryViewerOpen] = useState(false);
   const [storyViewerGroups, setStoryViewerGroups] = useState<StoryGroup[]>([]);
+
+  const [showComments, setShowComments] = useState(false);
 
   const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false);
   const [heartAnimClass, setHeartAnimClass] = useState('animate-heartBurst');
@@ -312,6 +288,10 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
       }
     })();
   }, [post.id]);
+
+  useEffect(() => {
+    // Keep this empty or remove if no longer needed, but let's just remove the userProfile fetching
+  }, [user?.id]);
 
   const mediaUrls = post.media_urls?.length > 0
     ? post.media_urls
@@ -563,6 +543,12 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
           onClose={() => setStoryViewerOpen(false)}
         />
       )}
+
+      <CommentsSheet
+        open={showComments}
+        onOpenChange={setShowComments}
+        postId={post.id}
+      />
     </>
   );
 };

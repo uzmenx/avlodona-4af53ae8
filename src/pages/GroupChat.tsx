@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Users, Megaphone, MoreVertical, Send, X, Smile } from 'lucide-react';
+import { ArrowLeft, Users, Megaphone, MoreVertical, Send, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +34,8 @@ import { GroupSettingsSheet } from '@/components/groups/GroupSettingsSheet';
 import { MessageContextMenu } from '@/components/chat/MessageContextMenu';
 import { ForwardMessageDialog } from '@/components/chat/ForwardMessageDialog';
 import { ReplyPreview } from '@/components/chat/ReplyPreview';
+import { MessageWithReactions } from '@/components/chat/MessageWithReactions';
+import { GroupMessageCommentsSheet } from '@/components/chat/GroupMessageCommentsSheet';
 import { uploadMedia, uploadToR2 } from '@/lib/r2Upload';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
@@ -119,6 +121,9 @@ const GroupChat = () => {
   // Reply & Forward
   const [replyTo, setReplyTo] = useState<{ id: string; content: string } | null>(null);
   const [forwardMessage, setForwardMessage] = useState<{ content: string; mediaUrl?: string | null; mediaType?: string | null } | null>(null);
+
+  // Comments
+  const [selectedMessageForComments, setSelectedMessageForComments] = useState<string | null>(null);
 
   // Deleted messages (local storage for "delete for me")
   const [deletedMessageIds, setDeletedMessageIds] = useState<Set<string>>(new Set());
@@ -667,7 +672,7 @@ const GroupChat = () => {
               const showDate = index === 0 || !isSameDay(new Date(message.created_at), new Date(visibleMessages[index - 1].created_at));
 
               return (
-                <div key={message.id}>
+                <div key={message.id} className="group">
                   {showDate && (
                     <div className="flex justify-center my-3">
                       <span className="text-[11px] text-muted-foreground bg-background/60 backdrop-blur-md px-3 py-1 rounded-full border border-border/30">
@@ -675,41 +680,31 @@ const GroupChat = () => {
                       </span>
                     </div>
                   )}
-                  <div className={cn('flex mb-0.5', isOwn ? 'justify-end' : 'justify-start')}>
+                  <div className={cn('flex mb-1', isOwn ? 'justify-end' : 'justify-start')}>
                     <MessageContextMenu
                       messageContent={message.content}
                       messageId={message.id}
                       isMine={isOwn}
                       isPrivateChat={false}
+                      showReactions={true}
                       onReply={handleReply}
                       onForward={handleForward}
                       onDeleteForMe={handleDeleteForMe}
                       onDeleteForAll={isOwn || groupInfo?.owner_id === user?.id ? handleDeleteForAll : undefined}
                     >
-                      <div className={cn('max-w-[80%]', isOwn ? 'items-end' : 'items-start')}>
-                        {showSender && (
-                          <div className="flex items-center gap-2 mb-1 ml-1">
-                            <Avatar className="h-5 w-5">
-                              <AvatarImage src={message.sender?.avatar_url || undefined} />
-                              <AvatarFallback className="text-[9px]">{getInitials(message.sender?.name)}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-[11px] font-semibold text-primary">
-                              {message.sender?.name || message.sender?.username || 'Foydalanuvchi'}
-                            </span>
-                          </div>
-                        )}
-                        <div className={cn(
-                          'rounded-2xl px-3.5 py-2 shadow-sm',
-                          isOwn
-                            ? 'bg-gradient-to-br from-[hsl(217,91%,60%)] to-[hsl(263,70%,50%)] text-white rounded-tr-md'
-                            : 'bg-muted/80 backdrop-blur-md rounded-tl-md'
-                        )}>
-                          {renderMessageContent(message)}
-                          <p className={cn('text-[10px] mt-1', isOwn ? 'text-white/60' : 'text-muted-foreground')}>
-                            {formatMessageTime(message.created_at)}
-                          </p>
-                        </div>
-                      </div>
+                      <MessageWithReactions
+                        messageId={message.id}
+                        isOwn={isOwn}
+                        senderName={message.sender?.name || message.sender?.username}
+                        senderAvatar={message.sender?.avatar_url}
+                        showSender={showSender}
+                        time={formatMessageTime(message.created_at)}
+                        isChannelAdminMessage={groupInfo?.type === 'channel'}
+                        commentsCount={(message as any).comments_count || 0}
+                        onCommentClick={() => setSelectedMessageForComments(message.id)}
+                      >
+                        {renderMessageContent(message)}
+                      </MessageWithReactions>
                     </MessageContextMenu>
                   </div>
                 </div>
@@ -877,6 +872,13 @@ const GroupChat = () => {
           mediaType={forwardMessage?.mediaType}
         />
       )}
+
+      {/* Comments Sheet for Channel Messages */}
+      <GroupMessageCommentsSheet
+        messageId={selectedMessageForComments}
+        open={!!selectedMessageForComments}
+        onOpenChange={(open) => !open && setSelectedMessageForComments(null)}
+      />
 
       {/* Wallpaper Picker */}
       <ChatWallpaperPicker

@@ -114,7 +114,7 @@ export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => 
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.25 }}
                   className="relative w-full overflow-hidden bg-card/50"
-                  style={{ height: 'calc(100vh - 240px)', minHeight: '300px' }}
+                  style={{ height: '420px', maxHeight: '420px' }}
                 >
                   {/* Interactive tree canvas with zoom/pan */}
                   <div className="absolute inset-0">
