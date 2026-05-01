@@ -290,7 +290,7 @@ const AIChat = () => {
   return (
     <div className="h-[100dvh] w-full bg-background flex flex-col overflow-hidden relative">
       {/* Header */}
-      <div className="sticky top-0 z-40 border-b border-white/10 bg-background/30 backdrop-blur-2xl">
+      <div className="sticky top-0 z-40 border-b border-white/10 bg-background/30 backdrop-blur-2xl pt-[env(safe-area-inset-top,0px)]">
         <div className="px-4 py-3 flex items-center gap-3">
           <motion.button
             type="button"

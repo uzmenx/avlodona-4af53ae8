@@ -36,8 +36,8 @@ export const SocialLinksList = ({ links, className }: SocialLinksListProps) => {
   };
 
   return (
-    <div className={cn('w-full overflow-x-auto sl-scroll', className)}>
-      <div className="flex gap-2 pr-2">
+    <div className={cn('w-full', className)}>
+      <div className="flex flex-wrap justify-center gap-1 px-2 py-0">
         {validLinks.map((link, index) => {
           const Icon = getSocialIcon(link.type);
           const palette = getPalette(link.type);
@@ -51,9 +51,9 @@ export const SocialLinksList = ({ links, className }: SocialLinksListProps) => {
               rel="noopener noreferrer"
               className={cn(
                 'group relative isolate shrink-0',
-                'w-auto',
-                'h-9 rounded-2xl px-2.5',
-                'flex items-center gap-2',
+                'w-auto max-w-[140px]',
+                'h-6 rounded-xl px-2',
+                'flex items-center gap-1.5',
                 'border border-white/10 bg-white/10 dark:bg-white/5',
                 'backdrop-blur-md',
                 'shadow-sm hover:shadow-md',
@@ -64,15 +64,12 @@ export const SocialLinksList = ({ links, className }: SocialLinksListProps) => {
                 {
                   ['--sl-from' as any]: palette.from,
                   ['--sl-to' as any]: palette.to,
-                  // Mobile-first sizing: try to keep ~3 pills visible per screen while still adapting to label length
-                  minWidth: 'clamp(110px, 30vw, 170px)',
-                  maxWidth: 'clamp(140px, 34vw, 220px)',
                 } as CSSProperties
               }
             >
               <span
                 className={cn(
-                  'absolute inset-0 -z-10 rounded-2xl opacity-100'
+                  'absolute inset-0 -z-10 rounded-xl opacity-100'
                 )}
                 style={{
                   background:
@@ -82,7 +79,7 @@ export const SocialLinksList = ({ links, className }: SocialLinksListProps) => {
               />
 
               <span
-                className="pointer-events-none absolute -inset-[1px] -z-10 rounded-2xl opacity-70"
+                className="pointer-events-none absolute -inset-[1px] -z-10 rounded-xl opacity-70"
                 style={{
                   background: 'linear-gradient(135deg, var(--sl-from), var(--sl-to))',
                   mask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
@@ -95,26 +92,26 @@ export const SocialLinksList = ({ links, className }: SocialLinksListProps) => {
 
               <div
                 className={cn(
-                  'h-6 w-6 rounded-xl flex items-center justify-center shrink-0',
+                  'h-[18px] w-[18px] rounded-[6px] flex items-center justify-center shrink-0',
                   'bg-black/10 dark:bg-white/5 border border-white/10',
                   'transition-transform duration-200'
                 )}
               >
                 <Icon
                   className={cn(
-                    'h-4 w-4',
+                    'h-3 w-3',
                     'text-foreground/80 dark:text-white/80'
                   )}
                 />
               </div>
 
-              <span className="min-w-0 flex-1 text-[12px] font-semibold tracking-tight text-foreground/85 dark:text-white/85">
+              <span className="min-w-0 flex-1 text-[10px] font-semibold tracking-tight text-foreground/85 dark:text-white/85">
                 <span className="block truncate">{displayText}</span>
               </span>
 
               <span
                 className={cn(
-                  'h-2 w-2 rounded-full shrink-0',
+                  'h-1 w-1 rounded-full shrink-0',
                   'opacity-80 transition-opacity',
                   'sl-orb'
                 )}

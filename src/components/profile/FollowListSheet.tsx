@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -27,6 +28,12 @@ const getInitials = (name: string | null | undefined) => {
 
 export function FollowListSheet({ open, onOpenChange, userId, mode }: FollowListSheetProps) {
   const { users, isLoading, error, title, refetch } = useFollowLists(userId, mode, open);
+  const navigate = useNavigate();
+
+  const handleUserClick = (id: string) => {
+    onOpenChange(false);
+    navigate(`/user/${id}`);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -64,14 +71,20 @@ export function FollowListSheet({ open, onOpenChange, userId, mode }: FollowList
                       'border border-white/10 bg-white/5 backdrop-blur-md'
                     )}
                   >
-                    <Avatar className="h-10 w-10">
+                    <Avatar 
+                      className="h-10 w-10 cursor-pointer" 
+                      onClick={() => handleUserClick(u.id)}
+                    >
                       <AvatarImage src={u.avatar_url || undefined} />
                       <AvatarFallback className="bg-white/10 text-sm font-bold">
                         {getInitials(u.name || u.username)}
                       </AvatarFallback>
                     </Avatar>
 
-                    <div className="min-w-0 flex-1">
+                    <div 
+                      className="min-w-0 flex-1 cursor-pointer"
+                      onClick={() => handleUserClick(u.id)}
+                    >
                       <div className="truncate text-sm font-bold text-foreground">
                         {u.name || u.username || 'User'}
                       </div>

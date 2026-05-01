@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -237,6 +237,12 @@ export const UserProfilePage = () => {
   const [bioExpanded, setBioExpanded] = useState(false);
   const [needsMoreButton, setNeedsMoreButton] = useState(false);
   const bioRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (bioRef.current) {
+      setNeedsMoreButton(bioRef.current.scrollHeight > bioRef.current.clientHeight);
+    }
+  }, [profile?.bio]);
   
   // Profile edit states
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -545,26 +551,28 @@ export const UserProfilePage = () => {
     fetchProfile();
   }, [fetchProfile]);
 
-  useEffect(() => {
-    const rawMode = profile?.theme_mode ?? undefined;
-    const rawBg = profile?.bg_theme ?? undefined;
+  useLayoutEffect(() => {
+    if (!profile) return;
 
+    // Determine the effective mode. Default to undefined if missing or invalid.
+    const rawMode = profile.theme_mode ?? undefined;
     const isValidMode = rawMode === 'light' || rawMode === 'dark' || rawMode === 'system';
-    const isValidBg = rawBg === 'none' || rawBg === 'aurora' || rawBg === 'sunset' || rawBg === 'ocean';
+    const modeToSet = isValidMode ? rawMode : undefined;
 
-    if (isValidMode || isValidBg) {
-      setOverride({
-        mode: isValidMode ? rawMode : undefined,
-        bgTheme: isValidBg ? rawBg : undefined
-      });
-    } else {
-      setOverride(null);
-    }
+    // Determine the effective background. Default to 'none' if missing or invalid so it doesn't fall back to viewer's bg.
+    const rawBg = profile.bg_theme ?? undefined;
+    const isValidBg = rawBg === 'none' || rawBg === 'aurora' || rawBg === 'sunset' || rawBg === 'ocean';
+    const bgThemeToSet = isValidBg ? rawBg : 'none';
+
+    setOverride({
+      mode: modeToSet,
+      bgTheme: bgThemeToSet
+    });
 
     return () => {
       setOverride(null);
     };
-  }, [profile?.bg_theme, profile?.theme_mode, setOverride]);
+  }, [profile, setOverride]);
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
@@ -697,8 +705,9 @@ export const UserProfilePage = () => {
           variant="ghost"
           size="icon"
           onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 z-10 h-9 w-9 rounded-full"
+          className="absolute left-4 z-10 h-9 w-9 rounded-full"
           style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
             backgroundColor: 'rgba(255,255,255,0.15)',
             backdropFilter: 'blur(8px)'
           }}>
@@ -708,7 +717,10 @@ export const UserProfilePage = () => {
 
             {/* Actions menu (top-right) */}
             {userId && !isMemorial &&
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        <div 
+          className="absolute right-4 z-10 flex items-center gap-2"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
+        >
                 <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -811,7 +823,10 @@ export const UserProfilePage = () => {
 
         {/* Memorial "add post" button (top-right) */}
         {isMemorial && profile &&
-        <div className="absolute top-4 right-4 z-10 flex gap-2">
+        <div 
+          className="absolute right-4 z-10 flex gap-2"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
+        >
             {!profile.linked_user_id && profile.owner_id === currentUser?.id && (
               <Button
                 variant="ghost"
@@ -847,7 +862,7 @@ export const UserProfilePage = () => {
         }
 
         {/* Cover Image */}
-        <div className="relative h-28 overflow-hidden rounded-b-2xl">
+        <div className="relative h-28 overflow-hidden rounded-b-2xl rounded-t-none">
           {profile.cover_url ?
           <img src={profile.cover_url} alt="Cover" className="w-full h-full object-cover" /> :
 
@@ -988,7 +1003,7 @@ export const UserProfilePage = () => {
           </div>
 
           {/* ROW 2: Qarindoshim | Name & Username | Xabar */}
-          <div className="flex items-center justify-between gap-2 mb-1.5">
+          <div className="flex items-center justify-between gap-2 mb-1">
             {!isMemorial ?
             <Button
               variant="outline"
@@ -1035,7 +1050,7 @@ export const UserProfilePage = () => {
 
           {/* ROW 3: Kuzatilmoqda | (spacer) | Postlar */}
           {showPostsStats &&
-          <div className="flex justify-center mb-1">
+          <div className="flex justify-center mb-0.5">
               <div className="flex items-end justify-center gap-1.5 w-full max-w-[480px]">
                 {!isMemorial &&
               <button
@@ -1094,56 +1109,53 @@ export const UserProfilePage = () => {
           <FamilyMembersSheet open={familyMembersOpen} onOpenChange={setFamilyMembersOpen} ownerId={userId} />
 
           {/* Bio */}
-          {profile.bio &&
-          <div className="mb-1.5 px-3">
-              
+          {profile?.bio?.trim() &&
+          <div className="mb-1 px-3 flex justify-center">
+              <div className="w-fit max-w-full bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+                <div className="relative">
+                  <div
+                    ref={bioRef}
+                    className={`text-xs text-muted-foreground leading-relaxed transition-all duration-300 cursor-pointer text-center whitespace-pre-wrap break-words ${
+                    !bioExpanded && needsMoreButton ? 'line-clamp-2' : ''}`}
+                    style={{
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitBoxOrient: 'vertical',
+                      WebkitLineClamp: bioExpanded ? 'unset' : '2'
+                    }}
+                    onClick={() => needsMoreButton && setBioExpanded(!bioExpanded)}>
 
+                      {profile.bio}
+                      {!bioExpanded && needsMoreButton &&
+                    <span className="inline-flex items-center gap-1 ml-1">
+                          <span className="text-blue-500 hover:underline">...</span>
+                          <ChevronDown
+                        className="h-4 w-4"
+                        style={{ color: 'rgba(255,255,255,0.6)', transition: 'transform 0.2s' }} />
 
+                        </span>
+                    }
+                      {bioExpanded &&
+                    <span className="inline-flex items-center gap-1 ml-1">
+                          <ChevronUp
+                        className="h-4 w-4"
+                        style={{ color: 'rgba(255,255,255,0.6)', transition: 'transform 0.2s' }} />
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            
+                        </span>
+                    }
+                  </div>
+                </div>
+              </div>
             </div>
           }
 
           {/* Social Links */}
           {profile.social_links && !isRestricted &&
-          <div className="flex justify-center mb-1.5">
+          <div className="flex justify-center mb-1">
               <SocialLinksList links={profile.social_links} className="justify-center" />
             </div>
           }
 
-          {/* Action Buttons */}
-          <div className="mb-2" />
         </div>
 
         {/* Story Highlights */}
@@ -1192,7 +1204,7 @@ export const UserProfilePage = () => {
                                                                   ═══════════════════════════════════════ */}
         <div className="px-4">
           {!isMemorial && (
-            <div className="flex border-b border-border/20 mb-2 mt-4 relative">
+            <div className="flex border-b border-border/20 mb-1 mt-1 relative">
               {/* Posts tab with layout toggle */}
               <button
                 onClick={() => {

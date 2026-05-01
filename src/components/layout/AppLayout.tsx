@@ -20,7 +20,7 @@ const bgClassMap: Record<string, string> = {
   ocean: 'bg-ocean',
 };
 
-export const AppLayout = ({ children, showNav = true }: AppLayoutProps) => {
+export const AppLayout = ({ children, showNav = true, showSafeAreaPadding = true }: AppLayoutProps & { showSafeAreaPadding?: boolean }) => {
   const { bgTheme } = useTheme();
   const bgClass = bgClassMap[bgTheme] || '';
   const [forceHideNav, setForceHideNav] = useState(false);
@@ -113,25 +113,32 @@ export const AppLayout = ({ children, showNav = true }: AppLayoutProps) => {
   return (
     <div className={cn('min-h-screen relative w-full')}>
       <IncomingCallOverlay />
+      {/* Unified Background that covers the whole screen including status bar */}
       <div
         className={cn(
-          'fixed inset-0 z-0 pointer-events-none transition-colors duration-500',
+          'fixed inset-0 z-0 pointer-events-none transition-colors duration-300',
           transparentBars ? 'bg-transparent' : (bgClass || 'bg-background')
         )}
+        style={{ willChange: 'background-color' }}
       />
+
+      {/* Top safe area: Completely transparent so the gradient flows seamlessly to the edge */}
+      <div
+        className={cn(
+          'fixed top-0 left-0 right-0 z-[20] pointer-events-none h-[env(safe-area-inset-top,0px)] transition-colors duration-300',
+          'bg-transparent'
+        )}
+      />
+
       {globalUploadProgress !== null && globalUploadProgress > 0 && globalUploadProgress < 100 && (
         <CloudIndicator progress={globalUploadProgress} />
       )}
-      <div
-        className={cn(
-          'fixed top-0 left-0 right-0 z-[20] pointer-events-none h-[env(safe-area-inset-top,0px)] transition-colors duration-500',
-          transparentBars ? 'bg-transparent' : (bgClass || 'bg-background')
-        )}
-      />
+
       <main
         className={cn(
           effectiveShowNav ? 'pb-20' : '',
-          'relative z-10 pt-[env(safe-area-inset-top,0px)]'
+          'relative z-10',
+          showSafeAreaPadding ? 'pt-[env(safe-area-inset-top,0px)]' : ''
         )}
       >
         {children}

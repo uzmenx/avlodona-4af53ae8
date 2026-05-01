@@ -23,8 +23,8 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
     _setPullDistance(val);
   };
 
-  const threshold = 80;
-  const maxPull = 120;
+  const threshold = 110;
+  const maxPull = 160;
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     if (isRefreshing) return;
@@ -39,7 +39,7 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
     }
 
     const isAtTop = useWindowScroll 
-      ? window.scrollY <= 1 // Allow small margin for mobile headers
+      ? window.scrollY <= 0
       : el.scrollTop <= 0;
 
     if (isAtTop) {
@@ -65,17 +65,18 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
         return;
       }
       e.preventDefault();
-      const resistance = 0.4;
-      const distance = Math.min(diff * resistance, maxPull);
+      const activeDiff = Math.max(0, diff - 30); // 30px dead zone
+      const resistance = 0.35; // harder to pull
+      const distance = Math.min(activeDiff * resistance, maxPull);
       setPullDistance(distance);
       return;
     }
 
-    // Start pulling only if diff > 0 and we haven't scrolled down
-    if (diff > 10) {
+    // Start pulling only if diff > 30 and we haven't scrolled down
+    if (diff > 30) {
       isPulling.current = true;
       e.preventDefault();
-    } else if (diff < -10) {
+    } else if (diff < -5) {
       // User is scrolling down, definitely can't pull anymore in this gesture
       canPull.current = false;
     }

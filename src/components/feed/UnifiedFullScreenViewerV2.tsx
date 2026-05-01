@@ -802,6 +802,72 @@ export const UnifiedFullScreenViewer = ({
 
 
 
+  // ─── Status bar: black bg + white icons while viewer is open ───
+
+  useEffect(() => {
+
+    const setStatusBar = async (isDark: boolean) => {
+
+      const color = isDark ? '#000000' : '#ffffff';
+
+      const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+
+      if (meta) meta.content = '#000000';
+
+      try {
+
+        const { StatusBar, Style } = await import('@capacitor/status-bar');
+
+        await StatusBar.setStyle({ style: Style.Dark });
+
+        await StatusBar.setBackgroundColor({ color: '#000000' });
+
+      } catch { /* web / plugin not available */ }
+
+      return color;
+
+    };
+
+
+
+    let prevMetaColor = '';
+
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+
+    if (meta) prevMetaColor = meta.content;
+
+
+
+    void setStatusBar(true);
+
+
+
+    return () => {
+
+      // Restore previous status bar based on current theme
+
+      const isDark = document.documentElement.classList.contains('dark');
+
+      const restoreColor = isDark ? '#000000' : '#ffffff';
+
+      const metaEl = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+
+      if (metaEl) metaEl.content = prevMetaColor || restoreColor;
+
+      import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
+
+        void StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
+
+        void StatusBar.setBackgroundColor({ color: restoreColor });
+
+      }).catch(() => { /* ignore */ });
+
+    };
+
+  }, []);
+
+
+
   const smoothNavigate = useCallback((direction: 'up' | 'down') => {
 
     if (isTransitioning) return;
@@ -1763,7 +1829,7 @@ export const UnifiedFullScreenViewer = ({
 
         {/* Author info */}
 
-        <div className="absolute bottom-14 left-0 right-14 p-4 pt-14 z-[1]">
+        <div className="absolute bottom-14 left-0 right-14 p-4 z-[1]" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)', paddingTop: '3rem' }}>
 
           <div className="flex items-center mb-2 gap-2">
 
@@ -1791,7 +1857,7 @@ export const UnifiedFullScreenViewer = ({
 
             <UserInfo userId={currentPost.user_id} name={currentPost.author?.full_name} username={currentPost.author?.username} variant="fullscreen" />
 
-            <FollowButton targetUserId={currentPost.user_id} size="sm" />
+            <FollowButton targetUserId={currentPost.user_id} size="sm" variant="fullscreen" />
 
           </div>
 
@@ -2179,7 +2245,7 @@ export const UnifiedFullScreenViewer = ({
 
         {/* Top bar with tabs */}
 
-        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-3 pt-[env(safe-area-inset-top,10px)] pb-2 bg-gradient-to-b from-black/50 to-transparent">
+        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-3 pt-[env(safe-area-inset-top,10px)] pb-2 bg-black/60 backdrop-blur-sm">
 
           <button onClick={handleClose} className="p-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 my-0">
 
@@ -2189,7 +2255,7 @@ export const UnifiedFullScreenViewer = ({
 
 
 
-          <div className="flex gap-0.5 bg-white/10 backdrop-blur-md rounded-full p-0.5 border border-white/10 py-[2px] my-[23px]">
+          <div className="flex gap-0.5 bg-white/10 backdrop-blur-md rounded-full p-0.5 border border-white/10 py-[2px] my-0">
 
             <button
 

@@ -141,33 +141,38 @@ export const FullscreenActions = ({
           onClick={handleShareClick} />
 
         {/* Like */}
-        <button
-          onClick={handleLikeClick}
-          className="flex flex-col items-center gap-1 transition-transform hover:scale-110">
-
-          <div className={cn(
-            "p-2 rounded-full bg-black/20 backdrop-blur-sm",
-            isLiked && "bg-black/40"
-          )}>
-            <motion.div
-              animate={{ scale: isAnimating ? [1, 1.35, 1.15] : 1 }}
-              transition={{ duration: 0.4, times: [0, 0.4, 1] }}
-            >
-              <Heart
-                className={cn(
-                  "h-6 w-6 text-white transition-colors duration-200",
-                  isLiked && "fill-destructive text-destructive"
-                )}
-              />
-            </motion.div>
-          </div>
+        <div className="flex flex-col items-center gap-1 group">
           <button
+            type="button"
+            onClick={handleLikeClick}
+            className="transition-transform group-hover:scale-110 outline-none"
+            aria-label="Like"
+          >
+            <div className={cn(
+              "p-2 rounded-full bg-black/20 backdrop-blur-sm",
+              isLiked && "bg-black/40"
+            )}>
+              <motion.div
+                animate={{ scale: isAnimating ? [1, 1.35, 1.15] : 1 }}
+                transition={{ duration: 0.4, times: [0, 0.4, 1] }}
+              >
+                <Heart
+                  className={cn(
+                    "h-6 w-6 text-white transition-colors duration-200",
+                    isLiked && "fill-destructive text-destructive"
+                  )}
+                />
+              </motion.div>
+            </div>
+          </button>
+          <button
+            type="button"
             onClick={handleLikesCountClick}
-            className="text-xs text-white font-medium hover:underline">
-
+            className="text-xs text-white font-medium hover:underline outline-none transition-transform group-hover:scale-110"
+          >
             {formatCount(displayLikesCount)}
           </button>
-        </button>
+        </div>
 
         {/* Comments */}
         <ActionButton

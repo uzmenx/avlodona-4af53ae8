@@ -10,9 +10,11 @@ interface FollowButtonProps {
   targetUserId: string;
   size?: "sm" | "default" | "lg";
   className?: string;
+  /** 'fullscreen' = always white text/border regardless of theme (used in video viewer) */
+  variant?: "default" | "fullscreen";
 }
 
-export const FollowButton = ({ targetUserId, size = "default", className }: FollowButtonProps) => {
+export const FollowButton = ({ targetUserId, size = "default", className, variant = "default" }: FollowButtonProps) => {
   const { user } = useAuth();
   const { isFollowing, isRequested, isLoading, toggleFollow } = useFollow(targetUserId);
   const [ripples, setRipples] = useState<{ x: number; y: number; id: number }[]>([]);
@@ -33,6 +35,8 @@ export const FollowButton = ({ targetUserId, size = "default", className }: Foll
     toggleFollow();
   };
 
+  const isFullscreen = variant === "fullscreen";
+
   return (
     <Button
       ref={btnRef}
@@ -41,14 +45,28 @@ export const FollowButton = ({ targetUserId, size = "default", className }: Foll
       onClick={handleClick}
       disabled={isLoading || !user}
       className={cn(
-        "min-w-[90px] relative overflow-hidden transition-all duration-300 rounded-full backdrop-blur-xl border border-white/15",
-        isFollowing
-          ? "bg-white/10 text-foreground hover:bg-white/15"
-          : isRequested
-            ? "bg-white/20 text-foreground hover:bg-white/30 border-white/30"
-            : "bg-white/5 text-foreground hover:bg-white/10 border-white/20",
+        "min-w-[90px] relative overflow-hidden transition-all duration-300 rounded-full backdrop-blur-xl",
+        isFullscreen
+          ? cn(
+              // Fullscreen: transparent white bg and white text when not following, to be visible but not solid white
+              isFollowing
+                ? "border border-white/40 bg-white/10 !text-white hover:bg-white/20"
+                : isRequested
+                  ? "border border-white/40 bg-white/20 !text-white hover:bg-white/30"
+                  : "border border-white bg-white/20 !text-white hover:bg-white/30 shadow-sm font-semibold",
+            )
+          : cn(
+              // Normal: theme-aware
+              "border border-white/15",
+              isFollowing
+                ? "bg-white/10 text-foreground hover:bg-white/15"
+                : isRequested
+                  ? "bg-white/20 text-foreground hover:bg-white/30 border-white/30"
+                  : "bg-white/5 text-foreground hover:bg-white/10 border-white/20",
+            ),
         className,
       )}
+      style={isFullscreen ? { textShadow: '0 1px 3px rgba(0,0,0,0.6)' } : undefined}
     >
       {ripples.map((r) => (
         <motion.span

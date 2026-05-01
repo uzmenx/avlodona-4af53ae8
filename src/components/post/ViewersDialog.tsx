@@ -25,7 +25,7 @@ export const ViewersDialog = ({ open, onOpenChange, users, viewsCount, likedUser
   const likedSet = new Set(likedUserIds);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm screen-likes overflow-hidden">
+      <DialogContent aria-describedby={undefined} className="max-w-sm screen-likes overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Ko'rganlar

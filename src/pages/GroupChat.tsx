@@ -606,7 +606,7 @@ const GroupChat = () => {
       )}
 
       {/* Premium Header */}
-      <div className="sticky top-0 z-40 bg-background/50 backdrop-blur-xl border-b border-border/20 px-4 py-2.5">
+      <div className="sticky top-0 z-40 bg-background/50 backdrop-blur-xl border-b border-border/20 px-4 py-2.5 pt-[env(safe-area-inset-top,0px)]">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/messages')} className="h-9 w-9 rounded-xl">
             <ArrowLeft className="h-5 w-5" />

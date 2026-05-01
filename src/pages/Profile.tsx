@@ -393,7 +393,7 @@ const Profile = () => {
         {/* ═══════════════════════════════════════
                                                                         COVER IMAGE
                                                                      ═══════════════════════════════════════ */}
-        <div className="relative h-28 overflow-hidden rounded-b-2xl">
+        <div className="relative h-28 overflow-hidden rounded-b-2xl rounded-t-none">
 
           {(profile as any)?.cover_url ?
             <img
@@ -407,7 +407,10 @@ const Profile = () => {
           <div className="absolute inset-0 bg-black/20" />
 
           {/* Action buttons — top right */}
-          <div className="absolute top-3 right-3 flex gap-2 z-10">
+          <div 
+            className="absolute right-3 flex gap-2 z-10"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
+          >
             <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -556,7 +559,7 @@ const Profile = () => {
             </div>
 
             {/* ROW 2: Name & Username */}
-            <div className="text-center mb-1.5">
+            <div className="text-center mb-1">
               {profile?.name && (
                 <h1 className="text-lg font-extrabold text-foreground leading-tight truncate">
                   {profile.name}
@@ -612,18 +615,18 @@ const Profile = () => {
               </div>
             }
             {/* Bio */}
-            {profile?.bio &&
-            <div className="mb-1.5 px-3">
-                <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
+            {profile?.bio?.trim() &&
+            <div className="mb-1 px-3 flex justify-center">
+              <div className="w-fit max-w-full bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl p-1.5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] mx-auto">
                   <div className="relative">
                     <div
                     ref={bioRef}
-                    className={`text-xs text-muted-foreground leading-relaxed transition-all duration-300 cursor-pointer ${
+                    className={`text-xs text-muted-foreground leading-relaxed transition-all duration-300 cursor-pointer text-center whitespace-pre-wrap ${
                     !bioExpanded && needsMoreButton ? 'line-clamp-2' : ''}`
                     }
                     style={{
                       overflow: 'hidden',
-                      display: 'webkit-box',
+                      display: '-webkit-box',
                       WebkitBoxOrient: 'vertical',
                       WebkitLineClamp: bioExpanded ? 'unset' : '2'
                     }}
@@ -655,7 +658,7 @@ const Profile = () => {
 
             {/* Social Links */}
             {(profile as any)?.social_links &&
-            <div className="flex justify-center mb-1.5">
+            <div className="flex justify-center mb-1">
                 <SocialLinksList links={(profile as any).social_links} className="justify-center" />
               </div>
             }

@@ -879,7 +879,7 @@ const Chat = () => {
           />
         )}
         {/* Header - 50% transparent */}
-        <div className="sticky top-0 z-40 bg-background/50 backdrop-blur-xl border-b border-border/20 px-4 py-2.5 relative">
+        <div className="sticky top-0 z-40 bg-background/50 backdrop-blur-xl border-b border-border/20 px-4 py-2.5 relative pt-[env(safe-area-inset-top,0px)]">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/messages')} className="p-1.5 rounded-full hover:bg-muted/50 transition-colors">
               <ArrowLeft className="h-5 w-5" />

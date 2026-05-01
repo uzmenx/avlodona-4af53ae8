@@ -765,3 +765,9 @@ select:-webkit-autofill:focus {
   transition: background-color 5000s ease-in-out 0s, color 5000s ease-in-out 0s !important;
   background-color: transparent !important;
 }
+
+@layer utilities {
+  .will-change-glass {
+    will-change: backdrop-filter, transform;
+  }
+}

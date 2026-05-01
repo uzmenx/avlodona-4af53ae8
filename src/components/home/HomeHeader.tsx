@@ -25,7 +25,7 @@ export const HomeHeader = ({
       initial={{ y: -24, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="sticky top-0 z-40 px-4 flex items-center justify-between rounded-2xl mx-3 mt-2 mb-0 border border-white/10 bg-background/40 backdrop-blur-xl shadow-lg my-[6px] py-0"
+      className="sticky top-[env(safe-area-inset-top,0px)] z-40 px-4 flex items-center justify-between rounded-2xl mx-3 mt-2 mb-0 border border-white/10 bg-background/40 backdrop-blur-xl shadow-lg my-[6px] py-0"
     >
       <h1 className="text-xl font-bold tracking-tight">{title}</h1>
       <div className="flex items-center gap-1">

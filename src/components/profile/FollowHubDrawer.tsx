@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { Clock } from 'lucide-react';
 
@@ -41,6 +42,13 @@ const formatTs = (iso: string) => {
 };
 
 export function FollowHubDrawer({ open, onOpenChange, userId, initialTab, showUnfollowTab = true }: FollowHubDrawerProps) {
+  const navigate = useNavigate();
+
+  const handleUserClick = useCallback((id: string) => {
+    onOpenChange(false);
+    navigate(`/user/${id}`);
+  }, [navigate, onOpenChange]);
+
   const safeInitialTab: FollowHubTab = useMemo(() => {
     if (!showUnfollowTab && initialTab === 'unfollow') return 'followers';
     return initialTab;
@@ -198,14 +206,20 @@ export function FollowHubDrawer({ open, onOpenChange, userId, initialTab, showUn
                             'border border-white/10 bg-white/5 backdrop-blur-md'
                           )}
                         >
-                          <Avatar className="h-10 w-10">
+                          <Avatar 
+                            className="h-10 w-10 cursor-pointer"
+                            onClick={() => handleUserClick(u.id)}
+                          >
                             <AvatarImage src={u.avatar_url || undefined} />
                             <AvatarFallback className="bg-white/10 text-sm font-bold">
                               {getInitials(u.name || u.username)}
                             </AvatarFallback>
                           </Avatar>
 
-                          <div className="min-w-0 flex-1">
+                          <div 
+                            className="min-w-0 flex-1 cursor-pointer"
+                            onClick={() => handleUserClick(u.id)}
+                          >
                             <div className="truncate text-sm font-bold text-foreground">{u.name || u.username || 'User'}</div>
                             <div className="truncate text-xs text-muted-foreground">{u.username ? `@${u.username}` : ''}</div>
                           </div>
@@ -239,14 +253,20 @@ export function FollowHubDrawer({ open, onOpenChange, userId, initialTab, showUn
                             'border border-white/10 bg-white/5 backdrop-blur-md'
                           )}
                         >
-                          <Avatar className="h-10 w-10">
+                          <Avatar 
+                            className="h-10 w-10 cursor-pointer"
+                            onClick={() => handleUserClick(u.id)}
+                          >
                             <AvatarImage src={u.avatar_url || undefined} />
                             <AvatarFallback className="bg-white/10 text-sm font-bold">
                               {getInitials(u.name || u.username)}
                             </AvatarFallback>
                           </Avatar>
 
-                          <div className="min-w-0 flex-1">
+                          <div 
+                            className="min-w-0 flex-1 cursor-pointer"
+                            onClick={() => handleUserClick(u.id)}
+                          >
                             <div className="truncate text-sm font-bold text-foreground">{u.name || u.username || 'User'}</div>
                             <div className="truncate text-xs text-muted-foreground">{u.username ? `@${u.username}` : ''}</div>
                           </div>
@@ -280,14 +300,20 @@ export function FollowHubDrawer({ open, onOpenChange, userId, initialTab, showUn
                                 'border border-white/10 bg-white/5 backdrop-blur-md'
                               )}
                             >
-                              <Avatar className="h-10 w-10">
+                              <Avatar 
+                                className="h-10 w-10 cursor-pointer"
+                                onClick={() => handleUserClick(r.profile?.id as string)}
+                              >
                                 <AvatarImage src={r.profile?.avatar_url || undefined} />
                                 <AvatarFallback className="bg-white/10 text-sm font-bold">
                                   {getInitials(displayName)}
                                 </AvatarFallback>
                               </Avatar>
 
-                              <div className="min-w-0 flex-1">
+                              <div 
+                                className="min-w-0 flex-1 cursor-pointer"
+                                onClick={() => handleUserClick(r.profile?.id as string)}
+                              >
                                 <div className="truncate text-sm font-bold text-foreground">{displayName}</div>
                                 <div className="truncate text-xs text-muted-foreground">{username}</div>
                               </div>

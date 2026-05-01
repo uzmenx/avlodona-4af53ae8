@@ -37,10 +37,17 @@ export const UserInfo = ({
         )}
         onClick={handleClick}>
 
-        <p className="font-semibold text-sm text-foreground hover:underline my-0">
+        <p
+          className="font-semibold text-sm text-white hover:underline my-0"
+          style={{ textShadow: '0 1px 4px rgba(0,0,0,0.7)' }}
+        >
           {name || 'Foydalanuvchi'}
         </p>
-        <StarUsername username={username || 'user'} />
+        <StarUsername
+          username={username || 'user'}
+          className="drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]"
+          textClassName="text-white/80"
+        />
       </div>);
 
   }

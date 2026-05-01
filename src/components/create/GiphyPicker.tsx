@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { Search, X, Sparkles, Sticker, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -8,8 +8,8 @@ const GIPHY_API = 'https://api.giphy.com/v1';
 export interface GiphyItem {
   id: string;
   title: string;
-  previewUrl: string;   // small animated preview (for grid)
-  originalUrl: string;  // full quality URL
+  previewUrl: string;
+  originalUrl: string;
   width: number;
   height: number;
   isSticker: boolean;
@@ -22,13 +22,8 @@ interface GiphyPickerProps {
 
 type Tab = 'gif' | 'sticker';
 
- 
 function parseGiphy(data: Record<string, any>[], isSticker: boolean): GiphyItem[] {
-   
   return data.map((item: Record<string, any>) => {
-    // Prefer fixed_height (200px tall, ~200-500KB) for reliable mobile animation.
-    // `original` can be 5-10MB+ which mobile browsers freeze. fixed_height is the
-    // sweet spot used by Instagram/WhatsApp for sticker overlays.
     const optimized =
       item.images?.fixed_height?.url ??
       item.images?.fixed_width?.url ??
@@ -46,10 +41,7 @@ function parseGiphy(data: Record<string, any>[], isSticker: boolean): GiphyItem[
   });
 }
 
-async function fetchGiphy(
-  endpoint: string,
-  params: Record<string, string | number>
-): Promise<GiphyItem[]> {
+async function fetchGiphy(endpoint: string, params: Record<string, string | number>): Promise<GiphyItem[]> {
   const url = new URL(`${GIPHY_API}/${endpoint}`);
   url.searchParams.set('api_key', GIPHY_KEY);
   for (const [k, v] of Object.entries(params)) {
@@ -62,6 +54,26 @@ async function fetchGiphy(
   return parseGiphy(json.data ?? [], isSticker);
 }
 
+// ─── Memoized single GIF tile ──────────────────────────────────────────────
+const GifTile = memo(({ gif, onSelect }: { gif: GiphyItem; onSelect: (gif: GiphyItem) => void }) => (
+  <div
+    className="break-inside-avoid mb-1.5 relative group cursor-pointer overflow-hidden rounded-lg"
+    onClick={() => onSelect(gif)}
+  >
+    <img
+      src={gif.previewUrl}
+      alt={gif.title}
+      loading="lazy"
+      decoding="async"
+      className="w-full object-cover transition-transform duration-150 group-active:scale-95"
+      style={{ background: '#1a1a2e', minHeight: 60 }}
+    />
+    <div className="absolute inset-0 bg-violet-500/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
+  </div>
+));
+GifTile.displayName = 'GifTile';
+
+// ─── Main GiphyPicker ──────────────────────────────────────────────────────
 export default function GiphyPicker({ onSelect, onClose }: GiphyPickerProps) {
   const [tab, setTab] = useState<Tab>('gif');
   const [query, setQuery] = useState('');
@@ -73,20 +85,17 @@ export default function GiphyPicker({ onSelect, onClose }: GiphyPickerProps) {
   const searchTimerRef = useRef<number>();
   const gridRef = useRef<HTMLDivElement>(null);
 
+  // Drag-to-close via CSS transform on a ref (no React state during drag = no re-renders)
+  const containerRef = useRef<HTMLDivElement>(null);
+  const startYRef = useRef<number | null>(null);
+  const dragActiveRef = useRef(false);
+
   const load = useCallback(async (q: string, t: Tab, off: number, append: boolean) => {
     setLoading(true);
     try {
       const prefix = t === 'gif' ? 'gifs' : 'stickers';
-      const endpoint = q.trim()
-        ? `${prefix}/search`
-        : `${prefix}/trending`;
-      const data = await fetchGiphy(endpoint, {
-        q: q.trim(),
-        limit: 20,
-        offset: off,
-        rating: 'pg',
-        lang: 'uz',
-      });
+      const endpoint = q.trim() ? `${prefix}/search` : `${prefix}/trending`;
+      const data = await fetchGiphy(endpoint, { q: q.trim(), limit: 20, offset: off, rating: 'pg', lang: 'uz' });
       setItems(prev => append ? [...prev, ...data] : data);
       setHasMore(data.length === 20);
     } catch {
@@ -96,15 +105,13 @@ export default function GiphyPicker({ onSelect, onClose }: GiphyPickerProps) {
     }
   }, []);
 
-  // Initial load + tab change
   useEffect(() => {
     setOffset(0);
     setItems([]);
     load(query, tab, 0, false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  // Debounced search
   useEffect(() => {
     clearTimeout(searchTimerRef.current);
     if (query.trim().length === 0) {
@@ -117,10 +124,9 @@ export default function GiphyPicker({ onSelect, onClose }: GiphyPickerProps) {
       load(query, tab, 0, false);
     }, 400);
     return () => clearTimeout(searchTimerRef.current);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, tab]);
 
-  // Infinite scroll
   const onScroll = useCallback(() => {
     const el = gridRef.current;
     if (!el || loading || !hasMore) return;
@@ -131,38 +137,52 @@ export default function GiphyPicker({ onSelect, onClose }: GiphyPickerProps) {
     }
   }, [loading, hasMore, offset, query, tab, load]);
 
-  const [dragY, setDragY] = useState(0);
-  const startYRef = useRef<number | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
+  // ─── Drag-to-close with direct DOM transforms (no re-renders during drag) ─
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
     startYRef.current = e.touches[0].clientY;
-  };
+    dragActiveRef.current = false;
+  }, []);
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (startYRef.current === null) return;
-    const currentY = e.touches[0].clientY;
-    const diff = currentY - startYRef.current;
+    const diff = e.touches[0].clientY - startYRef.current;
     if (diff > 0) {
-      setDragY(diff);
+      dragActiveRef.current = true;
+      if (containerRef.current) {
+        containerRef.current.style.transform = `translateY(${diff}px)`;
+        containerRef.current.style.transition = 'none';
+      }
     }
-  };
+  }, []);
 
-  const handleTouchEnd = () => {
-    if (dragY > 120) {
-      onClose();
+  const handleTouchEnd = useCallback(() => {
+    if (!containerRef.current) return;
+    const el = containerRef.current;
+    const currentTransform = new DOMMatrix(window.getComputedStyle(el).transform);
+    const translateY = currentTransform.m42;
+
+    if (translateY > 120) {
+      el.style.transition = 'transform 0.2s ease-out';
+      el.style.transform = 'translateY(100%)';
+      setTimeout(onClose, 200);
     } else {
-      setDragY(0);
+      el.style.transition = 'transform 0.2s ease-out';
+      el.style.transform = 'translateY(0)';
     }
     startYRef.current = null;
-  };
+    dragActiveRef.current = false;
+  }, [onClose]);
+
+  const handleSelect = useCallback((gif: GiphyItem) => onSelect(gif), [onSelect]);
 
   return (
-    <div 
-      className="absolute bottom-0 left-0 right-0 h-[70vh] z-[70] flex flex-col bg-black/90 backdrop-blur-2xl rounded-t-3xl border-t border-white/10 shadow-[0_-8px_32px_rgba(0,0,0,0.5)] transition-transform duration-200 ease-out"
-      style={{ transform: `translateY(${dragY}px)` }}
+    <div
+      ref={containerRef}
+      className="absolute bottom-0 left-0 right-0 h-[70vh] z-[70] flex flex-col bg-black/90 backdrop-blur-2xl rounded-t-3xl border-t border-white/10 shadow-[0_-8px_32px_rgba(0,0,0,0.5)]"
+      style={{ willChange: 'transform' }}
     >
-      {/* Drag Handle Area */}
-      <div 
+      {/* Drag Handle */}
+      <div
         className="flex flex-col items-center justify-center py-2.5 cursor-grab active:cursor-grabbing"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -220,7 +240,6 @@ export default function GiphyPicker({ onSelect, onClose }: GiphyPickerProps) {
             {t.label}
           </button>
         ))}
-
         {!query && (
           <div className="ml-auto flex items-center gap-1 text-white/30 text-[10px]">
             <TrendingUp className="w-3 h-3" />
@@ -234,33 +253,14 @@ export default function GiphyPicker({ onSelect, onClose }: GiphyPickerProps) {
         ref={gridRef}
         onScroll={onScroll}
         className="flex-1 overflow-y-auto px-2 pb-4"
-        style={{ scrollbarWidth: 'none' }}
+        style={{ scrollbarWidth: 'none', overscrollBehavior: 'contain' }}
       >
-        {/* Masonry-style 2-column grid */}
         <div className="columns-2 gap-1.5 space-y-0">
           {items.map(gif => (
-            <div
-              key={gif.id}
-              className="break-inside-avoid mb-1.5 relative group cursor-pointer overflow-hidden rounded-lg"
-              onClick={() => onSelect(gif)}
-            >
-              <img
-                src={gif.previewUrl}
-                alt={gif.title}
-                loading="lazy"
-                className="w-full object-cover transition-transform duration-150 group-active:scale-95"
-                style={{
-                  background: '#1a1a2e',
-                  minHeight: 60,
-                }}
-              />
-              {/* Hover overlay */}
-              <div className="absolute inset-0 bg-violet-500/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
-            </div>
+            <GifTile key={gif.id} gif={gif} onSelect={handleSelect} />
           ))}
         </div>
 
-        {/* Loading shimmer */}
         {loading && items.length === 0 && (
           <div className="columns-2 gap-1.5 mt-1">
             {Array.from({ length: 10 }).map((_, i) => (
@@ -273,14 +273,12 @@ export default function GiphyPicker({ onSelect, onClose }: GiphyPickerProps) {
           </div>
         )}
 
-        {/* Load more indicator */}
         {loading && items.length > 0 && (
           <div className="flex justify-center py-4">
             <div className="w-5 h-5 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
           </div>
         )}
 
-        {/* Empty state */}
         {!loading && items.length === 0 && (
           <div className="flex flex-col items-center justify-center h-40 gap-2">
             <span className="text-3xl">🔍</span>
@@ -288,8 +286,6 @@ export default function GiphyPicker({ onSelect, onClose }: GiphyPickerProps) {
           </div>
         )}
       </div>
-
-
     </div>
   );
 }

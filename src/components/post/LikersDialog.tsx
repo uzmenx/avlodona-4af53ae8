@@ -22,7 +22,7 @@ export const LikersDialog = ({ open, onOpenChange, users, likesCount }: LikersDi
   const navigate = useNavigate();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm screen-likes overflow-hidden">
+      <DialogContent aria-describedby={undefined} className="max-w-sm screen-likes overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Yoqtirishlar
