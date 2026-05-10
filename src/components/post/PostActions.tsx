@@ -99,9 +99,9 @@ export const PostActions = ({
   return (
     <>
       {/* Glass morphism action bar */}
-      <div className="flex items-center justify-between px-4 rounded-2xl bg-white/10 backdrop-blur-[10px] border border-white/20 shadow-lg hover:bg-white/15 transition-all duration-300 py-[4px]">
+      <div className="flex items-center justify-between px-3 rounded-2xl bg-white/10 backdrop-blur-[10px] border border-white/20 shadow-lg hover:bg-white/15 transition-all duration-300 py-[2px]">
         {/* Left side: Like, Comment, Share */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
 
           {/* Like + Reaction Picker */}
           <div className="flex items-center gap-1.5">

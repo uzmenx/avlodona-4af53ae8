@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, LogOut, Moon, Sun, Monitor, Shield, Mail, Globe, Palette, EyeOff, Lock, WifiOff, BookOpen, FolderLock, AtSign, Bookmark, Star, Zap, Info, ChevronRight } from 'lucide-react';
+import { ArrowLeft, LogOut, Moon, Sun, Monitor, Shield, Globe, Palette, EyeOff, Lock, WifiOff, BookOpen, FolderLock, AtSign, Bookmark, Star, Zap, Info, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
@@ -102,29 +102,15 @@ const Settings = () => {
   return (
     <AppLayout showNav={false}>
       <div className="p-4 pb-20">
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4 min-w-0">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-xl font-bold truncate">{t('settings')}</h1>
-          </div>
-
-          {user?.email && (
-            <div
-              className={cn(
-                'flex items-center gap-1.5 max-w-[52%] px-2 py-1 rounded-full',
-                'border border-border/40 bg-background/70 backdrop-blur-sm'
-              )}
-            >
-              <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-[11px] text-muted-foreground truncate">{user.email}</span>
-            </div>
-          )}
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0 h-11 w-11">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-bold truncate">Sozlamalar</h1>
         </div>
 
-        <div className="space-y-3">
-          {/* Language */}
+        <div className="space-y-4">
+          {/* 1. Language */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -139,7 +125,7 @@ const Settings = () => {
                     key={l}
                     variant={lang === l ? "default" : "outline"}
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 min-h-[44px]"
                     onClick={() => setLang(l)}
                   >
                     {langLabels[l]}
@@ -149,34 +135,7 @@ const Settings = () => {
             </CardContent>
           </Card>
 
-          {/* Subscription */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-purple-500" />
-                  Obuna
-                </div>
-                {profile?.subscription_tier === 'pro' && (
-                  <span className="text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 px-2.5 py-1 rounded-full">
-                    PRO Plan
-                  </span>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                variant="outline" 
-                className="w-full justify-between hover:bg-purple-500/5 hover:text-purple-600 hover:border-purple-500/30 transition-all font-medium"
-                onClick={() => window.dispatchEvent(new Event('show-plan-overlay'))}
-              >
-                <span>{profile?.subscription_tier === 'pro' ? "Pro rejani ko'rish" : "Pro rejaga o'tish"}</span>
-                <Zap className="h-4 w-4" />
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Appearance — Theme Mode */}
+          {/* 2. Appearance — Theme Mode */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -184,23 +143,23 @@ const Settings = () => {
                 {t('appearance')}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">{tt('themeMode')}</Label>
-                <div className="flex gap-1.5">
+                <div className="flex gap-1.5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
                   {themeModes.map(({ key, icon: Icon }) => (
                     <Button
                       key={key}
                       variant={mode === key ? "default" : "outline"}
                       size="sm"
-                      className="flex-1 gap-1.5"
+                      className="flex-none min-h-[44px] min-w-[100px] gap-1.5"
                       onClick={() => {
                         setMode(key);
                         void persistAppearance({ theme_mode: key });
                       }}
                     >
-                      <Icon className="h-3.5 w-3.5" />
-                      {tt(key)}
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span>{tt(key)}</span>
                     </Button>
                   ))}
                 </div>
@@ -209,7 +168,7 @@ const Settings = () => {
               {/* Background themes */}
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">{tt('background')}</Label>
-                <div className="grid grid-cols-4 gap-1">
+                <div className="grid grid-cols-4 gap-2">
                   {bgOptions.map(({ key, preview }) => (
                     <button
                       key={key}
@@ -218,14 +177,14 @@ const Settings = () => {
                         void persistAppearance({ bg_theme: key });
                       }}
                       className={cn(
-                        "relative rounded-lg aspect-[3/4] overflow-hidden border-2 transition-all",
+                        "relative rounded-xl aspect-[3/4] overflow-hidden border-2 transition-all",
                         bgTheme === key
-                          ? "border-primary ring-2 ring-primary/30 scale-105"
+                          ? "border-primary ring-2 ring-primary/30 scale-105 shadow-md shadow-primary/20"
                           : "border-border/40 hover:border-border"
                       )}
                     >
                       <div className={cn("absolute inset-0", preview)} />
-                      <span className="absolute bottom-0 inset-x-0 text-[10px] font-medium py-0.5 text-center bg-background/70 backdrop-blur-sm text-foreground">
+                      <span className="absolute bottom-0 inset-x-0 text-[10px] font-medium py-1 text-center bg-background/80 backdrop-blur-md text-foreground">
                         {tt(bgLabelMap[key])}
                       </span>
                     </button>
@@ -235,7 +194,7 @@ const Settings = () => {
             </CardContent>
           </Card>
 
-          {/* Privacy / Visibility */}
+          {/* 3. Privacy / Visibility */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -248,99 +207,112 @@ const Settings = () => {
                 'rounded-2xl border border-border/40 overflow-hidden',
                 'bg-background/60 backdrop-blur-xl'
               )}>
-                <div className="p-3 flex items-start gap-2.5 border-b border-border/30">
-                  <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <div className="p-4 flex items-start gap-3 border-b border-border/30">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                     <Shield className="h-4 w-4 text-primary" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">{t('privacy')}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{t('securityDesc')}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{t('securityDesc')}</p>
                   </div>
                 </div>
 
                 <div className="divide-y divide-border/30">
-                  <div className="px-3 py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="h-9 w-9 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
+                  <div className="px-4 min-h-[64px] py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
                         <Lock className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium">{t('privateAccount')}</p>
-                        <p className="text-xs text-muted-foreground">{t('privateAccountDesc')}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t('privateAccountDesc')}</p>
                       </div>
                     </div>
-                    <Switch disabled={isUpdating} checked={isPrivate} onCheckedChange={() => toggleVisibility('is_private', isPrivate)} />
+                    <div className="scale-125 origin-right shrink-0">
+                      <Switch disabled={isUpdating} checked={isPrivate} onCheckedChange={() => toggleVisibility('is_private', isPrivate)} />
+                    </div>
                   </div>
 
-                  <div className="px-3 py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="h-9 w-9 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
+                  <div className="px-4 min-h-[64px] py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
                         <WifiOff className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium">{t('hideOnline')}</p>
-                        <p className="text-xs text-muted-foreground">{t('hideOnlineDesc')}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t('hideOnlineDesc')}</p>
                       </div>
                     </div>
-                    <Switch disabled={isUpdating} checked={hideOnlineStatus} onCheckedChange={() => toggleVisibility('hide_online_status', hideOnlineStatus)} />
+                    <div className="scale-125 origin-right shrink-0">
+                      <Switch disabled={isUpdating} checked={hideOnlineStatus} onCheckedChange={() => toggleVisibility('hide_online_status', hideOnlineStatus)} />
+                    </div>
                   </div>
 
-                  <div className="px-3 py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="h-9 w-9 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
+                  <div className="px-4 min-h-[64px] py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
                         <BookOpen className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium">{t('hideHighlights')}</p>
-                        <p className="text-xs text-muted-foreground">{t('hideHighlightsDesc')}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t('hideHighlightsDesc')}</p>
                       </div>
                     </div>
-                    <Switch disabled={isUpdating} checked={hideHighlights} onCheckedChange={() => toggleVisibility('hide_highlights', hideHighlights)} />
+                    <div className="scale-125 origin-right shrink-0">
+                      <Switch disabled={isUpdating} checked={hideHighlights} onCheckedChange={() => toggleVisibility('hide_highlights', hideHighlights)} />
+                    </div>
                   </div>
 
-                  <div className="px-3 py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="h-9 w-9 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
+                  <div className="px-4 min-h-[64px] py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
                         <FolderLock className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium">{t('hideCollections')}</p>
-                        <p className="text-xs text-muted-foreground">{t('hideCollectionsDesc')}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t('hideCollectionsDesc')}</p>
                       </div>
                     </div>
-                    <Switch disabled={isUpdating} checked={hideCollections} onCheckedChange={() => toggleVisibility('hide_collections', hideCollections)} />
+                    <div className="scale-125 origin-right shrink-0">
+                      <Switch disabled={isUpdating} checked={hideCollections} onCheckedChange={() => toggleVisibility('hide_collections', hideCollections)} />
+                    </div>
                   </div>
-                  <div className="px-3 py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="h-9 w-9 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
+                  
+                  <div className="px-4 min-h-[64px] py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
                         <AtSign className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium">{t('hideMentions')}</p>
-                        <p className="text-xs text-muted-foreground">{t('hideMentionsDesc')}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t('hideMentionsDesc')}</p>
                       </div>
                     </div>
-                    <Switch disabled={isUpdating} checked={hideMentions} onCheckedChange={() => toggleVisibility('hide_mentions', hideMentions)} />
+                    <div className="scale-125 origin-right shrink-0">
+                      <Switch disabled={isUpdating} checked={hideMentions} onCheckedChange={() => toggleVisibility('hide_mentions', hideMentions)} />
+                    </div>
                   </div>
 
-                  <div className="px-3 py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="h-9 w-9 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
+                  <div className="px-4 min-h-[64px] py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
                         <Bookmark className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium">{t('hideSaved')}</p>
-                        <p className="text-xs text-muted-foreground">{t('hideSavedDesc')}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t('hideSavedDesc')}</p>
                       </div>
                     </div>
-                    <Switch disabled={isUpdating} checked={hideSavedPosts} onCheckedChange={() => toggleVisibility('hide_saved_posts', hideSavedPosts)} />
+                    <div className="scale-125 origin-right shrink-0">
+                      <Switch disabled={isUpdating} checked={hideSavedPosts} onCheckedChange={() => toggleVisibility('hide_saved_posts', hideSavedPosts)} />
+                    </div>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Information */}
+          {/* 4. Information */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -351,22 +323,50 @@ const Settings = () => {
             <CardContent>
               <Button
                 variant="outline"
-                className="w-full justify-between hover:bg-primary/5 hover:text-primary transition-all font-medium"
+                className="w-full justify-between min-h-[56px] h-auto py-3 px-4 hover:bg-primary/5 hover:text-primary transition-all font-medium border-border/60 rounded-xl"
                 onClick={() => navigate('/about')}
               >
-                <span>Biz haqimizda (Avlodona qanday tizim?)</span>
-                <ChevronRight className="h-4 w-4" />
+                <span className="text-left whitespace-normal leading-tight mr-3">Biz haqimizda (Avlodona qanday tizim?)</span>
+                <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
               </Button>
             </CardContent>
           </Card>
 
-          {/* Logout */}
+          {/* 5. Subscription */}
+          <Card className="border-emerald-500/30 shadow-sm shadow-emerald-500/10">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-emerald-500" />
+                  Obuna
+                </div>
+                {profile?.subscription_tier === 'pro' && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 px-2.5 py-1 rounded-full">
+                    PRO Plan
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                className="w-full h-14 rounded-xl flex items-center justify-center gap-2 transition-all font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
+                onClick={() => window.dispatchEvent(new Event('show-plan-overlay'))}
+              >
+                <Zap className="h-5 w-5 fill-current text-yellow-300" />
+                <span className="text-base tracking-wide">
+                  {profile?.subscription_tier === 'pro' ? "Pro rejani ko'rish" : "Pro rejaga o'tish"}
+                </span>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* 6. Logout */}
           <Button 
             variant="destructive" 
-            className="w-full"
+            className="w-full h-14 rounded-xl font-bold text-base mt-2"
             onClick={handleLogout}
           >
-            <LogOut className="mr-2 h-4 w-4" />
+            <LogOut className="mr-2 h-5 w-5" />
             {t('logout')}
           </Button>
         </div>

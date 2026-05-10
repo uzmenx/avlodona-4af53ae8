@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, ChevronRight, Image as ImageIcon, Lock, Music2, Play, Pause, RefreshCw, Smile, Type, Volume2, VolumeX, X, Disc, ImagePlus, AlignLeft, Pen, Undo2, Redo2, Trash2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Icon } from '@iconify/react';
+import { Media, type MediaAsset } from '@capacitor-community/media';
+import { Capacitor } from '@capacitor/core';
 import { EMOJIS, MEDIA_FILTERS } from './filters';
 import FilterStrip from './FilterStrip';
 import { MusicPicker, type SelectedMusic } from './MusicPicker';
@@ -191,6 +193,10 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   const [isNearTrash, setIsNearTrash] = useState(false);
   const trashRef = useRef<HTMLDivElement>(null);
 
+  // Gallery State
+  const [galleryItems, setGalleryItems] = useState<MediaAsset[]>([]);
+  const [isGalleryLoading, setIsGalleryLoading] = useState(false);
+
   // Premium haptic feedback when entering trash boundary
   useEffect(() => {
     if (isOverTrashId && typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -245,17 +251,25 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
         });
       } catch (e1) {
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: true });
         } catch (e2) {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          } catch (e3) {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          }
         }
       }
 
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          setCameraReady(true);
+        };
+      } else {
+        setCameraReady(true);
       }
-      setCameraReady(true);
     } catch (err) {
       console.error('Camera error:', err);
       setCameraReady(false);
@@ -266,6 +280,25 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
     startCamera();
     return () => stopCamera();
   }, [startCamera, stopCamera]);
+
+  useEffect(() => {
+    const fetchGallery = async () => {
+      if (!Capacitor.isNativePlatform()) return;
+      try {
+        setIsGalleryLoading(true);
+        const { camera, gallery } = await Media.requestPermissions();
+        if (camera === 'granted' || gallery === 'granted' || (camera as any) === 'prompt') {
+          const { medias } = await Media.getMedias({ quantity: 40 });
+          setGalleryItems(medias);
+        }
+      } catch (err) {
+        console.error('Failed to fetch gallery:', err);
+      } finally {
+        setIsGalleryLoading(false);
+      }
+    };
+    fetchGallery();
+  }, []);
 
   useEffect(() => {
     clearInterval(recordTimerRef.current);
@@ -303,6 +336,38 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
     setFocusedMediaId(media.id);
     setTrayOpen(false);
   }, []);
+
+  const handleSelectGalleryItem = useCallback(async (asset: MediaAsset) => {
+    if (items.length >= maxItems) return;
+    try {
+      // Create a blob URL or fetch file from the asset.
+      let url = asset.webPath;
+      if (!url) {
+        if (asset.path) {
+          url = Capacitor.convertFileSrc(asset.path);
+        } else {
+          return;
+        }
+      }
+
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const file = new File([blob], asset.name || `gallery-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+      const objectUrl = URL.createObjectURL(blob);
+      
+      const isVideo = asset.type === 'video' || blob.type.startsWith('video/');
+
+      addMediaItem({ 
+        id: crypto.randomUUID(), 
+        type: isVideo ? 'video' : 'photo', 
+        file, 
+        url: objectUrl 
+      });
+
+    } catch (e) {
+      console.error('Error loading gallery item:', e);
+    }
+  }, [addMediaItem, items.length, maxItems]);
 
   const removeMedia = useCallback((id: string) => {
     const currentItems = itemsRef.current;
@@ -1606,14 +1671,14 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[60] bg-black flex flex-col overflow-hidden overscroll-none">
       <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={handleFileSelect} className="hidden" />
       <input ref={stickerInputRef} type="file" accept="image/*" onChange={handleStickerFileSelect} className="hidden" />
 
       {/* Unified Top Dock (Header + Strip) */}
-      <div className="absolute top-0 left-0 right-0 z-50 px-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="absolute top-0 left-0 right-0 z-50 px-2 pt-[calc(env(safe-area-inset-top,0px)+4px)]">
         {items.length > 0 ? (
-          <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-black/55 backdrop-blur-xl border border-white/10 shadow-2xl">
+          <div className="flex items-center gap-2 p-1 rounded-2xl bg-black/55 backdrop-blur-xl border border-white/10 shadow-2xl">
             <button
               onClick={onClose}
               className="w-12 h-12 flex-shrink-0 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center active:scale-90 transition-all border border-white/5"
@@ -2426,9 +2491,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
 
               {/* Collapsed row: last 3 previews + gallery */}
               {!trayOpen && (
-                <div className="px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+                <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
                   <div className="grid grid-cols-4 gap-2 items-center">
-                    {Array.from({ length: 3 }).map((_, i) => {
+                    {items.length > 0 ? Array.from({ length: 3 }).map((_, i) => {
                       const it = lastThree[i];
                       if (!it) return <div key={`empty-${i}`} className="w-12 h-12" />;
                       const idx = items.length - lastThree.length + i;
@@ -2444,7 +2509,18 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                           <img src={it.media.thumbnail || it.media.url} alt="" className="w-full h-full object-cover" />
                         </button>
                       );
-                    })}
+                    }) : galleryItems.slice(0, 3).map((asset) => (
+                      <button
+                        key={asset.identifier}
+                        onClick={() => handleSelectGalleryItem(asset)}
+                        className="w-12 h-12 rounded-xl overflow-hidden border border-white/15 active:scale-95 transition-transform"
+                      >
+                         <img src={asset.webPath || Capacitor.convertFileSrc(asset.path!)} alt="" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                    {items.length === 0 && galleryItems.length < 3 && Array.from({ length: 3 - galleryItems.length }).map((_, i) => (
+                      <div key={`g-empty-${i}`} className="w-12 h-12 rounded-xl bg-white/5" />
+                    ))}
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={!canAddMore}
@@ -2458,20 +2534,20 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
 
               {/* Expanded: grid of selected items */}
               {trayOpen && (
-                <div className="px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+                <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-white/70 text-xs font-semibold">Tanlanganlar</span>
+                    <span className="text-white/70 text-xs font-semibold">{items.length > 0 ? 'Tanlanganlar' : 'Galereya'}</span>
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={!canAddMore}
                       className="text-white/80 text-xs font-semibold px-3 py-2 rounded-full bg-white/10 border border-white/15 disabled:opacity-30"
                     >
-                      Galereya
+                      Barchasi
                     </button>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 max-h-[52vh] overflow-y-auto">
-                    {items.map((it, idx) => (
+                    {items.length > 0 ? items.map((it, idx) => (
                       <button
                         key={it.media.id}
                         onClick={() => {
@@ -2491,6 +2567,25 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                           </div>
                         )}
                       </button>
+                    )) : galleryItems.map((asset) => (
+                      <button
+                        key={asset.identifier}
+                        onClick={() => {
+                          handleSelectGalleryItem(asset);
+                          setTrayOpen(false);
+                        }}
+                        className="relative aspect-square rounded-xl overflow-hidden border border-white/15 active:scale-95 transition-transform"
+                      >
+                        <img src={asset.webPath || Capacitor.convertFileSrc(asset.path!)} alt="" className="w-full h-full object-cover" />
+                        {asset.type === 'video' && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <Play className="w-5 h-5 text-white fill-white" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                    {items.length === 0 && galleryItems.length === 0 && isGalleryLoading && Array.from({ length: 6 }).map((_, i) => (
+                      <div key={`skel-${i}`} className="aspect-square rounded-xl bg-white/5 animate-pulse" />
                     ))}
                   </div>
                 </div>

@@ -38,11 +38,10 @@ const Relatives = () => {
 
   return (
     <AppLayout showSafeAreaPadding={false}>
-      <div className="w-full relative h-[100dvh] overflow-hidden bg-background">
+      <div className="fixed inset-0 overflow-hidden bg-background overscroll-none touch-none">
         {!hideBars && (
           <div
-            className="absolute top-0 left-0 right-0 h-[100px] pointer-events-none z-10 bg-gradient-to-b from-sky-200/70 via-sky-200/30 to-transparent dark:from-slate-950/85 dark:via-slate-950/35 backdrop-blur-md"
-            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+            className="absolute top-0 left-0 right-0 h-[calc(env(safe-area-inset-top,0px)+30px)] pointer-events-none z-10 bg-gradient-to-b from-sky-200/70 via-sky-200/30 to-transparent dark:from-slate-950/85 dark:via-slate-950/35 backdrop-blur-md"
           />
         )}
 
@@ -50,8 +49,7 @@ const Relatives = () => {
 
         {!hideBars && (
           <div
-            className="absolute bottom-0 left-0 right-0 h-[100px] pointer-events-none z-10 bg-gradient-to-t from-sky-200/70 via-sky-200/30 to-transparent dark:from-slate-950/85 dark:via-slate-950/35 backdrop-blur-md"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+            className="absolute bottom-0 left-0 right-0 h-[calc(env(safe-area-inset-bottom,0px)+30px)] pointer-events-none z-10 bg-gradient-to-t from-sky-200/70 via-sky-200/30 to-transparent dark:from-slate-950/85 dark:via-slate-950/35 backdrop-blur-md"
           />
         )}
       </div>

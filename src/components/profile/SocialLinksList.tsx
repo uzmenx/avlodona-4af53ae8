@@ -37,7 +37,7 @@ export const SocialLinksList = ({ links, className }: SocialLinksListProps) => {
 
   return (
     <div className={cn('w-full', className)}>
-      <div className="flex flex-wrap justify-center gap-1 px-2 py-0">
+      <div className="flex overflow-x-auto sl-scroll gap-2 px-4 py-1 items-center max-w-full w-max mx-auto">
         {validLinks.map((link, index) => {
           const Icon = getSocialIcon(link.type);
           const palette = getPalette(link.type);

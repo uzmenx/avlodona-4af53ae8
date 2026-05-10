@@ -237,9 +237,9 @@ const CreateContent = () => {
 
   // Publish form - minimalist modern design
   return (
-    <div className="fixed inset-0 z-[60] bg-background flex flex-col">
+    <div className="fixed inset-0 z-[60] bg-background flex flex-col overflow-hidden overscroll-none">
       {/* Header */}
-      <header className="flex items-center justify-between px-3 py-2.5 border-b border-border/50">
+      <header className="flex items-center justify-between px-3 py-1.5 pt-[calc(env(safe-area-inset-top,0px)+4px)] border-b border-border/50 bg-background/80 backdrop-blur-md">
         <button onClick={handleBack} className="flex items-center gap-0.5 text-sm text-muted-foreground active:scale-95 transition-transform">
           <ChevronLeft className="w-5 h-5" />
         </button>

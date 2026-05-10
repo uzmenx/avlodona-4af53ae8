@@ -682,7 +682,7 @@ export const UserProfilePage = () => {
   }
 
   return (
-    <AppLayout>
+    <AppLayout showSafeAreaPadding={false}>
       <div
         className="min-h-screen pb-20"
         onPointerUp={(e) => {
@@ -1220,7 +1220,7 @@ export const UserProfilePage = () => {
                 )}>
                 <div
                   className={cn(
-                    "relative w-16 h-8 bg-slate-100/90 dark:bg-slate-800/80 rounded-full border border-slate-200/60 dark:border-white/10 p-1 flex items-center shadow-md transition-all duration-500 overflow-hidden",
+                    "relative w-16 h-8 bg-black/5 dark:bg-white/10 backdrop-blur-md rounded-full border border-black/10 dark:border-white/20 p-1 flex items-center shadow-inner transition-all duration-500 overflow-hidden",
                     activeTab !== 'posts' && "opacity-60 scale-90 grayscale-[0.5]"
                   )}
                 >

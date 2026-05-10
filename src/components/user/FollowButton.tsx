@@ -45,7 +45,7 @@ export const FollowButton = ({ targetUserId, size = "default", className, varian
       onClick={handleClick}
       disabled={isLoading || !user}
       className={cn(
-        "min-w-[90px] relative overflow-hidden transition-all duration-300 rounded-full backdrop-blur-xl",
+        "min-w-[75px] relative overflow-hidden transition-all duration-300 rounded-full backdrop-blur-xl",
         isFullscreen
           ? cn(
               // Fullscreen: transparent white bg and white text when not following, to be visible but not solid white

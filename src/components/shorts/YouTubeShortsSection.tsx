@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, ChevronLeft, ChevronRight, Flame, Loader2, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Icon } from '@iconify/react';
 
 export interface Short {
   id: string;
@@ -334,7 +335,7 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
       {/* Header */}
       <div className="items-center justify-between mb-1.5 px-[12px] flex flex-row py-[3px]">
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Flame className="w-3.5 h-3.5 text-destructive" />
+          <Icon icon="logos:youtube-icon" className="w-4 h-4" />
           <span className="font-semibold text-xs text-foreground">Shorts</span>
         </div>
         <div className="flex-1 px-2">
@@ -387,11 +388,9 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
               className="absolute inset-0 w-full h-full object-cover"
               loading="lazy"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
-            <div className="absolute inset-0 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
-              <div className="w-8 h-8 rounded-full bg-background/20 backdrop-blur-md flex items-center justify-center border border-border/20">
-                <Play className="w-3.5 h-3.5 text-primary-foreground fill-primary-foreground ml-0.5" />
-              </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute top-2 right-2 opacity-90 z-10">
+               <Icon icon="logos:youtube-icon" className="w-5 h-5 drop-shadow-md" />
             </div>
             <div className="absolute bottom-0 left-0 right-0 p-1.5 z-10">
               <p className="text-[10px] font-medium leading-tight line-clamp-2 drop-shadow-lg bg-inherit text-gray-300">

@@ -98,6 +98,7 @@ const Messages = () => {
 
   const topRef = useRef<HTMLDivElement | null>(null);
   const swipeTabRef = useRef<HTMLDivElement | null>(null);
+  const [allDropdownOpen, setAllDropdownOpen] = useState(false);
 
   const handleRefresh = useCallback(async () => {
     await Promise.all([refetchConversations(), refetchGroups()]);
@@ -492,7 +493,7 @@ const Messages = () => {
   return (
     <AppLayout>
       <div ref={(n) => {topRef.current = n;}} />
-      <div className="pb-20">
+      <div ref={swipeTabRef} className="pb-20 min-h-screen touch-pan-y">
 
         {/* Header */}
         <div className="sticky top-0 z-40 bg-gradient-to-b from-indigo-500/25 via-violet-500/20 to-background/10 backdrop-blur-xl">
@@ -621,93 +622,115 @@ const Messages = () => {
             </div>
           </div>
 
-          {/* Tabs - 2 rows */}
-          <div className="px-4 pb-2 space-y-2">
-             <div className="flex-row flex items-start justify-start gap-[3px]">
-              <DropdownMenu>
-                <div
-                  className={cn(
-                    "flex-1 h-10 rounded-full border overflow-hidden flex",
-                    isAllGroupActive ?
-                    "bg-gradient-to-r from-indigo-500/90 via-violet-500/90 to-fuchsia-500/90 border-white/20 text-white shadow-[0_14px_34px_-16px_rgba(99,102,241,0.9)]" :
-                    "bg-black/25 border-white/15 text-foreground hover:bg-black/35"
-                  )}
-                  aria-label="All options">
-
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn(
-                        "h-full w-[30%] flex items-center justify-center transition-colors",
-                        isAllGroupActive ? "bg-black/10" : "bg-white/10",
-                        "active:scale-[0.99]"
-                      )}>
-
-                      <span className="inline-flex items-center gap-1">
-                        
-
-
-
-
-
-                        <ChevronDown className="h-4 w-4 opacity-80" />
-                      </span>
-                    </button>
-                  </DropdownMenuTrigger>
-
+          {/* Tabs - Modern Premium Design */}
+          <div className="px-4 pb-3">
+            <div className="premium-tabs-container">
+              {/* All / Followers / Following Dropdown Tab */}
+              <DropdownMenu open={allDropdownOpen} onOpenChange={setAllDropdownOpen}>
+                <DropdownMenuTrigger asChild>
                   <button
-                    type="button"
-                    onClick={() => setActiveTab("all")}
+                    onClick={(e) => {
+                      if (!isAllGroupActive) {
+                        e.preventDefault();
+                        setActiveTab("all");
+                      }
+                      // if already active, let the trigger open the dropdown naturally
+                    }}
                     className={cn(
-                      "h-full flex-1 font-semibold flex items-center justify-center transition-colors",
-                      "active:scale-[0.99]"
-                    )}>
-
-                    {t("allChats")}
+                      "flex-1 premium-tab-btn",
+                      isAllGroupActive ? "premium-tab-btn-active" : "premium-tab-btn-inactive"
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate">{allGroupLabel}</span>
+                      <ChevronDown className={cn("h-3 w-3 transition-transform duration-300", isAllGroupActive ? "opacity-100" : "opacity-60", allDropdownOpen ? "rotate-180" : "")} />
+                    </div>
                   </button>
-                </div>
-                <DropdownMenuContent align="start" className="min-w-44">
-                  <DropdownMenuItem onClick={() => setActiveTab("all")}>{t("allChats")}</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setActiveTab("followers")}>{t("followersTab")}</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setActiveTab("following")}>{t("followingTab")}</DropdownMenuItem>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  sideOffset={8}
+                  className="z-[250] min-w-[140px] bg-popover/90 backdrop-blur-2xl border-white/10 shadow-2xl rounded-2xl p-1"
+                >
+                  <DropdownMenuItem
+                    onClick={() => { setActiveTab("all"); setAllDropdownOpen(false); }}
+                    className="rounded-xl focus:bg-primary/10 cursor-pointer py-1.5 px-2.5 gap-2"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5 opacity-60" />
+                    <span className="font-semibold text-[11px] tracking-tight">{t("allChats")}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setActiveTab("followers"); setAllDropdownOpen(false); }}
+                    className="rounded-xl focus:bg-primary/10 cursor-pointer py-1.5 px-2.5 gap-2"
+                  >
+                    <Users className="h-3.5 w-3.5 opacity-60" />
+                    <span className="font-semibold text-[11px] tracking-tight">{t("followersTab")}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => { setActiveTab("following"); setAllDropdownOpen(false); }}
+                    className="rounded-xl focus:bg-primary/10 cursor-pointer py-1.5 px-2.5 gap-2"
+                  >
+                    <span className="font-semibold text-[11px] tracking-tight">{t("followingTab")}</span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button variant="outline" size="sm" onClick={() => setActiveTab("groups")} className={tabBtnClass(activeTab === "groups")}>
-                <Users className="h-4 w-4 mr-1" />
-                {t('groups')}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setActiveTab("channels")} className={tabBtnClass(activeTab === "channels")}>
-                <Megaphone className="h-4 w-4 mr-1" />
-                {t('channels')}
-              </Button>
+
+              {/* Groups Tab */}
+              <button
+                onClick={() => setActiveTab("groups")}
+                className={cn(
+                  "premium-tab-btn",
+                  activeTab === "groups" ? "premium-tab-btn-active" : "premium-tab-btn-inactive"
+                )}
+              >
+                <Users className="h-4 w-4" />
+                <span className="truncate">{t('groups')}</span>
+              </button>
+
+              {/* Channels Tab */}
+              <button
+                onClick={() => setActiveTab("channels")}
+                className={cn(
+                  "premium-tab-btn",
+                  activeTab === "channels" ? "premium-tab-btn-active" : "premium-tab-btn-inactive"
+                )}
+              >
+                <Megaphone className="h-4 w-4" />
+                <span className="truncate">{t('channels')}</span>
+              </button>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
+
+            {/* Notification Row - More subtle but distinct */}
+            <div className="mt-2.5 flex items-center gap-2">
+              <button
                 onClick={() => setActiveTab("notifications")}
-                className={cn('flex-1 h-10 rounded-xl border text-sm font-semibold transition-colors relative justify-center',
-                activeTab === 'notifications' ?
-                'bg-black/25 border-white/15 text-foreground' :
-                'bg-black/25 border-white/15 text-foreground hover:bg-black/35'
-                )}>
-
-                <Bell className="h-4 w-4 mr-1" />
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 h-10 rounded-xl border transition-all active:scale-95 relative",
+                  activeTab === "notifications" ?
+                  "bg-white/10 border-white/20 text-foreground shadow-inner" :
+                  "bg-black/20 border-white/10 text-muted-foreground hover:bg-black/30"
+                )}
+              >
+                <Bell className={cn("h-4 w-4", activeTab === "notifications" ? "text-primary animate-pulse" : "")} />
+                <span className="text-xs font-bold uppercase tracking-wider">{t('notifications')}</span>
                 {notifUnreadCount > 0 &&
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] min-w-4">
-
-                    {notifUnreadCount > 9 ? "9+" : notifUnreadCount}
-                  </Badge>
+                  <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75"></span>
+                    <Badge
+                      variant="destructive"
+                      className="relative h-5 min-w-5 p-0 flex items-center justify-center text-[10px] rounded-full border-2 border-background"
+                    >
+                      {notifUnreadCount > 9 ? "9+" : notifUnreadCount}
+                    </Badge>
+                  </div>
                 }
-              </Button>
+              </button>
             </div>
           </div>
         </div>
 
         {/* Content */}
-        <div ref={swipeTabRef} className="touch-pan-y">
+        <div>
           {/* All chats */}
           {activeTab === "all" &&
           <>

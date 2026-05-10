@@ -122,11 +122,11 @@ export const AppLayout = ({ children, showNav = true, showSafeAreaPadding = true
         style={{ willChange: 'background-color' }}
       />
 
-      {/* Top safe area: Completely transparent so the gradient flows seamlessly to the edge */}
+      {/* Top safe area: Glassmorphism overlay for system status bar */}
       <div
         className={cn(
-          'fixed top-0 left-0 right-0 z-[20] pointer-events-none h-[env(safe-area-inset-top,0px)] transition-colors duration-300',
-          'bg-transparent'
+          'fixed top-0 left-0 right-0 z-[20] pointer-events-none h-[calc(env(safe-area-inset-top,0px)+4px)] transition-all duration-300',
+          !transparentBars && 'bg-background/40 backdrop-blur-md border-b border-white/5'
         )}
       />
 

@@ -306,8 +306,8 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
     <Card className="overflow-hidden rounded-[20px] border border-white/20 bg-white/10 backdrop-blur-[10px] shadow-xl shadow-black/20">
       <CardContent className="p-0">
         {/* Header */}
-        <div className="flex items-center justify-between p-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-3 py-2">
+          <div className="flex items-center gap-2">
             <UserAvatar
               userId={post.user_id}
               avatarUrl={post.author?.avatar_url}
@@ -466,7 +466,7 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
         )}
 
         {/* Actions - does NOT trigger fullscreen */}
-        <div className="p-3 space-y-2">
+        <div className="px-3 py-1.5 space-y-1.5">
           <PostActions
             postId={post.id}
             initialLikesCount={post.likes_count}
@@ -529,7 +529,7 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
           cardRef.current = el;
           setRef(el);
         }}
-        className="py-0 my-[5px] animate-fadeIn"
+        className="py-0 my-[3px] animate-fadeIn"
       >
         {stage === 'skeleton' ? <PostCardSkeleton /> : card}
       </div>

@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { ImageCropper, SocialLinksEditor, SocialLink } from '@/components/profile';
+import { InstagramPhotoPicker, SocialLinksEditor, SocialLink } from '@/components/profile';
 import { Loader2, Check, AlertCircle, Camera, User, ImagePlus, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,6 +45,7 @@ const EditProfile = () => {
     imageUrl: string;
     type: 'avatar' | 'cover';
   }>({ isOpen: false, imageUrl: '', type: 'avatar' });
+  const [showSocialLinks, setShowSocialLinks] = useState(false);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -231,6 +232,15 @@ const EditProfile = () => {
   const uploadCroppedImage = async (croppedUrl: string): Promise<void> => {
     if (!user) return;
 
+    if (croppedUrl.includes('giphy.com')) {
+      if (cropperState.type === 'avatar') {
+        setFormData((prev) => ({ ...prev, avatar_url: croppedUrl }));
+      } else {
+        setFormData((prev) => ({ ...prev, cover_url: croppedUrl }));
+      }
+      return;
+    }
+
     try {
       const response = await fetch(croppedUrl);
       const blob = await response.blob();
@@ -288,154 +298,70 @@ const EditProfile = () => {
           <div className="max-w-md mx-auto">
             {/* Cover Image Section */}
             <div
-              className="relative h-40 cursor-pointer overflow-hidden"
-              onClick={() => coverInputRef.current?.click()}>
+              className="relative h-[100px] cursor-pointer overflow-hidden rounded-b-2xl rounded-t-none"
+              onClick={() => setCropperState({ isOpen: true, imageUrl: '', type: 'cover' })}>
               
               {formData.cover_url ?
               <img
                 src={formData.cover_url}
                 alt="Cover"
                 className="w-full h-full object-cover" /> :
-
-
               <div className="w-full h-full bg-gradient-to-br from-indigo-500/25 via-purple-500/15 to-cyan-500/25" />
               }
-              <div className="absolute inset-0 bg-black/35" />
-
-              <div className="absolute left-0 right-0 bottom-0 pb-3 items-center justify-between flex flex-col gap-[20px] px-[100px]">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    coverInputRef.current?.click();
-                  }}
-                  className="text-white/90 text-xs font-semibold px-3 py-2 rounded-2xl bg-black/35 backdrop-blur-md border border-white/10 hover:bg-black/45 transition-colors">
-                  
-                  {t('changeCover')}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    avatarInputRef.current?.click();
-                  }}
-                  className="text-white/90 text-xs font-semibold rounded-2xl bg-black/35 backdrop-blur-md border border-white/10 hover:bg-black/45 transition-colors px-0 py-0 opacity-0">
-                  
-                  {t('changeAvatar')}
-                </button>
-              </div>
-
-              <input
-                ref={coverInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleFileSelect(e, 'cover')} />
-              
+              <div className="absolute inset-0 bg-black/20" />
             </div>
 
             <div className="px-4">
               {/* Avatar */}
-              <div className="relative -mt-12 mb-5 flex justify-center">
+              <div className="relative -mt-10 mb-2 flex flex-col items-center">
                 <div
                   className={cn(
-                    `relative rounded-full p-1 ring-4 ${getGenderRingColor()} bg-background cursor-pointer`,
-                    'shadow-[0_16px_50px_-30px_rgba(0,0,0,0.85)]'
+                    `relative rounded-full p-1 ring-2 ${getGenderRingColor()} bg-background cursor-pointer`,
+                    'shadow-lg'
                   )}
-                  onClick={() => avatarInputRef.current?.click()}>
+                  onClick={() => setCropperState({ isOpen: true, imageUrl: '', type: 'avatar' })}>
                   
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src={formData.avatar_url || undefined} />
-                    <AvatarFallback className={cn('text-2xl text-white', getGenderBgColor())}>
-                      {getInitials(formData.name) || <User className="h-8 w-8" />}
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage src={formData.avatar_url || undefined} className="object-cover" />
+                    <AvatarFallback className={cn('text-xl text-white', getGenderBgColor())}>
+                      {getInitials(formData.name) || <User className="h-6 w-6" />}
                     </AvatarFallback>
                   </Avatar>
-                  <input
-                    ref={avatarInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handleFileSelect(e, 'avatar')} />
-                  
                 </div>
+                <button 
+                  type="button" 
+                  className="text-primary text-xs font-semibold mt-1.5"
+                  onClick={() => setCropperState({ isOpen: true, imageUrl: '', type: 'avatar' })}
+                >
+                  Rasmni o'zgartirish
+                </button>
               </div>
 
-              <Card className="border-white/10 bg-background/40 backdrop-blur-xl rounded-3xl shadow-[0_22px_70px_-44px_rgba(0,0,0,0.9)]">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-extrabold tracking-tight">{t('profileInfo')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-              {/* Gender Selection */}
-              <div className="space-y-3">
-                <Label>{t('gender')}</Label>
-                <RadioGroup
-                        value={formData.gender}
-                        onValueChange={(value) => setFormData((prev) => ({ ...prev, gender: value as 'male' | 'female' }))}
-                        className="grid grid-cols-2 gap-2">
-                        
-                  <div>
-                    <RadioGroupItem value="male" id="male" className="sr-only" />
-                    <Label
-                            htmlFor="male"
-                            className={cn(
-                              'h-11 rounded-2xl border border-border/50 bg-muted/20 px-4 flex items-center justify-center gap-2 cursor-pointer select-none transition-colors',
-                              formData.gender === 'male' && 'bg-sky-500/10 border-sky-500/40'
-                            )}>
-                            
-                      <span className={cn('h-2 w-2 rounded-full', formData.gender === 'male' ? 'bg-sky-400' : 'bg-muted-foreground/50')} />
-                      <span className={cn('text-sm font-semibold', formData.gender === 'male' ? 'text-sky-300' : 'text-muted-foreground')}>
-                        {t('male')}
-                      </span>
-                    </Label>
-                  </div>
-
-                  <div>
-                    <RadioGroupItem value="female" id="female" className="sr-only" />
-                    <Label
-                            htmlFor="female"
-                            className={cn(
-                              'h-11 rounded-2xl border border-border/50 bg-muted/20 px-4 flex items-center justify-center gap-2 cursor-pointer select-none transition-colors',
-                              formData.gender === 'female' && 'bg-pink-500/10 border-pink-500/40'
-                            )}>
-                            
-                      <span className={cn('h-2 w-2 rounded-full', formData.gender === 'female' ? 'bg-pink-400' : 'bg-muted-foreground/50')} />
-                      <span className={cn('text-sm font-semibold', formData.gender === 'female' ? 'text-pink-300' : 'text-muted-foreground')}>
-                        {t('female')}
-                      </span>
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
+              <div className="mt-4 space-y-3">
               {/* Name */}
-               <div className="space-y-2">
+               <div className="space-y-1">
                  <div className="flex items-center justify-between">
-                   <Label htmlFor="name">{t('fullName')}</Label>
-                   <div className="flex items-center gap-2">
-                     {formData.name.length > 0 && (
-                       <span className={`text-[10px] ${formData.name.length >= 25 ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
-                         {formData.name.length}/25
-                       </span>
-                     )}
-                     <span className="text-[10px] text-muted-foreground">(Ixtiyoriy)</span>
-                   </div>
+                   <Label htmlFor="name" className="text-sm text-muted-foreground font-medium">{t('fullName')} <span className="font-normal text-xs">(Ixtiyoriy)</span></Label>
+                   {formData.name.length > 0 && (
+                     <span className={`text-[10px] ${formData.name.length >= 25 ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
+                       {formData.name.length}/25
+                     </span>
+                   )}
                  </div>
-                 <Input id="name" placeholder={t('yourName')} value={formData.name}
+                 <Input id="name" placeholder={t('yourName')} value={formData.name} className="h-11"
                       maxLength={25}
                       onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value.slice(0, 25) }))} />
               </div>
 
               {/* Username */}
               <div className="space-y-1">
-                <Label htmlFor="username">{t('userHandle')}</Label>
+                <Label htmlFor="username" className="text-sm text-muted-foreground font-medium">{t('userHandle')}</Label>
                 <div className="relative">
                   <Input
                     id="username"
                     placeholder="username"
                     value={formData.username}
-                    className={usernameError ? "border-destructive focus-visible:ring-destructive pr-10" : "pr-10"}
+                    className={cn("h-11", usernameError ? "border-destructive focus-visible:ring-destructive pr-10" : "pr-10")}
                     onChange={(e) => {
                       const val = e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, '');
                       setFormData((prev) => ({ ...prev, username: val }));
@@ -476,16 +402,16 @@ const EditProfile = () => {
               </div>
 
               {/* Bio */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                  <div className="flex items-center justify-between">
-                   <Label htmlFor="bio">Bio</Label>
+                   <Label htmlFor="bio" className="text-sm text-muted-foreground font-medium">Bio</Label>
                    <span className={`text-xs ${formData.bio.length > BIO_MAX_LENGTH ? 'text-destructive' : 'text-muted-foreground'}`}>
                      {formData.bio.length}/{BIO_MAX_LENGTH}
                    </span>
                  </div>
                  <Textarea id="bio" placeholder={t('bioPlaceholder')} value={formData.bio}
+                      className="resize-none h-[72px]"
                       onChange={(e) => setFormData((prev) => ({ ...prev, bio: e.target.value.slice(0, BIO_MAX_LENGTH + 50) }))}
-                      rows={3}
                       maxLength={BIO_MAX_LENGTH + 50} />
                  {formData.bio.length > BIO_MAX_LENGTH &&
                       <p className="text-xs text-destructive">
@@ -494,43 +420,74 @@ const EditProfile = () => {
                       }
               </div>
 
+              {/* Gender Selection */}
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground font-medium">{t('gender')}</Label>
+                <RadioGroup
+                        value={formData.gender}
+                        onValueChange={(value) => setFormData((prev) => ({ ...prev, gender: value as 'male' | 'female' }))}
+                        className="flex gap-2">
+                        
+                  <div>
+                    <RadioGroupItem value="male" id="male" className="sr-only" />
+                    <Label
+                            htmlFor="male"
+                            className={cn(
+                              'h-9 rounded-full border border-border/50 bg-muted/20 px-4 flex items-center justify-center cursor-pointer select-none transition-colors w-max',
+                              formData.gender === 'male' && 'bg-sky-500/10 border-sky-500/40 text-sky-400'
+                            )}>
+                      <span className="text-sm font-medium">
+                        {t('male')}
+                      </span>
+                    </Label>
+                  </div>
+
+                  <div>
+                    <RadioGroupItem value="female" id="female" className="sr-only" />
+                    <Label
+                            htmlFor="female"
+                            className={cn(
+                              'h-9 rounded-full border border-border/50 bg-muted/20 px-4 flex items-center justify-center cursor-pointer select-none transition-colors w-max',
+                              formData.gender === 'female' && 'bg-pink-500/10 border-pink-500/40 text-pink-400'
+                            )}>
+                      <span className="text-sm font-medium">
+                        {t('female')}
+                      </span>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
               {/* Social links */}
-              <SocialLinksEditor
+              <div className="space-y-1 pb-10">
+                <button
+                  type="button"
+                  onClick={() => setShowSocialLinks(!showSocialLinks)}
+                  className="flex items-center text-primary text-sm font-semibold mt-1"
+                >
+                  {showSocialLinks ? "Ijtimoiy havolalarni yopish" : `+ Ijtimoiy havola qo'shish (${formData.social_links.length}/3)`}
+                </button>
+                {showSocialLinks && (
+                  <div className="pt-2">
+                    <SocialLinksEditor
                       links={formData.social_links}
                       onChange={(links) => setFormData((prev) => ({ ...prev, social_links: links }))}
                       maxLinks={3} />
-                    
-
                   </div>
-                </CardContent>
-              </Card>
+                )}
+              </div>
 
-              <div className="pt-5 pb-2">
-                <Button
-                  type="submit"
-                  className="w-full h-11 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-black hover:opacity-95"
-                  disabled={isLoading}>
-                  
-                  {isLoading ?
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('saving')}</> :
-
-                  t('save')
-                  }
-                </Button>
               </div>
             </div>
           </div>
         </form>
 
       {/* Image Cropper */}
-      <ImageCropper
+      <InstagramPhotoPicker
           isOpen={cropperState.isOpen}
           onClose={() => setCropperState((prev) => ({ ...prev, isOpen: false }))}
-          imageUrl={cropperState.imageUrl}
-          aspectRatio={cropperState.type === 'avatar' ? 1 : 3}
-          shape={cropperState.type === 'avatar' ? 'circle' : 'rect'}
           onCropComplete={uploadCroppedImage}
-          title={cropperState.type === 'avatar' ? t('cropAvatar') : t('cropCover')} />
+          type={cropperState.type} />
         
     </div>
   </AppLayout>);

@@ -17,6 +17,10 @@ const config: CapacitorConfig = {
       splashImmersive: true,
       androidScaleType: "CENTER_INSIDE",
       iosContentMode: "scaleAspectFit",
+    },
+    StatusBar: {
+      overlaysWebView: true,
+      style: 'LIGHT'
     }
   }
 };

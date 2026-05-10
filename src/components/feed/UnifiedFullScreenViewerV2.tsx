@@ -1218,13 +1218,9 @@ export const UnifiedFullScreenViewer = ({
 
       <div className={cn(
 
-        "flex-1 flex items-center justify-center relative overflow-hidden z-[1] transition-all duration-200 ease-out",
+        "flex-1 flex flex-col relative overflow-visible z-[1] w-full",
 
-        slideDirection === 'down' && "animate-slide-out-up",
-
-        slideDirection === 'up' && "animate-slide-out-down",
-
-        !slideDirection && "animate-slide-in"
+        "pt-[calc(env(safe-area-inset-top,10px)+44px)] bg-black"
 
       )}
 
@@ -1232,53 +1228,27 @@ export const UnifiedFullScreenViewer = ({
 
       onClick={(e) => {
 
-        if (isTransitioning) return;
-
         if (Date.now() - lastShortsTouchTapTs.current < 450) return;
 
         const t = e.target as HTMLElement | null;
 
-        if (t?.closest('button')) return;
+        if (t?.closest('button') || t?.closest('a') || t?.tagName.toLowerCase() === 'iframe') return;
 
         handleShortsTap();
 
       }}>
 
-        <div className="relative w-full h-full">
+        <div className="relative w-full flex-1 min-h-0 z-[9999]" style={{ maxHeight: 'calc(100% - 120px)' }}>
 
           {!isShortIframeReady &&
 
-          <>
+          <div className="absolute inset-0 flex items-center justify-center bg-black">
 
-              <img
+            <Loader2 className="h-7 w-7 text-white animate-spin" />
 
-              key={`thumb-${currentShort.id}`}
-
-              src={currentShort.thumbnail}
-
-              alt=""
-
-              className="absolute inset-0 w-full h-full object-cover z-[1]" />
-
-            
-
-              <div className="absolute inset-0 z-[2] bg-black/35" />
-
-              <div className="absolute inset-0 z-[2] flex items-center justify-center">
-
-                <div className="p-4 rounded-full bg-black/35 backdrop-blur-sm border border-white/10">
-
-                  <Loader2 className="h-7 w-7 text-white animate-spin" />
-
-                </div>
-
-              </div>
-
-            </>
+          </div>
 
           }
-
-
 
           {/* Render current + adjacent iframes for instant switching */}
 
@@ -1298,7 +1268,7 @@ export const UnifiedFullScreenViewer = ({
 
                 ref={isCurrent ? shortsIframeRef : undefined}
 
-                src={`https://www.youtube.com/embed/${s.id}?rel=0&autoplay=${isCurrent ? '1' : '0'}&controls=0&modestbranding=1&playsinline=1&loop=1&playlist=${s.id}&iv_load_policy=3&fs=0&enablejsapi=1&origin=${encodeURIComponent(ytOrigin)}`}
+                src={`https://www.youtube.com/embed/${s.id}?rel=0&autoplay=${isCurrent ? '1' : '0'}&controls=1&modestbranding=1&playsinline=1&loop=1&playlist=${s.id}&iv_load_policy=3&fs=0&enablejsapi=1&origin=${encodeURIComponent(ytOrigin)}`}
 
                 className={cn(
 
@@ -1318,129 +1288,41 @@ export const UnifiedFullScreenViewer = ({
 
           })}
 
-
-
-          {/* Touch-intercepting overlay — cross-origin iframes never bubble touch/swipe
-
-              events to parents. This transparent div sits above the iframe (z-[3]) and
-
-              captures the full touch sequence. Tap → play/pause; vertical swipe → navigate. */}
-
-          <div
-
-            className="absolute inset-0 z-[3]"
-
-            style={{ touchAction: 'pan-y', background: 'transparent' }}
-
-            onTouchStart={(e) => {
-
-              ensureAmbientPlayback();
-
-              touchMoved.current = false;
-
-              touchStartY.current = e.touches[0].clientY;
-
-              touchStartX.current = e.touches[0].clientX;
-
-              touchStartTime.current = Date.now();
-
-            }}
-
-            onTouchMove={(e) => {
-
-              const diffY = Math.abs(touchStartY.current - e.touches[0].clientY);
-
-              const diffX = Math.abs(touchStartX.current - e.touches[0].clientX);
-
-              if (diffY > 8 || diffX > 8) touchMoved.current = true;
-
-            }}
-
-            onTouchEnd={(e) => {
-
-              const diffY = touchStartY.current - e.changedTouches[0].clientY;
-
-              const diffX = touchStartX.current - e.changedTouches[0].clientX;
-
-              const elapsed = Date.now() - touchStartTime.current;
-
-              const velocityY = Math.abs(diffY) / Math.max(elapsed, 1);
-
-              const threshold = velocityY > 0.25 ? 16 : 34;
-
-
-
-              if (!touchMoved.current && Math.abs(diffY) < 8 && Math.abs(diffX) < 8 && elapsed < 300) {
-
-                lastShortsTouchTapTs.current = Date.now();
-
-                handleShortsTap();
-
-                return;
-
-              }
-
-
-
-              if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > threshold) {
-
-                smoothNavigate(diffY > 0 ? 'down' : 'up');
-
-              }
-
-            }}
-
-          />
-
-
-
         </div>
 
+        <div className="w-full shrink-0 flex flex-col gap-3 px-4 pt-3 pb-[env(safe-area-inset-bottom,16px)] z-10">
 
+          <div className="flex items-start justify-between gap-3">
 
-          {/* Play/Pause indicator — shown briefly on tap */}
+            <div className="flex-1 min-w-0">
 
-          <div className={cn(
+              <p className="text-[13px] font-medium text-white leading-snug line-clamp-2">
 
-            "absolute inset-0 z-[4] flex items-center justify-center pointer-events-none transition-opacity duration-300",
+                {currentShort.title}
 
-            showPlayIndicator ? "opacity-100" : "opacity-0"
+              </p>
 
-          )}>
-
-            <div className="p-4 rounded-full bg-black/35 backdrop-blur-sm border border-white/10">
-
-              {shortsPlaying
-
-                ? <Pause className="h-8 w-8 text-white" />
-
-                : <Play className="h-8 w-8 text-white" />}
+              <p className="text-[11px] text-white/50 mt-1">{currentShort.channelTitle}</p>
 
             </div>
 
-          </div>
+            <div className="shrink-0 flex items-center gap-2">
 
+              <a
 
+                href={`https://www.youtube.com/shorts/${currentShort.id}`}
 
-          <div className="absolute bottom-16 left-0 right-16 px-4 pb-4 pt-16 z-[5] pointer-events-none">
+                target="_blank"
 
-            <div className="flex items-end gap-3">
+                rel="noreferrer"
 
-              <div className="flex-1 min-w-0">
+                onClick={(e) => e.stopPropagation()}
 
-                <p className="text-[13px] font-medium text-white leading-snug line-clamp-2 drop-shadow-lg">
+                className="p-2.5 rounded-full bg-white/10 hover:bg-white/15 transition-colors flex items-center justify-center"
 
-                  {currentShort.title}
+                title="YouTube da ochish">
 
-                </p>
-
-                <p className="text-[11px] text-white/50 mt-1 drop-shadow">{currentShort.channelTitle}</p>
-
-              </div>
-
-              <div className="shrink-0 flex items-center gap-1 bg-white/10 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/10">
-
-                <svg viewBox="0 0 24 24" className="w-4 h-4 text-red-500 fill-current">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 text-red-500 fill-current">
 
                   <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z" />
 
@@ -1448,69 +1330,31 @@ export const UnifiedFullScreenViewer = ({
 
                 </svg>
 
-                <span className="text-[10px] text-white/70 font-medium">Shorts</span>
+              </a>
 
-              </div>
+              <button
+
+                type="button"
+
+                onClick={(e) => {
+
+                  e.stopPropagation();
+
+                  setShowShortShare(true);
+
+                }}
+
+                className="p-2.5 rounded-full bg-white/10 hover:bg-white/15 transition-colors">
+
+                <Send className="h-5 w-5 text-white" />
+
+              </button>
 
             </div>
 
           </div>
 
-
-
-        {/* Shorts action buttons — z-[6] to sit above the touch overlay */}
-
-        <div className="absolute right-3 top-20 z-[6] flex flex-col gap-2">
-
-          {/* Open in YouTube */}
-
-          <a
-
-            href={`https://www.youtube.com/shorts/${currentShort.id}`}
-
-            target="_blank"
-
-            rel="noreferrer"
-
-            onClick={(e) => e.stopPropagation()}
-
-            className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors flex items-center justify-center"
-
-            title="YouTube da ochish">
-
-            <svg viewBox="0 0 24 24" className="w-5 h-5 text-red-400 fill-current">
-
-              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z" />
-
-              <path d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z" fill="white" />
-
-            </svg>
-
-          </a>
-
-          {/* Share */}
-
-          <button
-
-            type="button"
-
-            onClick={(e) => {
-
-              e.stopPropagation();
-
-              setShowShortShare(true);
-
-            }}
-
-            className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/15 transition-colors">
-
-            <Send className="h-5 w-5 text-white" />
-
-          </button>
-
         </div>
-
-
 
         <ShareDialog
 
@@ -1519,8 +1363,6 @@ export const UnifiedFullScreenViewer = ({
           onOpenChange={setShowShortShare}
 
           shortId={currentShort.id} />
-
-
 
       </div>);
 

@@ -353,7 +353,7 @@ export const FamilyTreeV2 = () => {
   // Replaced full-screen blocker with non-blocking overlay to keep shell visible
 
   return (
-    <section className="min-h-screen flex flex-col">
+    <section className="absolute inset-0 flex flex-col">
       <GenderSelectionModal isOpen={showGenderSelect} onSelect={handleGenderSelect} disabled={isSelectingGender} />
 
       {/* Show Search Relatives Flow if the tree is empty and user has a gender */}
@@ -525,7 +525,7 @@ export const FamilyTreeV2 = () => {
       )}
 
       {/* Canvas with overlays */}
-      <div className={cn("flex-1 relative", isMergeMode && "pt-16", pendingInvitations.length > 0 && "pt-32")}>
+      <div className={cn("flex-1 relative min-h-0", isMergeMode && "pt-16", pendingInvitations.length > 0 && "pt-32")}>
         
         {/* Background Sync Indicator */}
         {isRefreshing && Object.keys(members).length > 0 && (
@@ -535,7 +535,7 @@ export const FamilyTreeV2 = () => {
           </div>
         )}
 
-        <div className="h-[calc(100vh-110px)] min-h-[500px]">
+        <div className="absolute inset-0">
           <FamilyTreeCanvas
             members={members}
             positions={positions}

@@ -50,14 +50,14 @@ export const TreePostHeader = ({
 
   return (
     <>
-      <div className="sticky top-2 z-50 px-3">
+      <div className="absolute top-2 left-0 right-0 z-50 px-3 pointer-events-none mt-[env(safe-area-inset-top,0px)]">
         <div
           className={
             'mx-auto w-[390px] max-w-full h-14 px-3 py-2 ' +
             'flex items-center gap-2 rounded-2xl ' +
             'backdrop-blur-2xl bg-white/30 dark:bg-slate-900/30 ' +
             'border border-white/20 dark:border-white/10 ' +
-            'shadow-2xl shadow-black/5 dark:shadow-black/20'
+            'shadow-2xl shadow-black/5 dark:shadow-black/20 pointer-events-auto'
           }
         >
           {/* 1) Trophy */}

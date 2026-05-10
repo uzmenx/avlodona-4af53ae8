@@ -12,6 +12,7 @@ import { GlobalCallListener } from "@/components/chat/GlobalCallListener";
 import { PlanOverlay } from "@/components/subscription/PlanOverlay";
 import { ErrorBoundary } from "react-error-boundary";
 import { ErrorFallback } from "@/components/ui/ErrorFallback";
+import { StatusBarHandler } from "@/components/layout/StatusBarHandler";
 
 
 import Home from "./pages/Home";
@@ -104,6 +105,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <PlanOverlay />
+          <StatusBarHandler />
           <BrowserRouter>
             <PushNotification />
             <GlobalMessageListener />
