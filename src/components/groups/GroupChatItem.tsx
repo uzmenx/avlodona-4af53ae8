@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Icon } from '@iconify/react';
 import { Users, Megaphone } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { uz } from 'date-fns/locale';
@@ -10,9 +11,11 @@ import { cn } from '@/lib/utils';
 interface GroupChatItemProps {
   chat: GroupChat;
   onClick: () => void;
+  isEditMode?: boolean;
+  isSelected?: boolean;
 }
 
-export const GroupChatItem = ({ chat, onClick }: GroupChatItemProps) => {
+export const GroupChatItem = ({ chat, onClick, isEditMode, isSelected }: GroupChatItemProps) => {
   const { t } = useLanguage();
   const formatTime = (dateStr: string) => {
     return formatDistanceToNow(new Date(dateStr), { addSuffix: false, locale: uz });
@@ -26,8 +29,24 @@ export const GroupChatItem = ({ chat, onClick }: GroupChatItemProps) => {
     <motion.div
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="group relative flex items-center gap-4 px-4 py-4 cursor-pointer transition-all duration-300 rounded-[24px] border border-white/5 bg-white/[0.03] backdrop-blur-md hover:bg-white/[0.08] hover:border-white/10 active:bg-white/[0.12]"
+      className={cn(
+        "group relative flex items-center gap-4 px-4 py-4 cursor-pointer transition-all duration-300 rounded-[24px] border border-white/5",
+        isSelected ? "bg-primary/5 border-primary/10" : "bg-white/[0.03] backdrop-blur-md hover:bg-white/[0.08] hover:border-white/10 active:bg-white/[0.12]"
+      )}
     >
+      {/* Telegram-style selection circle */}
+      {isEditMode && (
+        <div className="flex-shrink-0 flex items-center justify-center w-6 animate-in fade-in slide-in-from-left-2 duration-300">
+          <div className={cn(
+            "h-5 w-5 rounded-full border-2 transition-all duration-200 flex items-center justify-center",
+            isSelected 
+              ? "bg-primary border-primary scale-110 shadow-lg shadow-primary/20" 
+              : "border-muted-foreground/30 bg-transparent"
+          )}>
+            {isSelected && <Icon icon="lucide:check" className="h-3 w-3 text-primary-foreground" />}
+          </div>
+        </div>
+      )}
       <div className="relative">
         <div className="absolute -inset-1 bg-gradient-to-tr from-primary/20 to-violet-500/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
         <Avatar className="h-14 w-14 border border-white/10 shadow-lg relative">

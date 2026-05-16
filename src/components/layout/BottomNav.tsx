@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/utils';
 import { useConversations } from '@/hooks/useConversations';
@@ -6,7 +7,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useRef } from 'react';
+
 
 type BottomNavItem =
   | {
@@ -31,6 +32,23 @@ export const BottomNav = () => {
 
   const location = useLocation();
   const lastTapTsRef = useRef(0);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  // Detect keyboard visibility on Android/iOS
+  useEffect(() => {
+    const handleResize = () => {
+      // If the viewport height decreases significantly, it's likely the keyboard
+      const isVisible = window.visualViewport 
+        ? window.visualViewport.height < window.innerHeight * 0.75
+        : window.innerHeight < 500; // fallback
+      setIsKeyboardVisible(isVisible);
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      return () => window.visualViewport?.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   const initials = (profile?.name || profile?.username || 'P')[0]?.toUpperCase();
 
@@ -92,7 +110,10 @@ export const BottomNav = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[70]">
+    <nav className={cn(
+      "fixed bottom-0 left-0 right-0 z-[70] transition-transform duration-300",
+      isKeyboardVisible ? "translate-y-20 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
+    )}>
       <div className="h-16 px-3 pb-[env(safe-area-inset-bottom,0px)]">
         <div className="h-14 max-w-lg mx-auto rounded-full border border-white/20 bg-background/20 text-foreground shadow-[0_15px_45px_rgba(0,0,0,0.15)] backdrop-blur-2xl supports-[backdrop-filter]:bg-background/10 flex items-center justify-around px-2">
           {navItems.map((item) => {

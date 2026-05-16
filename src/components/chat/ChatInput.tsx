@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Paperclip, X, Mic, Lock, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Send, Paperclip, X, Mic, Lock, Trash2 } from 'lucide-react';
 import { Icon } from '@iconify/react';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import GiphyPicker from '@/components/create/GiphyPicker';
+import { ChatMediaPicker } from './ChatMediaPicker';
 import { cn } from '@/lib/utils';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +34,7 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const [showMediaMenu, setShowMediaMenu] = useState(false);
   const [showGIFPicker, setShowGIFPicker] = useState(false);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
 
   // Voice recording - Telegram style
   const {
@@ -254,7 +256,7 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
   if (isRecording && !showConfirmSend) {
     return (
       <div className="safe-area-bottom">
-        <div className="mx-2 mb-2 rounded-2xl bg-background/80 backdrop-blur-xl border border-border/30 p-3">
+        <div className="mx-2 rounded-2xl bg-background/80 backdrop-blur-xl border border-border/30 p-3" style={{ marginBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))' }}>
           <div className="flex items-center gap-3">
             {/* Cancel - slide left hint */}
             <button onClick={handleCancelVoice} className="p-2 rounded-full hover:bg-destructive/10 transition-colors">
@@ -308,7 +310,7 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
   if (showConfirmSend && audioBlob) {
     return (
       <div className="safe-area-bottom">
-        <div className="mx-2 mb-2 rounded-2xl bg-background/80 backdrop-blur-xl border border-border/30 p-3">
+        <div className="mx-2 rounded-2xl bg-background/80 backdrop-blur-xl border border-border/30 p-3" style={{ marginBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))' }}>
           <div className="flex items-center gap-3">
             <button onClick={handleCancelVoice} className="p-2 rounded-full hover:bg-destructive/10 transition-colors">
               <Trash2 className="h-5 w-5 text-destructive" />
@@ -323,9 +325,9 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
             <button 
               onClick={handleSendAudio} 
               disabled={isUploading}
-              className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-500 flex items-center justify-center shadow-lg hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              <Send className="h-5 w-5 text-primary-foreground" />
+              <Icon icon="heroicons:paper-airplane-16-solid" className="h-5 w-5 text-white" />
             </button>
           </div>
         </div>
@@ -367,26 +369,15 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
       )}
 
       {/* Input bar */}
-      <div className="mx-2 mb-2 rounded-2xl bg-background/50 backdrop-blur-xl border border-border/30 p-1.5 flex items-center gap-1.5" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
-        {/* Attach button */}
-        <div className="relative">
-          <input 
-            ref={mediaInputRef} 
-            type="file" 
-            multiple
-            accept="image/*,video/*" 
-            className="hidden" 
-            onChange={handleFileSelect} 
-          />
-          
-          <button 
-            type="button"
-            onClick={() => mediaInputRef.current?.click()}
-            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors flex-shrink-0"
-          >
-            <Paperclip className="h-5.5 w-5.5 text-muted-foreground" />
-          </button>
-        </div>
+      <div className="mx-2 rounded-2xl bg-background/50 backdrop-blur-xl border border-border/30 p-1.5 flex items-center gap-1.5" style={{ marginBottom: 'calc(8px + env(safe-area-inset-bottom, 12px))' }}>
+        {/* Attach button — opens Telegram-style picker */}
+        <button 
+          type="button"
+          onClick={() => setShowMediaPicker(true)}
+          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors flex-shrink-0"
+        >
+          <Paperclip className="h-5 w-5 text-muted-foreground" />
+        </button>
 
         {/* GIF button - standalone premium */}
         <button
@@ -414,9 +405,9 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
           <button
             onClick={handleSend}
             disabled={isUploading}
-            className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-500 flex items-center justify-center shadow-md hover:opacity-90 transition-all active:scale-90 disabled:opacity-50"
           >
-            <Send className="h-4 w-4 text-primary-foreground" />
+            <Icon icon="heroicons:paper-airplane-16-solid" className="h-4.5 w-4.5 text-white" />
           </button>
         ) : (
           <div
@@ -455,6 +446,24 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
           />
         </div>
       )}
+
+      {/* Telegram-style Media Picker Sheet */}
+      <Sheet open={showMediaPicker} onOpenChange={setShowMediaPicker}>
+        <SheetContent side="bottom" className="p-0 h-[88vh] border-none bg-transparent">
+          <ChatMediaPicker
+            onSend={(media, caption) => {
+              // Add selected files to selectedMedia state
+              setSelectedMedia(prev => [...prev, ...media]);
+              // If caption written, put it in the input
+              if (caption.trim()) setInputValue(caption);
+              setShowMediaPicker(false);
+              // Auto-send after state updates
+              setTimeout(() => handleSend(), 150);
+            }}
+            onClose={() => setShowMediaPicker(false)}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

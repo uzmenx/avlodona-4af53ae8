@@ -178,6 +178,13 @@ const Profile = () => {
   const [familyMemberCount, setFamilyMemberCount] = useState(0);
 
   useEffect(() => {
+    window.dispatchEvent(new CustomEvent('app:transparentBars', { detail: { transparent: true } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('app:transparentBars', { detail: { transparent: false } }));
+    };
+  }, []);
+
+  useEffect(() => {
     if (showPostsStats) return;
     // no-op: keep follow hub controlled by user
   }, [showPostsStats]);
@@ -391,8 +398,8 @@ const Profile = () => {
         <div className="max-w-md mx-auto relative">
           {/* Action buttons — top right */}
           <div 
-            className="absolute right-3 flex gap-2 z-10"
-            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
+            className="absolute right-3 flex gap-2 z-20"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
           >
             <form
                 onSubmit={(e) => {
@@ -452,7 +459,10 @@ const Profile = () => {
         {/* ═══════════════════════════════════════
                                                                         COVER IMAGE
                                                                      ═══════════════════════════════════════ */}
-        <div className="relative h-28 overflow-hidden rounded-b-2xl rounded-t-none">
+        <div 
+          className="relative overflow-hidden rounded-b-2xl rounded-t-none"
+          style={{ height: 'calc(112px + env(safe-area-inset-top, 0px))', paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
 
           {(profile as any)?.cover_url ?
             <img

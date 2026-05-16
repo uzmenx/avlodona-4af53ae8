@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, ChevronRight, Image as ImageIcon, Lock, Music2, Play, Pause, RefreshCw, Smile, Type, Volume2, VolumeX, X, Disc, ImagePlus, AlignLeft, Pen, Undo2, Redo2, Trash2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Icon } from '@iconify/react';
-import { Media, type MediaAsset } from '@capacitor-community/media';
 import { Capacitor } from '@capacitor/core';
+import { useGallery, type GalleryAsset } from '@/hooks/useGallery';
 import { EMOJIS, MEDIA_FILTERS } from './filters';
 import FilterStrip from './FilterStrip';
 import { MusicPicker, type SelectedMusic } from './MusicPicker';
@@ -194,9 +194,8 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   const trashRef = useRef<HTMLDivElement>(null);
 
   // Gallery State
-  const [galleryItems, setGalleryItems] = useState<MediaAsset[]>([]);
-  const [isGalleryLoading, setIsGalleryLoading] = useState(false);
-
+  const { assets: galleryItems, isLoading: isGalleryLoading, loadMore } = useGallery();
+  
   // Premium haptic feedback when entering trash boundary
   useEffect(() => {
     if (isOverTrashId && typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -281,24 +280,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
     return () => stopCamera();
   }, [startCamera, stopCamera]);
 
-  useEffect(() => {
-    const fetchGallery = async () => {
-      if (!Capacitor.isNativePlatform()) return;
-      try {
-        setIsGalleryLoading(true);
-        const { camera, gallery } = await Media.requestPermissions();
-        if (camera === 'granted' || gallery === 'granted' || (camera as any) === 'prompt') {
-          const { medias } = await Media.getMedias({ quantity: 40 });
-          setGalleryItems(medias);
-        }
-      } catch (err) {
-        console.error('Failed to fetch gallery:', err);
-      } finally {
-        setIsGalleryLoading(false);
-      }
-    };
-    fetchGallery();
-  }, []);
+
 
   useEffect(() => {
     clearInterval(recordTimerRef.current);
@@ -337,11 +319,10 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
     setTrayOpen(false);
   }, []);
 
-  const handleSelectGalleryItem = useCallback(async (asset: MediaAsset) => {
+  const handleSelectGalleryItem = useCallback(async (asset: GalleryAsset) => {
     if (items.length >= maxItems) return;
     try {
-      // Create a blob URL or fetch file from the asset.
-      let url = asset.webPath;
+      let url = asset.webUrl;
       if (!url) {
         if (asset.path) {
           url = Capacitor.convertFileSrc(asset.path);
@@ -352,10 +333,10 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
 
       const res = await fetch(url);
       const blob = await res.blob();
-      const file = new File([blob], asset.name || `gallery-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+      const file = new File([blob], `gallery-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
       const objectUrl = URL.createObjectURL(blob);
       
-      const isVideo = asset.type === 'video' || blob.type.startsWith('video/');
+      const isVideo = asset.mediaType === 'video' || blob.type.startsWith('video/');
 
       addMediaItem({ 
         id: crypto.randomUUID(), 
@@ -2515,7 +2496,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                         onClick={() => handleSelectGalleryItem(asset)}
                         className="w-12 h-12 rounded-xl overflow-hidden border border-white/15 active:scale-95 transition-transform"
                       >
-                         <img src={asset.webPath || Capacitor.convertFileSrc(asset.path!)} alt="" className="w-full h-full object-cover" />
+                         <img src={asset.thumbnail} alt="" className="w-full h-full object-cover" />
                       </button>
                     ))}
                     {items.length === 0 && galleryItems.length < 3 && Array.from({ length: 3 - galleryItems.length }).map((_, i) => (
@@ -2546,7 +2527,15 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 max-h-[52vh] overflow-y-auto">
+                  <div 
+                    className="grid grid-cols-3 gap-2 max-h-[52vh] overflow-y-auto"
+                    onScroll={(e) => {
+                      const t = e.currentTarget;
+                      if (t.scrollHeight - t.scrollTop - t.clientHeight < 100) {
+                        loadMore();
+                      }
+                    }}
+                  >
                     {items.length > 0 ? items.map((it, idx) => (
                       <button
                         key={it.media.id}
@@ -2576,8 +2565,8 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                         }}
                         className="relative aspect-square rounded-xl overflow-hidden border border-white/15 active:scale-95 transition-transform"
                       >
-                        <img src={asset.webPath || Capacitor.convertFileSrc(asset.path!)} alt="" className="w-full h-full object-cover" />
-                        {asset.type === 'video' && (
+                        <img src={asset.thumbnail} alt="" className="w-full h-full object-cover" />
+                        {asset.mediaType === 'video' && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                             <Play className="w-5 h-5 text-white fill-white" />
                           </div>

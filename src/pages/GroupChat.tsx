@@ -5,7 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Users, Megaphone, MoreVertical, Send, X } from 'lucide-react';
+import { ArrowLeft, Users, Megaphone, MoreVertical, Send, X, Paperclip } from 'lucide-react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -132,6 +133,8 @@ const GroupChat = () => {
   const wallpaperKey = groupId ? `group_chat_wallpaper_${groupId}` : 'group_chat_wallpaper';
   const [chatWallpaper, setChatWallpaper] = useLocalStorage(wallpaperKey, 'none');
   const [showWallpaperPicker, setShowWallpaperPicker] = useState(false);
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -767,7 +770,14 @@ const GroupChat = () => {
             </div>
           ))}
           <div className="flex items-center gap-1.5 bg-card/50 backdrop-blur-md border border-border/50 rounded-[24px] px-2 py-1">
-            <ChatMediaPicker selectedMedia={selectedMedia} onMediaSelect={setSelectedMedia} />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-10 w-10 text-muted-foreground"
+              onClick={() => setIsMediaPickerOpen(true)}
+            >
+              <Paperclip className="h-5 w-5" />
+            </Button>
             {!voiceRecorder.isRecording && !voiceRecorder.audioBlob ? (
               <>
                 <input
@@ -778,8 +788,12 @@ const GroupChat = () => {
                   className="flex-1 bg-transparent border-none focus:outline-none text-foreground placeholder:text-muted-foreground h-9 text-sm px-1"
                 />
                 {newMessage.trim() || selectedMedia.length > 0 ? (
-                  <button onClick={handleSendMessage} disabled={isSending}
-                    className="w-9 h-9 rounded-full bg-gradient-to-r from-[hsl(217,91%,60%)] to-[hsl(263,70%,50%)] flex items-center justify-center text-white shadow-lg shadow-primary/30 transition-transform active:scale-90">
+                  <button 
+                    id="group-chat-send-btn"
+                    onClick={handleSendMessage} 
+                    disabled={isSending}
+                    className="w-9 h-9 rounded-full bg-gradient-to-r from-[hsl(217,91%,60%)] to-[hsl(263,70%,50%)] flex items-center justify-center text-white shadow-lg shadow-primary/30 transition-transform active:scale-90"
+                  >
                     <Send className="h-4 w-4" />
                   </button>
                 ) : (
@@ -887,6 +901,35 @@ const GroupChat = () => {
         currentWallpaper={chatWallpaper}
         onSelect={setChatWallpaper}
       />
+
+      {/* Telegram Style Media Picker Sheet */}
+      <Sheet open={isMediaPickerOpen} onOpenChange={setIsMediaPickerOpen}>
+        <SheetContent side="bottom" className="p-0 h-[88vh] border-none bg-transparent">
+          <ChatMediaPicker 
+            onSend={(media, caption) => {
+              // Add selected media to state
+              setSelectedMedia(prev => [...prev, ...media]);
+              // Set caption to the message input
+              if (caption.trim()) {
+                setNewMessage(caption);
+              }
+              // Close picker
+              setIsMediaPickerOpen(false);
+              
+              // We simulate "Send" by letting the user tap the main send button, 
+              // or we can auto-send here by calling handleSendMessage.
+              // To make it exactly like Telegram, we should auto-send.
+              // But since handleSendMessage reads state asynchronously, 
+              // we can set a small timeout to let the state update, then send.
+              setTimeout(() => {
+                const sendBtn = document.getElementById("group-chat-send-btn");
+                if (sendBtn) sendBtn.click();
+              }, 100);
+            }}
+            onClose={() => setIsMediaPickerOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

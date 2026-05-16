@@ -12,9 +12,10 @@ interface InstagramPhotoPickerProps {
   onClose: () => void;
   onCropComplete: (croppedImageUrl: string) => Promise<void>;
   type: 'avatar' | 'cover';
+  initialImage?: string;
 }
 
-export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type }: InstagramPhotoPickerProps) => {
+export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, initialImage }: InstagramPhotoPickerProps) => {
   const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<{ id: string; url: string } | null>(null);
   
@@ -33,15 +34,22 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type }: 
 
   useEffect(() => {
     if (isOpen) {
-      checkPermissionsAndFetch();
+      if (initialImage) {
+        setSelectedPhoto({ id: 'initial', url: initialImage });
+        setMode('gallery');
+        setHasPermission(true);
+      } else {
+        checkPermissionsAndFetch();
+      }
     } else {
       // Reset state on close
       setPhotos([]);
       setSelectedPhoto(null);
       setCrop({ x: 0, y: 0 });
       setZoom(1);
+      setGifSearchQuery('');
     }
-  }, [isOpen]);
+  }, [isOpen, initialImage]);
 
   const fetchGifs = async (query = '') => {
     setIsSearchingGif(true);
@@ -178,25 +186,30 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type }: 
         className="w-full h-[100dvh] max-w-none flex flex-col p-0 overflow-hidden bg-black border-none rounded-none !m-0 !mt-0 !mb-0 !z-[200] sm:max-w-xl sm:h-[90vh] sm:rounded-2xl mx-auto sm:my-auto"
       >
         {/* Header */}
-        <div className="flex items-center justify-between h-[60px] px-2 bg-black shrink-0 border-b border-white/10">
+        <div 
+          className="flex items-center justify-between min-h-14 px-2 bg-black shrink-0 border-b border-white/10"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
           <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/10 h-12 w-12 rounded-full">
             <X className="h-7 w-7" />
           </Button>
           
           <div className="flex bg-white/10 p-1 rounded-full items-center">
             <button 
-              onClick={() => { setMode('gallery'); setSelectedPhoto(photos[0] || null); }}
+              onClick={() => { setMode('gallery'); setSelectedPhoto(initialImage ? { id: 'initial', url: initialImage } : (photos[0] || null)); }}
               className={`px-4 py-1.5 rounded-full text-[14px] font-bold transition-all ${mode === 'gallery' ? 'bg-white text-black shadow-sm' : 'text-white/60 hover:text-white'}`}
             >
               Galereya
             </button>
-            <button 
-              onClick={() => { setMode('gif'); setSelectedPhoto(null); }}
-              className={`px-4 py-1.5 rounded-full text-[14px] font-bold transition-all flex items-center gap-1.5 ${mode === 'gif' ? 'bg-white text-black shadow-sm' : 'text-white/60 hover:text-white'}`}
-            >
-              {mode !== 'gif' && <div className="bg-[#8B5CF6] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-[4px] leading-none tracking-wider">GIF</div>}
-              GIFlar
-            </button>
+            {!initialImage && (
+              <button 
+                onClick={() => { setMode('gif'); setSelectedPhoto(null); }}
+                className={`px-4 py-1.5 rounded-full text-[14px] font-bold transition-all flex items-center gap-1.5 ${mode === 'gif' ? 'bg-white text-black shadow-sm' : 'text-white/60 hover:text-white'}`}
+              >
+                {mode !== 'gif' && <div className="bg-[#8B5CF6] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-[4px] leading-none tracking-wider">GIF</div>}
+                GIFlar
+              </button>
+            )}
           </div>
           
           <Button 
@@ -263,7 +276,8 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type }: 
             </div>
 
             {/* Bottom Grid */}
-            <div className="flex-1 bg-black overflow-y-auto no-scrollbar flex flex-col">
+            {!initialImage && (
+              <div className="flex-1 bg-black overflow-y-auto no-scrollbar flex flex-col">
               {mode === 'gallery' ? (
                 <>
                   {!Capacitor.isNativePlatform() && (
@@ -331,6 +345,7 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type }: 
                 </div>
               )}
             </div>
+            )}
           </div>
         )}
       </DialogContent>

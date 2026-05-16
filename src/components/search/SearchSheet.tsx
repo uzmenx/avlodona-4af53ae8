@@ -242,8 +242,19 @@ export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, in
     <>
       <Sheet open={open && !viewerOpen} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="h-[90vh] rounded-t-3xl p-0 flex flex-col">
-          <SheetHeader className="px-4 pt-5 pb-2 flex-shrink-0">
-            <SheetTitle className="text-base font-bold">Qidirish</SheetTitle>
+          <SheetHeader className="px-4 pt-3 pb-2 flex-shrink-0 relative">
+            {/* Drag Handle */}
+            <div className="mx-auto w-10 h-1.5 rounded-full bg-muted-foreground/20 mb-3" />
+            
+            <div className="flex items-center justify-center relative">
+              <SheetTitle className="text-base font-bold">Qidirish</SheetTitle>
+              <button 
+                onClick={() => onOpenChange(false)}
+                className="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-foreground/5 hover:bg-foreground/10 active:scale-90 transition-all border border-border/10"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
           </SheetHeader>
 
           {/* Search input */}
@@ -255,7 +266,7 @@ export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, in
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Ism, username yoki guruh qidiring..."
-                className="pl-9 pr-9 h-11 rounded-2xl bg-muted/60 border-0 focus-visible:ring-1"
+                className="pl-9 pr-9 h-11 rounded-2xl bg-muted/60 border-emerald-500/30 focus-visible:ring-1 focus-visible:ring-emerald-500/50"
               />
               {query && (
                 <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-muted/80">

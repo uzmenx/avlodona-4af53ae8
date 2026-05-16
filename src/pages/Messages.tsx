@@ -864,9 +864,23 @@ const Messages = () => {
                                   }
                                 }}
                                 className={cn(
-                                  'flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-150 active:scale-[0.99] rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md',
-                                  isEditMode && selectedConvIds.has(item.id) ? 'bg-primary/10' : 'hover:bg-white/10'
+                                  'flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-300 relative overflow-hidden',
+                                  isEditMode ? 'translate-x-0' : '',
+                                  isEditMode && selectedConvIds.has(item.id) ? 'bg-primary/5' : 'hover:bg-white/5 active:bg-white/10'
                                 )}>
+                                {/* Telegram-style selection circle */}
+                                {isEditMode && (
+                                  <div className="flex-shrink-0 flex items-center justify-center w-6 transition-all duration-300 animate-in fade-in slide-in-from-left-2">
+                                    <div className={cn(
+                                      "h-5 w-5 rounded-full border-2 transition-all duration-200 flex items-center justify-center",
+                                      selectedConvIds.has(item.id) 
+                                        ? "bg-primary border-primary scale-110 shadow-lg shadow-primary/20" 
+                                        : "border-muted-foreground/30 bg-transparent"
+                                    )}>
+                                      {selectedConvIds.has(item.id) && <Icon icon="lucide:check" className="h-3 w-3 text-primary-foreground" />}
+                                    </div>
+                                  </div>
+                                )}
                                 <div className="relative">
                                   {(() => {
                                     const storyInfo = getStoryInfo(item.otherUser.id);
@@ -929,7 +943,26 @@ const Messages = () => {
                             );
                           }
                            
-                          return <GroupChatItem key={item.id} chat={item as any} onClick={() => handleGroupClick(item.id)} />;
+                          return (
+                            <GroupChatItem 
+                              key={item.id} 
+                              chat={item as any} 
+                              isEditMode={isEditMode}
+                              isSelected={isEditMode && selectedConvIds.has(item.id)}
+                              onClick={() => {
+                                if (isEditMode) {
+                                  setSelectedConvIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(item.id)) next.delete(item.id); else
+                                    next.add(item.id);
+                                    return next;
+                                  });
+                                } else {
+                                  handleGroupClick(item.id);
+                                }
+                              }} 
+                            />
+                          );
                         })}
 
                         {allChats.length === 0 && (
@@ -965,7 +998,24 @@ const Messages = () => {
                 </div> :
 
             filteredGroups.map((group) =>
-            <GroupChatItem key={group.id} chat={group} onClick={() => handleGroupClick(group.id)} />
+              <GroupChatItem 
+                key={group.id} 
+                chat={group} 
+                isEditMode={isEditMode}
+                isSelected={isEditMode && selectedConvIds.has(group.id)}
+                onClick={() => {
+                  if (isEditMode) {
+                    setSelectedConvIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(group.id)) next.delete(group.id); else
+                      next.add(group.id);
+                      return next;
+                    });
+                  } else {
+                    handleGroupClick(group.id);
+                  }
+                }} 
+              />
             )
             }
             </>
@@ -986,7 +1036,24 @@ const Messages = () => {
                 </div> :
 
             filteredChannels.map((channel) =>
-            <GroupChatItem key={channel.id} chat={channel} onClick={() => handleGroupClick(channel.id)} />
+              <GroupChatItem 
+                key={channel.id} 
+                chat={channel} 
+                isEditMode={isEditMode}
+                isSelected={isEditMode && selectedConvIds.has(channel.id)}
+                onClick={() => {
+                  if (isEditMode) {
+                    setSelectedConvIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(channel.id)) next.delete(channel.id); else
+                      next.add(channel.id);
+                      return next;
+                    });
+                  } else {
+                    handleGroupClick(channel.id);
+                  }
+                }} 
+              />
             )
             }
             </>
@@ -1110,6 +1177,44 @@ const Messages = () => {
       <RingtoneSelector
         open={showRingtoneSelector}
         onOpenChange={setShowRingtoneSelector} />
+
+      {/* Bottom Action Bar for Edit Mode */}
+      {isEditMode && selectedConvIds.size > 0 && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] w-full max-w-xs animate-in fade-in slide-in-from-bottom-4">
+          <div className="mx-4 bg-background/80 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl flex items-center justify-around gap-2">
+            <Button
+              variant="ghost"
+              className="flex-1 h-12 rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive flex flex-col gap-0.5"
+              onClick={async () => {
+                for (const id of selectedConvIds) {
+                  await supabase.from('messages').delete().eq('conversation_id', id);
+                  await supabase.from('conversations').delete().eq('id', id);
+                }
+                setSelectedConvIds(new Set());
+                setIsEditMode(false);
+                toast.success("O'chirildi");
+              }}
+            >
+              <Trash2 className="h-5 w-5" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">O'chirish</span>
+            </Button>
+            
+            <div className="w-px h-8 bg-white/10" />
+            
+            <Button
+              variant="ghost"
+              className="flex-1 h-12 rounded-xl text-primary hover:bg-primary/10 hover:text-primary flex flex-col gap-0.5"
+              onClick={() => {
+                setSelectedConvIds(new Set());
+                setIsEditMode(false);
+              }}
+            >
+              <X className="h-5 w-5" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Bekor qilish</span>
+            </Button>
+          </div>
+        </div>
+      )}
 
       {storyViewerOpen && storyViewerGroups.length > 0 &&
       <StoryViewer
