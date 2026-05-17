@@ -396,30 +396,32 @@ const Profile = () => {
       >
         {/* Main Container */}
         <div className="max-w-md mx-auto relative">
-          {/* Action buttons — top right */}
+          {/* Floating Action Buttons Container — top right */}
           <div 
-            className="absolute right-3 flex gap-2 z-20"
-            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+            className="sticky top-[env(safe-area-inset-top,0px)] z-40 px-3 py-1 flex items-center justify-end rounded-2xl mx-3 mt-0.5 -mb-11 pointer-events-none"
           >
-            <form
+            {/* Right Side: Action buttons */}
+            <div className="flex items-center gap-1.5 pointer-events-auto">
+              <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   const trimmed = searchQuery.trim();
                   setAppliedSearchQuery(trimmed);
                 }}
-                className="flex items-center">
-                
-              <Input
+                className="flex items-center"
+              >
+                <Input
                   ref={searchInputRef}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Qidirish"
                   className={cn(
-                    'h-9 bg-black/30 backdrop-blur-md border border-white/20 text-white placeholder:text-white/60 rounded-xl transition-all duration-200 mr-2',
+                    'h-9 bg-black/40 backdrop-blur-md border border-white/20 text-white placeholder:text-white/60 rounded-xl transition-all duration-200 mr-2',
                     searchExpanded ? 'w-[100px] min-[375px]:w-[140px] px-3 opacity-100' : 'w-0 px-0 opacity-0 pointer-events-none'
-                  )} />
+                  )} 
+                />
                 
-              <Button
+                <Button
                   variant="ghost"
                   size="icon"
                   type={searchExpanded ? 'submit' : 'button'}
@@ -433,27 +435,30 @@ const Profile = () => {
                     setSearchExpanded(true);
                     setTimeout(() => searchInputRef.current?.focus(), 0);
                   }}
-                  className="relative h-9 w-9 bg-black/30 backdrop-blur-md border border-white/20 hover:bg-black/50 text-white rounded-xl">
-                  
-                <Search className="h-4 w-4" />
-              </Button>
-            </form>
-            <Button
+                  className="h-9 w-9 bg-white/10 hover:bg-white/15 active:scale-95 border border-white/10 text-white rounded-xl backdrop-blur-md shadow-sm transition-all"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </form>
+
+              <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate('/settings')}
-                className="h-9 w-9 bg-black/30 backdrop-blur-md border border-white/20 hover:bg-black/50 text-white rounded-xl">
-
-              <Settings className="h-4 w-4" />
-            </Button>
-            <Button
+                className="h-9 w-9 bg-white/10 hover:bg-white/15 active:scale-95 border border-white/10 text-white rounded-xl backdrop-blur-md shadow-sm transition-all"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+              
+              <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate('/edit-profile')}
-                className="h-9 w-9 bg-black/30 backdrop-blur-md border border-white/20 hover:bg-black/50 text-white rounded-xl">
-
-              <Edit className="h-4 w-4" />
-            </Button>
+                className="h-9 w-9 bg-white/10 hover:bg-white/15 active:scale-95 border border-white/10 text-white rounded-xl backdrop-blur-md shadow-sm transition-all"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
         {/* ═══════════════════════════════════════

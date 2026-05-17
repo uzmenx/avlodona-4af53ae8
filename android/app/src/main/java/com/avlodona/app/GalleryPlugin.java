@@ -9,6 +9,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.graphics.Bitmap;
+import android.util.Size;
+import java.io.ByteArrayOutputStream;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -123,6 +126,20 @@ public class GalleryPlugin extends Plugin {
                     media.put("duration", duration / 1000.0);
                     media.put("width", width);
                     media.put("height", height);
+
+                    // Base64 thumbnail generation for modern Android 10+ (API 29+)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        try {
+                            Bitmap thumb = contentResolver.loadThumbnail(contentUri, new Size(250, 250), null);
+                            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                            thumb.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream);
+                            byte[] byteArray = byteArrayOutputStream.toByteArray();
+                            String base64 = android.util.Base64.encodeToString(byteArray, android.util.Base64.NO_WRAP);
+                            media.put("data", base64);
+                        } catch (Exception e) {
+                            Log.e("GalleryPlugin", "Error generating thumbnail for id: " + id, e);
+                        }
+                    }
 
                     medias.put(media);
                 }

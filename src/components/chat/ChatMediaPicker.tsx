@@ -64,9 +64,17 @@ export const ChatMediaPicker = ({
       if (asset && onSelect) {
         setIsSending(true);
         try {
-          const file = await fetch(asset.webUrl)
-            .then(res => res.blob())
-            .then(blob => new File([blob], `media_${asset.identifier}.jpg`, { type: blob.type }));
+          let blob;
+          try {
+            const res = await fetch(asset.webUrl);
+            if (!res.ok) throw new Error("Fetch full image failed");
+            blob = await res.blob();
+          } catch (e) {
+            console.warn("Failed to fetch full image in single mode, using thumbnail:", e);
+            const res = await fetch(asset.thumbnail || asset.webUrl);
+            blob = await res.blob();
+          }
+          const file = new File([blob], `media_${asset.identifier}.jpg`, { type: blob.type });
           
           onSelect({
             file,
@@ -93,11 +101,19 @@ export const ChatMediaPicker = ({
     return idx >= 0 ? idx + 1 : null;
   };
 
-  // Convert native webUrl → File object via fetch
-  const assetToFile = async (url: string, name: string, mimeType: string): Promise<File> => {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new File([blob], name, { type: mimeType });
+  // Convert native webUrl → File object via fetch (with fallback to base64 thumbnail if full-res is blocked by Android Scoped Storage)
+  const assetToFile = async (url: string, thumbnail: string, name: string, mimeType: string): Promise<File> => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Fetch full-res failed");
+      const blob = await response.blob();
+      return new File([blob], name, { type: mimeType });
+    } catch (e) {
+      console.warn(`[assetToFile] Failed to fetch full resolution path, using base64 thumbnail fallback:`, e);
+      const response = await fetch(thumbnail || url);
+      const blob = await response.blob();
+      return new File([blob], name, { type: mimeType });
+    }
   };
 
   const handleSend = async () => {
@@ -109,10 +125,10 @@ export const ChatMediaPicker = ({
           const ext = asset.mediaType === 'video' ? 'mp4' : 'jpg';
           const mime = asset.mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
           const name = `media_${Date.now()}_${i}.${ext}`;
-          const file = await assetToFile(asset.webUrl, name, mime);
+          const file = await assetToFile(asset.webUrl, asset.thumbnail, name, mime);
           return {
             file,
-            preview: asset.webUrl,
+            preview: asset.thumbnail || asset.webUrl,
             type: asset.mediaType === 'video' ? 'video' : 'image',
           } as MediaFile;
         })

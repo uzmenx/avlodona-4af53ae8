@@ -396,7 +396,7 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder="Xabar yozing..."
-          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full min-w-0"
           disabled={isUploading}
         />
 

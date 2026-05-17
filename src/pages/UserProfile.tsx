@@ -667,7 +667,7 @@ export const UserProfilePage = () => {
 
   if (isLoading) {
     return (
-      <AppLayout>
+      <AppLayout showSafeAreaPadding={false}>
         <div className="min-h-screen flex items-center justify-center">
           <p className="text-muted-foreground">Yuklanmoqda...</p>
         </div>
@@ -677,7 +677,7 @@ export const UserProfilePage = () => {
 
   if (!profile) {
     return (
-      <AppLayout>
+      <AppLayout showSafeAreaPadding={false}>
         <div className="min-h-screen flex flex-col items-center justify-center gap-4">
           <p className="text-muted-foreground">Foydalanuvchi topilmadi</p>
           <Button variant="outline" onClick={() => navigate(-1)}>
@@ -708,166 +708,150 @@ export const UserProfilePage = () => {
           }
         }}>
         
-        {/* Header with back button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate(-1)}
-          className="absolute left-4 z-10 h-9 w-9 rounded-full"
-          style={{
-            top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
-            backgroundColor: 'rgba(255,255,255,0.15)',
-            backdropFilter: 'blur(8px)'
-          }}>
-          
-          <ArrowLeft className="h-5 w-5 text-white" />
-        </Button>
-
-            {/* Actions menu (top-right) */}
-            {userId && !isMemorial &&
+        {/* Floating Action Buttons Container */}
         <div 
-          className="absolute right-4 z-10 flex items-center gap-2"
-          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
+          className="sticky top-[env(safe-area-inset-top,0px)] z-40 px-3 py-1 flex items-center justify-between rounded-2xl mx-3 mt-0.5 -mb-11 pointer-events-none"
         >
-                <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const trimmed = searchQuery.trim();
-              setAppliedSearchQuery(trimmed);
-            }}
-            className="flex items-center">
-            
-              <Input
-              ref={searchInputRef}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Qidirish"
-              className={cn(
-                'h-9 bg-white/15 text-white placeholder:text-white/70 border border-white/20 rounded-full transition-all duration-200 mr-2',
-                searchExpanded ? 'w-[100px] min-[375px]:w-[140px] px-3 opacity-100' : 'w-0 px-0 opacity-0 pointer-events-none'
-              )}
-              style={{ backdropFilter: 'blur(8px)' }} />
-            
-              <Button
+          {/* Left Side: Back Button */}
+          <div className="pointer-events-auto">
+            <Button
               variant="ghost"
               size="icon"
-              type={searchExpanded ? 'submit' : 'button'}
-              onClick={() => {
-                if (searchExpanded) {
-                  setSearchExpanded(false);
-                  setSearchQuery('');
-                  setAppliedSearchQuery('');
-                  return;
-                }
-                setSearchExpanded(true);
-                setTimeout(() => searchInputRef.current?.focus(), 0);
-              }}
-              className="h-9 w-9 rounded-full text-white"
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                backdropFilter: 'blur(8px)'
-              }}
-              aria-label="Search">
-              
-                <Search className="h-5 w-5" />
-              </Button>
-            </form>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-full text-white"
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.15)',
-                  backdropFilter: 'blur(8px)'
-                }}
-                aria-label="More"
-                type="button">
-                
-                  <MoreVertical className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem
-                className="gap-3 cursor-pointer"
-                onClick={async () => {
-                  try {
-                    const url = `${window.location.origin}/user/${userId}`;
-                    await navigator.clipboard.writeText(url);
-                    toast({ title: 'Havola nusxalandi' });
-                  } catch {
-                    toast({ title: 'Nusxalashda xatolik', variant: 'destructive' });
-                  }
-                }}>
-                
-                  <Link2 className="h-4 w-4" />
-                  <span>Profil linki</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                className={cn(
-                  'gap-3 cursor-pointer',
-                  isBlocked(userId) ? 'text-primary' : 'text-destructive'
-                )}
-                onClick={async () => {
-                  if (isBlocked(userId)) {
-                    await unblockUser(userId);
-                    toast({ title: 'Blok olib tashlandi' });
-                  } else {
-                    await blockUser(userId);
-                    toast({ title: 'Foydalanuvchi bloklandi' });
-                  }
-                }}>
-                
-                  {isBlocked(userId) ? <ShieldCheck className="h-4 w-4" /> : <ShieldBan className="h-4 w-4" />}
-                  <span>{isBlocked(userId) ? 'Blokdan chiqarish' : 'Bloklash'}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        }
-
-        {/* Memorial "add post" button (top-right) */}
-        {isMemorial && profile &&
-        <div 
-          className="absolute right-4 z-10 flex gap-2"
-          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
-        >
-            {!profile.linked_user_id && profile.owner_id === currentUser?.id && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setEditName(profile.name || '');
-                  setEditBirthYear(profile.birth_year || '');
-                  setEditDeathYear(profile.death_year || '');
-                  setEditCoverUrl(profile.cover_url || '');
-                  setEditModalOpen(true);
-                }}
-                className="h-10 w-10 rounded-full text-white"
-                style={{ backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}
-                aria-label="Tahrirlash"
-              >
-                <Edit2 className="h-5 w-5" />
-              </Button>
-            )}
-            <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/create?memberId=' + resolvedMemorialMemberId)}
-            className="h-10 w-10 rounded-full text-white"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              backdropFilter: 'blur(8px)'
-            }}
-            aria-label="Xotira post qoldirish">
-            
-              <Plus className="h-5 w-5" />
+              onClick={() => navigate(-1)}
+              className="h-9 w-9 bg-white/10 hover:bg-white/15 active:scale-95 border border-white/10 text-white rounded-xl backdrop-blur-md shadow-sm transition-all"
+            >
+              <ArrowLeft className="h-5 w-5" />
             </Button>
           </div>
-        }
+
+          {/* Right Side: Action buttons */}
+          <div className="flex items-center gap-1.5 pointer-events-auto">
+            {userId && !isMemorial && (
+              <>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const trimmed = searchQuery.trim();
+                    setAppliedSearchQuery(trimmed);
+                  }}
+                  className="flex items-center"
+                >
+                  <Input
+                    ref={searchInputRef}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Qidirish"
+                    className={cn(
+                      'h-9 bg-black/40 backdrop-blur-md border border-white/20 text-white placeholder:text-white/60 rounded-xl transition-all duration-200 mr-2',
+                      searchExpanded ? 'w-[100px] min-[375px]:w-[140px] px-3 opacity-100' : 'w-0 px-0 opacity-0 pointer-events-none'
+                    )} 
+                  />
+                  
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    type={searchExpanded ? 'submit' : 'button'}
+                    onClick={() => {
+                      if (searchExpanded) {
+                        setSearchExpanded(false);
+                        setSearchQuery('');
+                        setAppliedSearchQuery('');
+                        return;
+                      }
+                      setSearchExpanded(true);
+                      setTimeout(() => searchInputRef.current?.focus(), 0);
+                    }}
+                    className="h-9 w-9 bg-white/10 hover:bg-white/15 active:scale-95 border border-white/10 text-white rounded-xl backdrop-blur-md shadow-sm transition-all"
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </form>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 bg-white/10 hover:bg-white/15 active:scale-95 border border-white/10 text-white rounded-xl backdrop-blur-md shadow-sm transition-all"
+                      aria-label="More"
+                      type="button"
+                    >
+                      <MoreVertical className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem
+                      className="gap-3 cursor-pointer"
+                      onClick={async () => {
+                        try {
+                          const url = `${window.location.origin}/user/${userId}`;
+                          await navigator.clipboard.writeText(url);
+                          toast({ title: 'Havola nusxalandi' });
+                        } catch {
+                          toast({ title: 'Nusxalashda xatolik', variant: 'destructive' });
+                        }
+                      }}
+                    >
+                      <Link2 className="h-4 w-4" />
+                      <span>Profil linki</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className={cn(
+                        'gap-3 cursor-pointer',
+                        isBlocked(userId) ? 'text-primary' : 'text-destructive'
+                      )}
+                      onClick={async () => {
+                        if (isBlocked(userId)) {
+                          await unblockUser(userId);
+                          toast({ title: 'Blok olib tashlandi' });
+                        } else {
+                          await blockUser(userId);
+                          toast({ title: 'Foydalanuvchi bloklandi' });
+                        }
+                      }}
+                    >
+                      {isBlocked(userId) ? <ShieldCheck className="h-4 w-4" /> : <ShieldBan className="h-4 w-4" />}
+                      <span>{isBlocked(userId) ? 'Blokdan chiqarish' : 'Bloklash'}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
+
+            {/* Memorial Actions */}
+            {isMemorial && profile && (
+              <>
+                {!profile.linked_user_id && profile.owner_id === currentUser?.id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setEditName(profile.name || '');
+                      setEditBirthYear(profile.birth_year || '');
+                      setEditDeathYear(profile.death_year || '');
+                      setEditCoverUrl(profile.cover_url || '');
+                      setEditModalOpen(true);
+                    }}
+                    className="h-9 w-9 bg-white/10 hover:bg-white/15 active:scale-95 border border-white/10 text-white rounded-xl backdrop-blur-md shadow-sm transition-all"
+                    aria-label="Tahrirlash"
+                  >
+                    <Edit2 className="h-5 w-5" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate('/create?memberId=' + resolvedMemorialMemberId)}
+                  className="h-9 w-9 bg-white/10 hover:bg-white/15 active:scale-95 border border-white/10 text-white rounded-xl backdrop-blur-md shadow-sm transition-all"
+                  aria-label="Xotira post qoldirish"
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
 
         {/* Cover Image */}
         <div className="relative h-28 overflow-hidden rounded-b-2xl rounded-t-none">
