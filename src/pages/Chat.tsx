@@ -1005,7 +1005,7 @@ const Chat = () => {
               </div>
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-1 pb-20">
               {isLoadingMore && (
                 <div className="flex justify-center py-2">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -1115,11 +1115,10 @@ const Chat = () => {
             </div>
           )}
 
-          {/* Scroll to bottom button */}
           {showScrollDown && (
             <button
               onClick={scrollToBottom}
-              className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-background/40 backdrop-blur-xl border border-border/20 flex items-center justify-center shadow-lg hover:bg-background/60 transition-all z-20"
+              className="absolute bottom-20 right-4 w-10 h-10 rounded-full bg-background/60 backdrop-blur-xl border border-border/30 flex items-center justify-center shadow-lg hover:bg-background/80 transition-all z-20 pointer-events-auto"
             >
               <ChevronDown className="h-5 w-5 text-foreground/70" />
             </button>

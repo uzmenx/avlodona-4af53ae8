@@ -75,28 +75,28 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = async (directMedia?: MediaFile[], directCaption?: string) => {
     if (!conversationId) return;
     setIsUploading(true);
     try {
-      if (selectedMedia.length > 0) {
-        // Send media files one by one
-        for (let i = 0; i < selectedMedia.length; i++) {
-          const media = selectedMedia[i];
+      const mediaList = directMedia || selectedMedia;
+      const textVal = directCaption !== undefined ? directCaption : inputValue;
+
+      if (mediaList.length > 0) {
+        // Send media files
+        for (let i = 0; i < mediaList.length; i++) {
+          const media = mediaList[i];
           const mediaUrl = await uploadFile(media.file, i);
           if (mediaUrl) {
-            await onSendMessage('', mediaUrl, media.type);
+            // Attach caption only to the first media
+            const caption = i === 0 ? textVal.trim() : '';
+            await onSendMessage(caption, mediaUrl, media.type);
             URL.revokeObjectURL(media.preview);
           }
         }
         setSelectedMedia([]);
-        
-        // If there's also text, send it separately
-        if (inputValue.trim()) {
-          await onSendMessage(inputValue.trim());
-        }
-      } else if (inputValue.trim()) {
-        await onSendMessage(inputValue.trim());
+      } else if (textVal.trim()) {
+        await onSendMessage(textVal.trim());
       }
       setInputValue('');
       onTyping(false);
@@ -255,8 +255,8 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
   // Recording active UI (Telegram-style fullwidth recording bar)
   if (isRecording && !showConfirmSend) {
     return (
-      <div className="safe-area-bottom">
-        <div className="mx-2 rounded-2xl bg-background/80 backdrop-blur-xl border border-border/30 p-3" style={{ marginBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent border-none pointer-events-none" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="mx-2 mb-3 rounded-2xl bg-background/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-border/40 p-3 shadow-lg shadow-black/5 pointer-events-auto">
           <div className="flex items-center gap-3">
             {/* Cancel - slide left hint */}
             <button onClick={handleCancelVoice} className="p-2 rounded-full hover:bg-destructive/10 transition-colors">
@@ -309,8 +309,8 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
   // Audio recorded - confirm send
   if (showConfirmSend && audioBlob) {
     return (
-      <div className="safe-area-bottom">
-        <div className="mx-2 rounded-2xl bg-background/80 backdrop-blur-xl border border-border/30 p-3" style={{ marginBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent border-none pointer-events-none" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="mx-2 mb-3 rounded-2xl bg-background/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-border/40 p-3 shadow-lg shadow-black/5 pointer-events-auto">
           <div className="flex items-center gap-3">
             <button onClick={handleCancelVoice} className="p-2 rounded-full hover:bg-destructive/10 transition-colors">
               <Trash2 className="h-5 w-5 text-destructive" />
@@ -337,10 +337,10 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
 
   // Normal chat input
   return (
-    <div className="safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent border-none pointer-events-none" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       {/* Selected media preview */}
       {selectedMedia.length > 0 && (
-        <div className="mx-2 mt-1 mb-1 flex flex-wrap gap-2">
+        <div className="mx-3 mt-1 mb-2 flex flex-wrap gap-2 pointer-events-auto">
           {selectedMedia.map((media, index) => (
             <div key={index} className="relative inline-block">
               <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-border/30 bg-muted">
@@ -369,24 +369,24 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
       )}
 
       {/* Input bar */}
-      <div className="mx-2 rounded-2xl bg-background/50 backdrop-blur-xl border border-border/30 p-1.5 flex items-center gap-1.5" style={{ marginBottom: 'calc(8px + env(safe-area-inset-bottom, 12px))' }}>
+      <div className="flex items-center bg-background/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-border/40 rounded-[28px] mx-3 mb-3 gap-2 px-3 py-2 shadow-lg shadow-black/5 pointer-events-auto">
         {/* Attach button — opens Telegram-style picker */}
         <button 
           type="button"
           onClick={() => setShowMediaPicker(true)}
-          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors flex-shrink-0"
+          className="w-[2.25rem] h-[2.25rem] rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors shrink-0"
         >
-          <Paperclip className="h-5 w-5 text-muted-foreground" />
+          <Paperclip className="h-[1.25rem] w-[1.25rem] text-muted-foreground" />
         </button>
 
         {/* GIF button - standalone premium */}
         <button
           type="button"
           onClick={() => setShowGIFPicker(true)}
-          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-violet-500/15 transition-all active:scale-90 flex-shrink-0"
+          className="w-[2.25rem] h-[2.25rem] rounded-full flex items-center justify-center hover:bg-violet-500/15 transition-all active:scale-90 shrink-0"
           aria-label="GIF qidirish"
         >
-          <Icon icon="mage:gif-fill" className="h-7 w-7 text-violet-500" />
+          <Icon icon="mage:gif-fill" className="h-[1.5rem] w-[1.5rem] text-violet-500" />
         </button>
 
         {/* Text input */}
@@ -396,7 +396,7 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder="Xabar yozing..."
-          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none py-2 px-1"
+          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
           disabled={isUploading}
         />
 
@@ -405,9 +405,9 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
           <button
             onClick={handleSend}
             disabled={isUploading}
-            className="w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-500 flex items-center justify-center shadow-md hover:opacity-90 transition-all active:scale-90 disabled:opacity-50"
+            className="w-[2.25rem] h-[2.25rem] rounded-full bg-green-500 flex items-center justify-center shadow-md hover:opacity-90 transition-all active:scale-90 disabled:opacity-50 shrink-0"
           >
-            <Icon icon="heroicons:paper-airplane-16-solid" className="h-4.5 w-4.5 text-white" />
+            <Icon icon="heroicons:paper-airplane-16-solid" className="h-[1.35rem] w-[1.35rem] text-white" />
           </button>
         ) : (
           <div
@@ -417,33 +417,38 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
             onMouseUp={handleMicUp}
             onTouchMove={handleMicMove}
             onMouseMove={handleMicMove}
-            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted/50 transition-all cursor-pointer select-none"
+            className="w-[2.25rem] h-[2.25rem] rounded-full flex items-center justify-center hover:bg-muted/50 transition-all cursor-pointer select-none shrink-0"
           >
-            <Mic className="h-5 w-5 text-muted-foreground" />
+            <Mic className="h-[1.25rem] w-[1.25rem] text-muted-foreground" />
           </div>
         )}
       </div>
 
       {/* GIF Picker Overlay */}
       {showGIFPicker && (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-background">
-          <GiphyPicker
-            onSelect={async (gif) => {
-              const url = gif.originalUrl || gif.previewUrl;
-              if (!isUploading && url) {
-                setIsUploading(true);
-                try {
-                  await onSendMessage('', url, 'image');
-                } catch (e) {
-                  toast.error('Xatolik yuz berdi');
-                } finally {
-                  setIsUploading(false);
-                  setShowGIFPicker(false);
+        <div 
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex flex-col justify-end pointer-events-auto"
+          onClick={() => setShowGIFPicker(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()} className="relative">
+            <GiphyPicker
+              onSelect={async (gif) => {
+                const url = gif.originalUrl || gif.previewUrl;
+                if (!isUploading && url) {
+                  setIsUploading(true);
+                  try {
+                    await onSendMessage('', url, 'image');
+                  } catch (e) {
+                    toast.error('Xatolik yuz berdi');
+                  } finally {
+                    setIsUploading(false);
+                    setShowGIFPicker(false);
+                  }
                 }
-              }
-            }}
-            onClose={() => setShowGIFPicker(false)}
-          />
+              }}
+              onClose={() => setShowGIFPicker(false)}
+            />
+          </div>
         </div>
       )}
 
@@ -452,13 +457,8 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
         <SheetContent side="bottom" className="p-0 h-[88vh] border-none bg-transparent">
           <ChatMediaPicker
             onSend={(media, caption) => {
-              // Add selected files to selectedMedia state
-              setSelectedMedia(prev => [...prev, ...media]);
-              // If caption written, put it in the input
-              if (caption.trim()) setInputValue(caption);
               setShowMediaPicker(false);
-              // Auto-send after state updates
-              setTimeout(() => handleSend(), 150);
+              handleSend(media, caption);
             }}
             onClose={() => setShowMediaPicker(false)}
           />

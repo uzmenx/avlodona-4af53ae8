@@ -365,7 +365,7 @@ const AIChat = () => {
               className="h-11 w-11 rounded-2xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 hover:from-indigo-500/30 hover:to-pink-500/30 border border-white/10 flex items-center justify-center shadow-xl backdrop-blur-xl transition-all"
               aria-label="New Chat"
               title="New Chat">
-              <SquarePen className="h-5 w-5 text-purple-300" />
+              <SquarePen className="h-5 w-5 text-purple-600 dark:text-purple-300" />
             </motion.button>
           </div>
         </div>

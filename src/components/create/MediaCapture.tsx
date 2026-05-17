@@ -43,11 +43,49 @@ export default function MediaCapture({ onNext, onClose }: MediaCaptureProps) {
   const startCamera = async () => {
     stopCamera();
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: true,
-      });
-      if (videoRef.current) {
+      let stream: MediaStream | null = null;
+      try {
+        // Preferred: 1280x720 (720p HD) - Gold Standard for mobile WebRTC (picks primary sensor with focus)
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            facingMode: { ideal: facingMode }, 
+            width: { ideal: 1280 }, 
+            height: { ideal: 720 } 
+          },
+          audio: true,
+        });
+      } catch (e1) {
+        try {
+          // Fallback: 1080p full resolution
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+            audio: true,
+          });
+        } catch (e2) {
+          try {
+            // Fallback: raw ideal facingMode without resolution
+            stream = await navigator.mediaDevices.getUserMedia({ 
+              video: { facingMode: { ideal: facingMode } }, 
+              audio: true 
+            });
+          } catch (e3) {
+            try {
+              // Fallback: legacy facingMode direct string
+              stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: true });
+            } catch (e4) {
+              try {
+                // Fallback: generic camera with audio
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+              } catch (e5) {
+                // Fallback: generic camera without audio
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+              }
+            }
+          }
+        }
+      }
+
+      if (videoRef.current && stream) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         setCameraReady(true);

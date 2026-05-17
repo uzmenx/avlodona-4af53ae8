@@ -25,12 +25,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { ChatMediaPicker } from '@/components/chat/ChatMediaPicker';
-import { VoiceRecorderButton } from '@/components/chat/VoiceRecorderButton';
+import { ChatInput } from '@/components/chat/ChatInput';
 import { MediaMessage } from '@/components/chat/MediaMessage';
 import { VoiceMessage } from '@/components/chat/VoiceMessage';
 import { MediaFullscreen } from '@/components/chat/MediaFullscreen';
-import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { GroupSettingsSheet } from '@/components/groups/GroupSettingsSheet';
 import { MessageContextMenu } from '@/components/chat/MessageContextMenu';
 import { ForwardMessageDialog } from '@/components/chat/ForwardMessageDialog';
@@ -97,17 +95,13 @@ const GroupChat = () => {
 
   const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
-  const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false);
   const [canSend, setCanSend] = useState(false);
   const [isMember, setIsMember] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
 
   // Media handling
-  const [selectedMedia, setSelectedMedia] = useState<MediaFile[]>([]);
   const [fullscreenMedia, setFullscreenMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
-  const voiceRecorder = useVoiceRecorder();
 
   // Settings sheet
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -133,15 +127,6 @@ const GroupChat = () => {
   const wallpaperKey = groupId ? `group_chat_wallpaper_${groupId}` : 'group_chat_wallpaper';
   const [chatWallpaper, setChatWallpaper] = useLocalStorage(wallpaperKey, 'none');
   const [showWallpaperPicker, setShowWallpaperPicker] = useState(false);
-  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   const fetchGroupInfo = useCallback(async () => {
     if (!groupId) return;
     try {
@@ -310,83 +295,7 @@ const GroupChat = () => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
-  const [voiceRecorderObj, setVoiceRecorderObj] = useState<ReturnType<typeof useVoiceRecorder>>(voiceRecorder);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
-  const handleSendMessage = async () => {
-    if (!groupId || !user?.id || (!newMessage.trim() && !selectedMedia.length && !voiceRecorder.audioBlob)) return;
-    if (isSending) return;
-    setIsSending(true);
-    try {
-      let mediaUrl: string | null = null;
-      let mediaType: string | null = null;
-      let content = newMessage.trim();
-
-      if (replyTo) {
-        const replyPreview = replyTo.content.length > 30 ? replyTo.content.substring(0, 30) + '...' : replyTo.content;
-        content = `↩️ "${replyPreview}"\n${content}`;
-        setReplyTo(null);
-      }
-
-      const timestampForId = new Date().toISOString();
-
-      if (voiceRecorder.audioBlob) {
-        const audioFile = new File([voiceRecorder.audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
-        const voiceId = `voice-${user.id}-${timestampForId}`;
-        mediaUrl = await uploadToR2(
-          audioFile, 
-          `group-messages/${user.id}`, 
-          undefined, 
-          (prog) => setUploadProgress(prev => ({ ...prev, [voiceId]: prog }))
-        );
-        mediaType = 'audio';
-        content = content || '🎤 Ovozli xabar';
-        voiceRecorder.cancelRecording();
-        setUploadProgress(prev => { const n = { ...prev }; delete n[voiceId]; return n; });
-      }
-
-      if (selectedMedia.length > 0) {
-        for (let i = 0; i < selectedMedia.length; i++) {
-          const media = selectedMedia[i];
-          const mediaId = `media-${user.id}-${timestampForId}`; 
-          const mUrl = await uploadMedia(
-            media.file, 
-            'group-messages', 
-            user.id, 
-            (prog) => setUploadProgress(prev => ({ ...prev, [mediaId]: prog }))
-          );
-          const mType = media.type;
-          const { error } = await supabase.from('group_messages').insert({
-            group_id: groupId, 
-            sender_id: user.id, 
-            content: (media.type === 'image' ? '📷 Rasm' : '🎬 Video'),
-            media_url: mUrl, 
-            media_type: mType,
-            created_at: timestampForId
-          });
-          if (error) throw error;
-          URL.revokeObjectURL(media.preview);
-          setUploadProgress(prev => { const n = { ...prev }; delete n[mediaId]; return n; });
-        }
-        setSelectedMedia([]);
-      }
-
-      if (newMessage.trim() || voiceRecorder.audioBlob) {
-        const { error } = await supabase.from('group_messages').insert({
-          group_id: groupId, sender_id: user.id, content: content || 'Xabar',
-          media_url: mediaUrl, media_type: mediaType,
-          created_at: timestampForId
-        });
-        if (error) throw error;
-      }
-      setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Xabar yuborilmadi');
-    } finally {
-      setIsSending(false);
-    }
-  };
 
   const handleReply = (messageId: string, content: string) => setReplyTo({ id: messageId, content });
   const handleForward = (messageId: string, content: string) => {
@@ -502,7 +411,6 @@ const GroupChat = () => {
         <VoiceMessage
           audioUrl={message.media_url}
           isMine={isOwn}
-          uploadProgress={uploadProgress[`voice-${message.sender_id}-${new Date(message.created_at).getTime()}`]}
         />
       );
     }
@@ -513,7 +421,6 @@ const GroupChat = () => {
           mediaType={message.media_type as 'image' | 'video'}
           isMine={isOwn}
           onFullscreen={() => setFullscreenMedia({ url: message.media_url!, type: message.media_type as 'image' | 'video' })}
-          uploadProgress={uploadProgress[`media-${message.sender_id}-${new Date(message.created_at).getTime()}-0`]} // Assuming single media per message for simplicity here, or adjust tempId logic
         />
       );
     }
@@ -659,7 +566,7 @@ const GroupChat = () => {
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 relative z-10 min-h-0">
-        <div className="space-y-1 max-w-2xl mx-auto">
+        <div className="space-y-1 max-w-2xl mx-auto pb-20">
           {visibleMessages.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -735,96 +642,31 @@ const GroupChat = () => {
         </div>
       ) : null}
 
-      {/* Premium Input Bar */}
+      {/* Premium Unified Input Bar */}
       {canSend ? (
-        <div className="sticky bottom-0 bg-background/50 backdrop-blur-xl border-t border-border/20 p-2 z-20">
-          {voiceRecorder.isRecording && (
-            <div className="mb-2 flex items-center gap-3 px-4 py-2 bg-destructive/10 rounded-2xl mx-1">
-              <div className="h-2.5 w-2.5 rounded-full bg-destructive animate-pulse" />
-              <span className="text-sm flex-1">Yozib olinmoqda... {formatDuration(voiceRecorder.duration)}</span>
-              <Button variant="ghost" size="sm" onClick={voiceRecorder.cancelRecording} className="h-7 text-xs rounded-xl">
-                Bekor
-              </Button>
-            </div>
-          )}
-          {selectedMedia.map((media, idx) => (
-            <div key={idx} className="mb-2 mx-1 relative inline-block">
-              <div className="h-20 w-20 rounded-2xl overflow-hidden border border-border/50">
-                {media.type === 'image' ? (
-                  <img src={media.preview} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <video src={media.preview} className="w-full h-full object-cover" />
-                )}
-              </div>
-              <button 
-                onClick={() => {
-                  const next = [...selectedMedia];
-                  URL.revokeObjectURL(next[idx].preview);
-                  next.splice(idx, 1);
-                  setSelectedMedia(next);
-                }}
-                className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-white rounded-full flex items-center justify-center shadow-lg"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-          <div className="flex items-center gap-1.5 bg-card/50 backdrop-blur-md border border-border/50 rounded-[24px] px-2 py-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-10 w-10 text-muted-foreground"
-              onClick={() => setIsMediaPickerOpen(true)}
-            >
-              <Paperclip className="h-5 w-5" />
-            </Button>
-            {!voiceRecorder.isRecording && !voiceRecorder.audioBlob ? (
-              <>
-                <input
-                  placeholder="Xabar yozing..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                  className="flex-1 bg-transparent border-none focus:outline-none text-foreground placeholder:text-muted-foreground h-9 text-sm px-1"
-                />
-                {newMessage.trim() || selectedMedia.length > 0 ? (
-                  <button 
-                    id="group-chat-send-btn"
-                    onClick={handleSendMessage} 
-                    disabled={isSending}
-                    className="w-9 h-9 rounded-full bg-gradient-to-r from-[hsl(217,91%,60%)] to-[hsl(263,70%,50%)] flex items-center justify-center text-white shadow-lg shadow-primary/30 transition-transform active:scale-90"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
-                ) : (
-                  <VoiceRecorderButton
-                    isRecording={voiceRecorder.isRecording}
-                    hasAudio={!!voiceRecorder.audioBlob}
-                    duration={voiceRecorder.duration}
-                    formatDuration={formatDuration}
-                    onStartRecording={voiceRecorder.startRecording}
-                    onStopRecording={voiceRecorder.stopRecording}
-                    onCancelRecording={voiceRecorder.cancelRecording}
-                    onSendAudio={handleSendMessage}
-                  />
-                )}
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-end gap-2">
-                <VoiceRecorderButton
-                  isRecording={voiceRecorder.isRecording}
-                  hasAudio={!!voiceRecorder.audioBlob}
-                  duration={voiceRecorder.duration}
-                  formatDuration={formatDuration}
-                  onStartRecording={voiceRecorder.startRecording}
-                  onStopRecording={voiceRecorder.stopRecording}
-                  onCancelRecording={voiceRecorder.cancelRecording}
-                  onSendAudio={handleSendMessage}
-                />
-              </div>
-            )}
-          </div>
-        </div>
+        <ChatInput 
+          conversationId={groupId}
+          onSendMessage={async (content, mediaUrl, mediaType) => {
+            let finalContent = content;
+            if (replyTo) {
+              const replyPreview = replyTo.content.length > 30 ? replyTo.content.substring(0, 30) + '...' : replyTo.content;
+              finalContent = `↩️ "${replyPreview}"\n${finalContent}`;
+              setReplyTo(null);
+            }
+            const timestampForId = new Date().toISOString();
+            const { error } = await supabase.from('group_messages').insert({
+              group_id: groupId,
+              sender_id: user?.id,
+              content: finalContent || (mediaType === 'image' ? '📷 Rasm' : mediaType === 'video' ? '🎬 Video' : '🎤 Ovozli xabar'),
+              media_url: mediaUrl,
+              media_type: mediaType,
+              created_at: timestampForId
+            });
+            if (error) throw error;
+            window.dispatchEvent(new Event('avlodona:new-message'));
+          }}
+          onTyping={() => {}}
+        />
       ) : (
         <div className="sticky bottom-0 bg-muted/30 backdrop-blur-xl border-t border-border/20 p-4 text-center z-20">
           <p className="text-sm text-muted-foreground">
@@ -902,34 +744,7 @@ const GroupChat = () => {
         onSelect={setChatWallpaper}
       />
 
-      {/* Telegram Style Media Picker Sheet */}
-      <Sheet open={isMediaPickerOpen} onOpenChange={setIsMediaPickerOpen}>
-        <SheetContent side="bottom" className="p-0 h-[88vh] border-none bg-transparent">
-          <ChatMediaPicker 
-            onSend={(media, caption) => {
-              // Add selected media to state
-              setSelectedMedia(prev => [...prev, ...media]);
-              // Set caption to the message input
-              if (caption.trim()) {
-                setNewMessage(caption);
-              }
-              // Close picker
-              setIsMediaPickerOpen(false);
-              
-              // We simulate "Send" by letting the user tap the main send button, 
-              // or we can auto-send here by calling handleSendMessage.
-              // To make it exactly like Telegram, we should auto-send.
-              // But since handleSendMessage reads state asynchronously, 
-              // we can set a small timeout to let the state update, then send.
-              setTimeout(() => {
-                const sendBtn = document.getElementById("group-chat-send-btn");
-                if (sendBtn) sendBtn.click();
-              }, 100);
-            }}
-            onClose={() => setIsMediaPickerOpen(false)}
-          />
-        </SheetContent>
-      </Sheet>
+
     </div>
   );
 };

@@ -416,7 +416,7 @@ const Profile = () => {
                   placeholder="Qidirish"
                   className={cn(
                     'h-9 bg-black/30 backdrop-blur-md border border-white/20 text-white placeholder:text-white/60 rounded-xl transition-all duration-200 mr-2',
-                    searchExpanded ? 'w-44 px-3 opacity-100' : 'w-0 px-0 opacity-0 pointer-events-none'
+                    searchExpanded ? 'w-[100px] min-[375px]:w-[140px] px-3 opacity-100' : 'w-0 px-0 opacity-0 pointer-events-none'
                   )} />
                 
               <Button
@@ -459,10 +459,7 @@ const Profile = () => {
         {/* ═══════════════════════════════════════
                                                                         COVER IMAGE
                                                                      ═══════════════════════════════════════ */}
-        <div 
-          className="relative overflow-hidden rounded-b-2xl rounded-t-none"
-          style={{ height: 'calc(112px + env(safe-area-inset-top, 0px))', paddingTop: 'env(safe-area-inset-top, 0px)' }}
-        >
+        <div className="relative h-28 overflow-hidden rounded-b-2xl rounded-t-none">
 
           {(profile as any)?.cover_url ?
             <img

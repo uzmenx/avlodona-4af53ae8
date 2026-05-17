@@ -48,8 +48,6 @@ const EditProfile = () => {
     type: 'avatar' | 'cover';
   }>({ isOpen: false, imageUrl: '', type: 'avatar' });
   const [showSocialLinks, setShowSocialLinks] = useState(false);
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
-  const [galleryType, setGalleryType] = useState<'avatar' | 'cover'>('avatar');
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -303,7 +301,7 @@ const EditProfile = () => {
             {/* Cover Image Section */}
             <div
               className="relative h-[100px] cursor-pointer overflow-hidden rounded-b-2xl rounded-t-none"
-              onClick={() => { setGalleryType('cover'); setIsGalleryOpen(true); }}>
+              onClick={() => { setCropperState({ isOpen: true, imageUrl: '', type: 'cover' }); }}>
               
               {formData.cover_url ?
               <img
@@ -323,7 +321,7 @@ const EditProfile = () => {
                     `relative rounded-full p-1 ring-2 ${getGenderRingColor()} bg-background cursor-pointer`,
                     'shadow-lg'
                   )}
-                  onClick={() => { setGalleryType('avatar'); setIsGalleryOpen(true); }}>
+                  onClick={() => { setCropperState({ isOpen: true, imageUrl: '', type: 'avatar' }); }}>
                   
                   <Avatar className="h-20 w-20">
                     <AvatarImage src={formData.avatar_url || undefined} className="object-cover" />
@@ -335,7 +333,7 @@ const EditProfile = () => {
                 <button 
                   type="button" 
                   className="text-primary text-xs font-semibold mt-1.5"
-                  onClick={() => { setGalleryType('avatar'); setIsGalleryOpen(true); }}
+                  onClick={() => { setCropperState({ isOpen: true, imageUrl: '', type: 'avatar' }); }}
                 >
                   Rasmni o'zgartirish
                 </button>
@@ -494,28 +492,7 @@ const EditProfile = () => {
           initialImage={cropperState.imageUrl}
           type={cropperState.type} />
           
-      {/* Premium Gallery Sheet */}
-      <Sheet open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
-        <SheetContent side="bottom" className="p-0 h-[88vh] border-none bg-transparent">
-          <ChatMediaPicker 
-            mode="single"
-            showCaption={false}
-            allowedTypes="image"
-            title={galleryType === 'avatar' ? "Profil rasmini tanlang" : "Muqova rasmini tanlang"}
-            onSelect={(media) => {
-              setIsGalleryOpen(false);
-              setTimeout(() => {
-                setCropperState({
-                  isOpen: true,
-                  imageUrl: media.preview,
-                  type: galleryType
-                });
-              }, 300); // Wait for sheet to close before opening cropper
-            }}
-            onClose={() => setIsGalleryOpen(false)}
-          />
-        </SheetContent>
-      </Sheet>
+
         
     </div>
   </AppLayout>);

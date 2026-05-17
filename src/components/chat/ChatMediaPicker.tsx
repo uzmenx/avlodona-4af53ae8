@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useGallery } from '@/hooks/useGallery';
 import { cn } from '@/lib/utils';
+import { X, MoreHorizontal } from 'lucide-react';
 
 interface MediaFile {
   file: File;
@@ -169,26 +170,27 @@ export const ChatMediaPicker = ({
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      {/* Drag Handle */}
-      <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-        <div className="w-10 h-1 rounded-full opacity-30" style={{ background: '#8899aa' }} />
-      </div>
-
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 flex-shrink-0">
-        <button onClick={onClose} style={{ color: '#2dbcff' }} className="text-sm font-medium">
-          Bekor
+      {/* Premium Integrated Header & Drag Handle */}
+      <div className="flex items-center justify-between px-4 pt-3 pb-3 flex-shrink-0 relative">
+        {/* Left Close Circle Button */}
+        <button 
+          onClick={onClose} 
+          className="w-10 h-10 rounded-full bg-white/[0.08] hover:bg-white/[0.15] active:scale-95 flex items-center justify-center transition-all border border-white/5 shadow-inner"
+        >
+          <X className="w-5 h-5 text-white/90" />
         </button>
-        <span className="text-white font-semibold text-base">
-          {selectedIds.length > 0 && mode !== 'single' ? `${selectedIds.length} ta tanlandi` : title}
-        </span>
+
+        {/* Drag Handle in the middle */}
+        <div className="w-12 h-1.5 rounded-full opacity-35 bg-white" />
+
+        {/* Right Circular More/Upload Button */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          style={{ color: '#2dbcff' }}
-          className="text-sm font-medium"
+          className="w-10 h-10 rounded-full bg-white/[0.08] hover:bg-white/[0.15] active:scale-95 flex items-center justify-center transition-all border border-white/5 shadow-inner"
         >
-          Yuklash
+          <MoreHorizontal className="w-5 h-5 text-white/90" />
         </button>
+        
         <input
           ref={fileInputRef}
           type="file"
@@ -199,28 +201,6 @@ export const ChatMediaPicker = ({
         />
       </div>
 
-      {/* Tabs */}
-      {allowedTypes === 'all' && (
-        <div className="flex gap-4 px-4 border-b flex-shrink-0" style={{ borderColor: '#253347' }}>
-          {[
-            { id: 'all', label: 'Barchasi' },
-            { id: 'image', label: 'Suratlar' },
-            { id: 'video', label: 'Videolar' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={cn(
-                "pb-2 text-sm font-semibold transition-all border-b-2",
-                activeTab === tab.id ? "text-[#2dbcff] border-[#2dbcff]" : "text-[#8899aa] border-transparent"
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Selected previews strip (Horizontal Scroll) */}
       {selectedIds.length > 0 && (
         <div className="flex gap-2.5 px-4 py-3 overflow-x-auto border-b flex-shrink-0 hide-scrollbar" style={{ borderColor: '#253347' }}>
@@ -228,9 +208,6 @@ export const ChatMediaPicker = ({
             <div key={asset.identifier} className="relative shrink-0 animate-in fade-in zoom-in duration-300">
               <div className="w-16 h-16 rounded-xl overflow-hidden shadow-lg border border-white/10">
                 <img src={asset.thumbnail || asset.webUrl} alt="" className="w-full h-full object-cover" />
-              </div>
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#2dbcff] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md">
-                {i + 1}
               </div>
               <button 
                 onClick={(e) => { e.stopPropagation(); toggleSelect(asset.identifier); }}
@@ -355,7 +332,6 @@ export const ChatMediaPicker = ({
                     loading="lazy"
                   />
 
-                  {/* Selection badge */}
                   <div
                     className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
                     style={{
@@ -366,7 +342,7 @@ export const ChatMediaPicker = ({
                       transition: 'all 0.18s cubic-bezier(.4,1.3,.6,1)',
                     }}
                   >
-                    {isSelected ? order : ''}
+                    {isSelected ? '✓' : ''}
                   </div>
 
                   {/* Video badge */}
@@ -401,28 +377,6 @@ export const ChatMediaPicker = ({
           className="border-t px-3 py-2 flex items-end gap-2 flex-shrink-0"
           style={{ borderColor: '#253347', background: '#17212b' }}
         >
-          {/* Mini previews */}
-          {selectedIds.length > 0 && (
-            <div className="flex gap-1 items-end">
-              {selectedAssets.slice(0, 3).map(asset => (
-                <div
-                  key={asset.identifier}
-                  className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0"
-                  style={{ border: '2px solid #2dbcff' }}
-                >
-                  <img src={asset.thumbnail || asset.webUrl} alt="" className="w-full h-full object-cover" />
-                </div>
-              ))}
-              {selectedIds.length > 3 && (
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                  style={{ background: '#253347' }}
-                >
-                  +{selectedIds.length - 3}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Caption input */}
           {showCaption && (

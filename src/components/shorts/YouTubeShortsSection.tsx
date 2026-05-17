@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, ChevronLeft, ChevronRight, Flame, Loader2, Search } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Icon } from '@iconify/react';
 
@@ -151,14 +151,15 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
       );
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
+      const isCustomQuery = !SEARCH_QUERIES.includes(currentQueryRef.current);
       const newShorts: Short[] = (data?.shorts || [])
-        .filter((s: Short) => !isLikelyMusic(s))
-        .filter((s: Short) => !isBlocked(s));
+        .filter((s: Short) => isCustomQuery || (!isLikelyMusic(s) && !isBlocked(s)));
       const newToken: string | null = data?.nextPageToken || null;
 
       // Filter out already-seen shorts
       const seen = getSeenIds();
-      const freshShorts = newShorts.filter(s => !seen.has(s.id));
+      // Don't filter out seen shorts if it's an explicit custom user query (we want to show all match results)
+      const freshShorts = isCustomQuery ? newShorts : newShorts.filter(s => !seen.has(s.id));
 
       setShorts((prev) => {
         const combined = isFirstLoad ? freshShorts : [...prev, ...freshShorts];
@@ -207,6 +208,11 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
 
       // If token ended (or filtering removed most items), switch query and continue instead of stopping.
       if (freshShorts.length < 5 && !newToken) {
+        if (isCustomQuery) {
+          setHasMore(false);
+          setNextToken(null);
+          return;
+        }
         rotateQueryAndContinue();
         return;
       }
@@ -214,7 +220,7 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
       if (!newToken) {
         // no more pages for this query; move to next query on next loadMore
         // (but don't immediately rotate if we already got enough results)
-        setHasMore(true);
+        setHasMore(!isCustomQuery);
       }
     } catch (err) {
       console.error('Failed to fetch shorts:', err);
@@ -333,41 +339,38 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
   return (
     <div className="pt-1 pb-0">
       {/* Header */}
-      <div className="items-center justify-between mb-1.5 px-[12px] flex flex-row py-[3px]">
+      <div className="items-center mb-1.5 px-[12px] flex flex-row py-[3px] gap-2">
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <Icon icon="logos:youtube-icon" className="w-4 h-4" />
           <span className="font-semibold text-xs text-foreground">Shorts</span>
         </div>
-        <div className="flex-1 px-2">
+        <div className="flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Qidirish..."
+              placeholder="YouTube video va Shorts qidirish..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   const q = searchText.trim();
                   if (!q) return;
-                  onSearchSubmit?.(q);
-                  onSearchClick?.();
+                  // Directly trigger YouTube search inline
+                  currentQueryRef.current = q;
+                  setShorts([]);
+                  setNextToken(null);
+                  setHasMore(true);
+                  fetchingRef.current = false;
+                  exhaustedQueriesRef.current = false;
+                  startQueryIndexRef.current = null;
+                  rotatedAtLeastOnceRef.current = false;
+                  retriesRef.current = 0;
+                  fetchShorts();
                 }
               }}
               className="h-7 rounded-full pl-8 pr-3 bg-background/30 border-white/10 backdrop-blur-xl text-xs focus-visible:ring-1 focus-visible:ring-primary/40"
             />
           </div>
-        </div>
-        <div className="flex gap-0.5 flex-shrink-0">
-          <button
-            onClick={() => scroll('left')}
-            className="w-6 h-6 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center border border-border/20">
-            <ChevronLeft className="w-3 h-3 text-muted-foreground" />
-          </button>
-          <button
-            onClick={() => scroll('right')}
-            className="w-6 h-6 rounded-full bg-background/60 backdrop-blur-sm flex items-center justify-center border border-border/20">
-            <ChevronRight className="w-3 h-3 text-muted-foreground" />
-          </button>
         </div>
       </div>
 

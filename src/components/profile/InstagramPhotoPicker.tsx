@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Cropper from 'react-easy-crop';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Loader2, X, CheckCircle2 } from 'lucide-react';
+import { Loader2, X, Image as ImageIcon, Search } from 'lucide-react';
 import getCroppedImg from '@/lib/cropImage';
 import { Capacitor } from '@capacitor/core';
 import { Media } from '@capacitor-community/media';
+import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface InstagramPhotoPickerProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface InstagramPhotoPickerProps {
 }
 
 export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, initialImage }: InstagramPhotoPickerProps) => {
+  const { t } = useLanguage();
   const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<{ id: string; url: string } | null>(null);
   
@@ -32,15 +34,10 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, in
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto fetch photos and manage initial selection
   useEffect(() => {
     if (isOpen) {
-      if (initialImage) {
-        setSelectedPhoto({ id: 'initial', url: initialImage });
-        setMode('gallery');
-        setHasPermission(true);
-      } else {
-        checkPermissionsAndFetch();
-      }
+      checkPermissionsAndFetch();
     } else {
       // Reset state on close
       setPhotos([]);
@@ -48,8 +45,20 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, in
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setGifSearchQuery('');
+      setMode('gallery');
     }
-  }, [isOpen, initialImage]);
+  }, [isOpen]);
+
+  // Handle selected photo based on gallery fetch & initialImage
+  useEffect(() => {
+    if (isOpen) {
+      if (initialImage) {
+        setSelectedPhoto({ id: 'initial', url: initialImage });
+      } else if (photos.length > 0 && !selectedPhoto) {
+        setSelectedPhoto(photos[0]);
+      }
+    }
+  }, [photos, initialImage, isOpen]);
 
   const fetchGifs = async (query = '') => {
     setIsSearchingGif(true);
@@ -95,11 +104,11 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, in
   const checkPermissionsAndFetch = async () => {
     if (!Capacitor.isNativePlatform()) {
       setHasPermission(true);
+      fetchPhotos();
       return;
     }
     try {
       let perm = await Media.checkPermissions();
-      // On some plugins, it might be publicStorage or gallery
       if (perm.publicStorage !== 'granted' && perm.publicStorage !== 'limited') {
         perm = await Media.requestPermissions();
       }
@@ -111,24 +120,26 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, in
       }
     } catch (e) {
       console.error(e);
-      // Fallback
       setHasPermission(true);
+      fetchPhotos();
     }
   };
 
   const fetchPhotos = async () => {
     try {
+      if (!Capacitor.isNativePlatform()) {
+        // Web mock or let user upload
+        return;
+      }
       const result = await Media.getMedias({
-        quantity: 150,
+        quantity: 120,
         sort: [{ key: 'creationTime', ascending: false }]
       });
       const mapped = result.medias.map(m => ({
-        // Note: Using the webPath instead of raw data to get file properly on web view
         id: m.identifier,
         url: m.data ? Capacitor.convertFileSrc(m.data) : ''
       })).filter(m => m.url !== '');
       setPhotos(mapped);
-      if (mapped.length > 0) setSelectedPhoto(mapped[0]);
     } catch (e) {
       console.error("Error fetching medias", e);
     }
@@ -141,8 +152,10 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, in
       url: URL.createObjectURL(file)
     }));
     setPhotos(prev => [...newPhotos, ...prev]);
-    if (!selectedPhoto && newPhotos.length > 0) {
+    if (newPhotos.length > 0) {
       setSelectedPhoto(newPhotos[0]);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
     }
   };
 
@@ -183,63 +196,101 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, in
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent 
         aria-describedby={undefined}
-        className="w-full h-[100dvh] max-w-none flex flex-col p-0 overflow-hidden bg-black border-none rounded-none !m-0 !mt-0 !mb-0 !z-[200] sm:max-w-xl sm:h-[90vh] sm:rounded-2xl mx-auto sm:my-auto"
+        className="w-full h-[100dvh] max-w-none flex flex-col p-0 overflow-hidden bg-zinc-950 border-none rounded-none !m-0 !mt-0 !mb-0 !z-[200] sm:max-w-xl sm:h-[92vh] sm:rounded-3xl mx-auto sm:my-auto [&>button]:hidden"
       >
-        {/* Header */}
+        {/* Modern Instagram-Style Header */}
         <div 
-          className="flex items-center justify-between min-h-14 px-2 bg-black shrink-0 border-b border-white/10"
+          className="flex items-center justify-between min-h-16 px-4 bg-zinc-950/80 backdrop-blur-xl border-b border-white/[0.04] shrink-0"
           style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
         >
-          <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/10 h-12 w-12 rounded-full">
-            <X className="h-7 w-7" />
-          </Button>
+          {/* Cancel button */}
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] active:scale-90 border border-white/[0.08] transition-all duration-300 shadow-inner"
+            aria-label="Yopish"
+          >
+            <X className="h-4.5 w-4.5 text-white/80" />
+          </button>
           
-          <div className="flex bg-white/10 p-1 rounded-full items-center">
+          {/* Custom Capsule Tab Switcher */}
+          <div className="flex bg-black/60 p-0.5 rounded-full items-center border border-white/[0.06] shadow-inner relative">
             <button 
-              onClick={() => { setMode('gallery'); setSelectedPhoto(initialImage ? { id: 'initial', url: initialImage } : (photos[0] || null)); }}
-              className={`px-4 py-1.5 rounded-full text-[14px] font-bold transition-all ${mode === 'gallery' ? 'bg-white text-black shadow-sm' : 'text-white/60 hover:text-white'}`}
+              type="button"
+              onClick={() => { 
+                setMode('gallery'); 
+                if (photos.length > 0) {
+                  setSelectedPhoto(photos[0]);
+                } else if (initialImage) {
+                  setSelectedPhoto({ id: 'initial', url: initialImage });
+                }
+              }}
+              className={cn(
+                "px-5 py-1.5 rounded-full text-[11px] font-bold transition-all duration-300 relative z-10",
+                mode === 'gallery' 
+                  ? "bg-white text-zinc-950 shadow-[0_2px_8px_rgba(255,255,255,0.18)]" 
+                  : "text-white/45 hover:text-white/80"
+              )}
             >
-              Galereya
+              {t('gallery')}
             </button>
-            {!initialImage && (
-              <button 
-                onClick={() => { setMode('gif'); setSelectedPhoto(null); }}
-                className={`px-4 py-1.5 rounded-full text-[14px] font-bold transition-all flex items-center gap-1.5 ${mode === 'gif' ? 'bg-white text-black shadow-sm' : 'text-white/60 hover:text-white'}`}
-              >
-                {mode !== 'gif' && <div className="bg-[#8B5CF6] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-[4px] leading-none tracking-wider">GIF</div>}
-                GIFlar
-              </button>
-            )}
+            <button 
+              type="button"
+              onClick={() => { setMode('gif'); setSelectedPhoto(null); }}
+              className={cn(
+                "px-5 py-1.5 rounded-full text-[11px] font-bold transition-all duration-300 relative z-10",
+                mode === 'gif' 
+                  ? "bg-white text-zinc-950 shadow-[0_2px_8px_rgba(255,255,255,0.18)]" 
+                  : "text-white/45 hover:text-white/80"
+              )}
+            >
+              {t('gifs')}
+            </button>
           </div>
           
-          <Button 
-            variant="ghost" 
+          {/* Save Button (Premium Emerald Glow) */}
+          <button 
+            type="button"
             onClick={handleConfirm}
             disabled={isLoading || !selectedPhoto}
-            className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 font-bold text-[17px] h-12 px-4"
+            className="px-5 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold text-[11px] active:scale-95 transition-all duration-300 flex items-center justify-center gap-1.5 border border-emerald-400/30 shadow-[0_0_15px_rgba(16,185,129,0.22)] hover:shadow-[0_0_20px_rgba(16,185,129,0.35)] disabled:opacity-30 disabled:pointer-events-none"
           >
-            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Tayyor"}
-          </Button>
+            {isLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-black" />
+            ) : (
+              t('save')
+            )}
+          </button>
         </div>
         
         {hasPermission === false ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-white bg-[#111]">
-            <p className="mb-4 text-white/70">Rasmlarni ko'rish uchun ruxsat bering</p>
-            <Button onClick={checkPermissionsAndFetch} className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl h-12 px-8">
-              Ruxsat berish
-            </Button>
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-white bg-zinc-900">
+            <p className="mb-4 text-white/70 text-sm">{t('givePermissionDesc')}</p>
+            <button 
+              type="button"
+              onClick={checkPermissionsAndFetch} 
+              className="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-black font-bold rounded-2xl h-11 px-8 transition-transform"
+            >
+              {t('allowPermission')}
+            </button>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col h-[calc(100vh-60px)]">
-            {/* Top Preview */}
-            <div className="relative w-full aspect-square bg-[#111] shrink-0">
+          <div className="flex-1 flex flex-col h-[calc(100vh-56px)] overflow-hidden">
+            {/* Top Half: Auto-Cropped Circle Preview (46dvh) */}
+            <div className="relative w-full h-[46dvh] bg-zinc-900 shrink-0 border-b border-white/[0.04]">
               {selectedPhoto ? (
                 mode === 'gif' ? (
-                   <div className="w-full h-full flex items-center justify-center p-4">
-                     <img 
-                       src={selectedPhoto.url} 
-                       className={type === 'avatar' ? 'w-[80%] aspect-square object-cover rounded-full' : 'w-[90%] aspect-[3/1] object-cover'} 
-                     />
+                   <div className="w-full h-full flex items-center justify-center p-6">
+                     <div className={cn(
+                       "relative overflow-hidden bg-black/40 border border-white/10 shadow-2xl flex items-center justify-center",
+                       type === 'avatar' ? 'w-[75%] aspect-square rounded-full' : 'w-[90%] aspect-[3/1] rounded-2xl'
+                     )}>
+                       <img 
+                         src={selectedPhoto.url} 
+                         alt="GIF Preview"
+                         className="w-full h-full object-cover" 
+                       />
+                     </div>
                    </div>
                 ) : (
                   <Cropper
@@ -253,99 +304,130 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, in
                     onCropComplete={onCropCompleteHandler}
                     onZoomChange={setZoom}
                     classes={{
-                      containerClassName: 'bg-[#111]',
-                      cropAreaClassName: type === 'avatar' ? 'border-[1px] border-white/20 shadow-[0_0_0_9999em_rgba(0,0,0,0.5)]' : 'border border-white/30 shadow-[0_0_0_9999em_rgba(0,0,0,0.7)]'
+                      containerClassName: 'bg-zinc-900',
+                      cropAreaClassName: type === 'avatar' 
+                        ? 'border-[1.5px] border-white/30 shadow-[0_0_0_9999em_rgba(9,9,11,0.65)] rounded-full' 
+                        : 'border-[1.5px] border-white/30 shadow-[0_0_0_9999em_rgba(9,9,11,0.75)]'
                     }}
                     zoomWithScroll={true}
                   />
                 )
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-white/50 text-sm">
-                  {mode === 'gif' ? 'GIF tanlang' : 'Rasm tanlang'}
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-white/30 text-sm gap-2">
+                  <ImageIcon className="w-8 h-8 opacity-40 animate-pulse" />
+                  <span>{mode === 'gif' ? t('selectGif') : t('selectPhoto')}</span>
                 </div>
               )}
               
-              {/* Hint text at bottom of preview */}
-              {mode === 'gallery' && (
+              {/* Hint text overlay */}
+              {mode === 'gallery' && selectedPhoto && (
                 <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none z-10">
-                  <span className="bg-black/60 backdrop-blur-md text-white/90 text-[11px] px-3 py-1.5 rounded-full font-medium">
-                    Moslashtirish uchun suring yoki kichraytiring
+                  <span className="bg-black/65 backdrop-blur-md border border-white/5 text-white/95 text-[10px] px-3 py-1.5 rounded-full font-medium tracking-wide shadow-lg">
+                    {t('cropHint')}
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Bottom Grid */}
-            {!initialImage && (
-              <div className="flex-1 bg-black overflow-y-auto no-scrollbar flex flex-col">
+            {/* Bottom Half: 3-Column Gallery / GIF Grid (scrollable) */}
+            <div className="flex-1 bg-zinc-950 overflow-y-auto no-scrollbar flex flex-col">
               {mode === 'gallery' ? (
-                <>
-                  {!Capacitor.isNativePlatform() && (
-                    <div className="p-4 flex flex-col items-center justify-center gap-3 bg-white/5 border-b border-white/10 shrink-0">
-                      <p className="text-white/60 text-xs text-center">Tizim web formatida. Galereya o'rniga rasmlarni yuklang.</p>
-                      <Button variant="outline" className="text-white border-white/20 hover:bg-white/10" onClick={() => fileInputRef.current?.click()}>
-                        Rasm tanlash
-                      </Button>
-                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFallbackUpload} />
+                <div className="flex-1 flex flex-col">
+                  {/* Web Fallback file upload card */}
+                  {(!Capacitor.isNativePlatform() || photos.length === 0) && (
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="m-3 p-4 rounded-2xl bg-white/[0.04] border border-dashed border-white/10 hover:bg-white/[0.08] active:scale-[0.99] transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-emerald-500/10 flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <ImageIcon className="w-5 h-5 text-emerald-400" />
+                      </div>
+                      <span className="text-white/90 text-xs font-semibold">{t('uploadFromDevice')}</span>
+                      <span className="text-white/40 text-[10px]">{t('uploadFromDeviceDesc')}</span>
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={handleFallbackUpload} 
+                      />
                     </div>
                   )}
                   
-                  <div className="grid grid-cols-3 gap-[2px]">
-                    {photos.map((photo) => (
-                      <div 
-                        key={photo.id} 
-                        className="relative aspect-square cursor-pointer bg-white/5"
-                        onClick={() => {
-                          setSelectedPhoto(photo);
-                          setCrop({ x: 0, y: 0 });
-                          setZoom(1);
-                        }}
-                      >
-                        <img src={photo.url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                        {selectedPhoto?.id === photo.id && (
-                          <div className="absolute inset-0 bg-white/30 border-[3px] border-emerald-500 transition-all" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </>
+                  {/* The Photo Grid */}
+                  {photos.length > 0 && (
+                    <div className="grid grid-cols-3 gap-[2px] p-0.5">
+                      {photos.map((photo) => (
+                        <button
+                          key={photo.id} 
+                          type="button"
+                          onClick={() => {
+                            setSelectedPhoto(photo);
+                            setCrop({ x: 0, y: 0 });
+                            setZoom(1);
+                          }}
+                          className="relative aspect-square cursor-pointer overflow-hidden bg-white/[0.03] active:scale-95 transition-all group"
+                        >
+                          <img 
+                            src={photo.url} 
+                            alt="" 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                            loading="lazy" 
+                          />
+                          {selectedPhoto?.id === photo.id && (
+                            <div className="absolute inset-0 bg-white/15 border-[3px] border-emerald-500 transition-all shadow-inner" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : (
-                <div className="flex flex-col h-full">
-                  <div className="p-2 shrink-0">
+                <>
+                  {/* Search Input bar (Sticky top in scroll view) */}
+                  <div className="p-3 shrink-0 relative flex items-center bg-zinc-950 sticky top-0 z-10">
+                    <Search className="w-4 h-4 text-white/30 absolute left-6" />
                     <input 
                       type="text" 
-                      placeholder="GIPHY'dan izlash..." 
+                      placeholder={t('searchGifs')}
                       value={gifSearchQuery}
                       onChange={(e) => setGifSearchQuery(e.target.value)}
-                      className="w-full bg-[#222] text-white border-none rounded-xl h-10 px-4 focus:ring-1 focus:ring-[#8B5CF6] outline-none"
+                      className="w-full bg-white/[0.06] text-white border border-white/[0.06] rounded-xl h-10 pl-10 pr-4 text-sm focus:ring-1 focus:ring-emerald-500 outline-none placeholder:text-white/30"
                     />
                   </div>
-                  <div className="flex-1 overflow-y-auto grid grid-cols-3 gap-[2px] p-0.5">
+
+                  {/* GIF Grid */}
+                  <div className="grid grid-cols-3 gap-[2px] p-0.5">
                     {isSearchingGif && gifs.length === 0 ? (
-                      <div className="col-span-3 py-10 flex justify-center">
-                        <Loader2 className="h-6 w-6 animate-spin text-[#8B5CF6]" />
+                      <div className="col-span-3 py-12 flex justify-center items-center">
+                        <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
                       </div>
                     ) : (
                       gifs.map((gif) => (
-                        <div 
+                        <button 
                           key={gif.id} 
-                          className="relative aspect-square cursor-pointer bg-[#222]"
+                          type="button"
                           onClick={() => {
                             setSelectedPhoto({ id: gif.id, url: gif.url });
                           }}
+                          className="relative aspect-square cursor-pointer bg-white/[0.03] overflow-hidden active:scale-95 transition-all group w-full h-full"
                         >
-                          <img src={gif.preview} alt="" className="w-full h-full object-cover" loading="lazy" />
+                          <img 
+                            src={gif.preview} 
+                            alt="" 
+                            className="w-full h-full object-cover group-hover:scale-102 transition-transform" 
+                            loading="lazy" 
+                          />
                           {selectedPhoto?.id === gif.id && (
-                            <div className="absolute inset-0 bg-white/20 border-[3px] border-[#8B5CF6] transition-all" />
+                            <div className="absolute inset-0 bg-white/15 border-[3px] border-emerald-500 transition-all shadow-inner" />
                           )}
-                        </div>
+                        </button>
                       ))
                     )}
                   </div>
-                </div>
+                </>
               )}
             </div>
-            )}
           </div>
         )}
       </DialogContent>

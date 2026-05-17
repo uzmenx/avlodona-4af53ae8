@@ -117,7 +117,7 @@ export const AppLayout = ({ children, showNav = true, showSafeAreaPadding = true
       <div
         className={cn(
           'fixed inset-0 z-0 pointer-events-none transition-colors duration-300',
-          transparentBars ? 'bg-transparent' : (bgClass || 'bg-background')
+          bgClass || 'bg-background'
         )}
         style={{ willChange: 'background-color' }}
       />

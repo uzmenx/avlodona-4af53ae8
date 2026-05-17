@@ -38,10 +38,10 @@ const Relatives = () => {
 
   return (
     <AppLayout showSafeAreaPadding={false}>
-      <div className="fixed inset-0 overflow-hidden bg-background overscroll-none touch-none">
+      <div className="fixed inset-0 overflow-hidden bg-transparent overscroll-none touch-none">
         {!hideBars && (
           <div
-            className="absolute top-0 left-0 right-0 h-[calc(env(safe-area-inset-top,0px)+30px)] pointer-events-none z-10 bg-gradient-to-b from-sky-200/70 via-sky-200/30 to-transparent dark:from-slate-950/85 dark:via-slate-950/35 backdrop-blur-md"
+            className="absolute top-0 left-0 right-0 h-[calc(env(safe-area-inset-top,0px)+30px)] pointer-events-none z-10 bg-gradient-to-b from-background/80 via-background/25 to-transparent backdrop-blur-sm"
           />
         )}
 
@@ -49,7 +49,7 @@ const Relatives = () => {
 
         {!hideBars && (
           <div
-            className="absolute bottom-0 left-0 right-0 h-[calc(env(safe-area-inset-bottom,0px)+30px)] pointer-events-none z-10 bg-gradient-to-t from-sky-200/70 via-sky-200/30 to-transparent dark:from-slate-950/85 dark:via-slate-950/35 backdrop-blur-md"
+            className="absolute bottom-0 left-0 right-0 h-[calc(env(safe-area-inset-bottom,0px)+30px)] pointer-events-none z-10 bg-gradient-to-t from-background/80 via-background/25 to-transparent backdrop-blur-sm"
           />
         )}
       </div>

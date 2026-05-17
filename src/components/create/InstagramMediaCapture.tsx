@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, ChevronRight, Image as ImageIcon, Lock, Music2, Play, Pause, RefreshCw, Smile, Type, Volume2, VolumeX, X, Disc, ImagePlus, AlignLeft, Pen, Undo2, Redo2, Trash2, Sparkles } from 'lucide-react';
+import { Camera, ChevronRight, Image as ImageIcon, Lock, Music2, Play, Pause, RefreshCw, Smile, Type, Volume2, VolumeX, X, Disc, ImagePlus, AlignLeft, Pen, Undo2, Redo2, Trash2, Sparkles, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Icon } from '@iconify/react';
 import { Capacitor } from '@capacitor/core';
@@ -244,18 +244,42 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
     try {
       let stream: MediaStream | null = null;
       try {
+        // Preferred: 1280x720 (720p HD) - Gold Standard for mobile WebRTC (picks primary sensor with focus)
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: { 
+            facingMode: { ideal: facingMode }, 
+            width: { ideal: 1280 }, 
+            height: { ideal: 720 } 
+          },
           audio: true,
         });
       } catch (e1) {
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: true });
+          // Fallback: 1080p full resolution
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+            audio: true,
+          });
         } catch (e2) {
           try {
-            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            // Fallback: raw ideal facingMode without resolution
+            stream = await navigator.mediaDevices.getUserMedia({ 
+              video: { facingMode: { ideal: facingMode } }, 
+              audio: true 
+            });
           } catch (e3) {
-            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            try {
+              // Fallback: legacy facingMode direct string
+              stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: true });
+            } catch (e4) {
+              try {
+                // Fallback: generic camera with audio
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+              } catch (e5) {
+                // Fallback: generic camera without audio
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+              }
+            }
           }
         }
       }
@@ -1595,7 +1619,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   const showCaptureUi = !isFocused && !trayOpen;
   const canAddMore = items.length < maxItems;
   const lastThree = useMemo(() => items.slice(-3), [items]);
-  const trayPeekHeight = '5.25rem';
+  const trayPeekHeight = '5.5rem';
 
   const handleSelectFromStrip = useCallback((idx: number) => {
     const it = items[idx];
@@ -2459,56 +2483,48 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
           <div
             className={cn(
               'absolute left-0 right-0 z-40 transition-transform duration-250 pointer-events-none',
-              trayOpen ? 'translate-y-0' : 'translate-y-[calc(100%_-_5.25rem)]'
+              trayOpen ? 'translate-y-0' : 'translate-y-[calc(100%_-_5.5rem)]'
             )}
             style={{ bottom: 0 }}
             onTouchStart={handleTrayTouchStart}
             onTouchEnd={handleTrayTouchEnd}
           >
             <div className="bg-black/70 backdrop-blur-xl border-t border-white/10 rounded-t-3xl overflow-hidden pointer-events-auto">
-              <div className="flex items-center justify-center py-2">
-                <div className="w-10 h-1 rounded-full bg-white/30" />
+              <div className="flex items-center justify-between px-4 py-2.5 relative flex-shrink-0">
+                {/* 3 dots button for files trigger */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={!canAddMore}
+                  className="w-9 h-5 rounded-full bg-white/[0.08] hover:bg-white/[0.15] border border-white/5 flex items-center justify-center active:scale-95 transition-all disabled:opacity-35"
+                  aria-label="Fayllarni tanlash"
+                >
+                  <MoreHorizontal className="w-3.5 h-3.5 text-white/80" />
+                </button>
+
+                {/* Central Drag handle */}
+                <div className="w-12 h-1.5 rounded-full bg-white/30 absolute left-1/2 -translate-x-1/2" />
+
+                {/* Spacer to keep it balanced */}
+                <div className="w-9 h-5 opacity-0 pointer-events-none" />
               </div>
 
-              {/* Collapsed row: last 3 previews + gallery */}
+              {/* Collapsed row: last 3 previews from gallery */}
               {!trayOpen && (
                 <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
-                  <div className="grid grid-cols-4 gap-2 items-center">
-                    {items.length > 0 ? Array.from({ length: 3 }).map((_, i) => {
-                      const it = lastThree[i];
-                      if (!it) return <div key={`empty-${i}`} className="w-12 h-12" />;
-                      const idx = items.length - lastThree.length + i;
-                      return (
-                        <button
-                          key={it.media.id}
-                          onClick={() => handleSelectFromStrip(idx)}
-                          className={cn(
-                            'w-12 h-12 rounded-xl overflow-hidden border-2',
-                            idx === activeIndex ? 'border-primary' : 'border-white/15'
-                          )}
-                        >
-                          <img src={it.media.thumbnail || it.media.url} alt="" className="w-full h-full object-cover" />
-                        </button>
-                      );
-                    }) : galleryItems.slice(0, 3).map((asset) => (
+                  <div className="grid grid-cols-3 gap-3 items-center">
+                    {galleryItems.slice(0, 3).map((asset) => (
                       <button
                         key={asset.identifier}
                         onClick={() => handleSelectGalleryItem(asset)}
-                        className="w-12 h-12 rounded-xl overflow-hidden border border-white/15 active:scale-95 transition-transform"
+                        className="w-full h-24 rounded-2xl overflow-hidden border border-white/15 active:scale-95 transition-transform"
                       >
                          <img src={asset.thumbnail} alt="" className="w-full h-full object-cover" />
                       </button>
                     ))}
-                    {items.length === 0 && galleryItems.length < 3 && Array.from({ length: 3 - galleryItems.length }).map((_, i) => (
-                      <div key={`g-empty-${i}`} className="w-12 h-12 rounded-xl bg-white/5" />
+                    {galleryItems.length < 3 && Array.from({ length: 3 - galleryItems.length }).map((_, i) => (
+                      <div key={`g-empty-${i}`} className="w-full h-24 rounded-2xl bg-white/5" />
                     ))}
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={!canAddMore}
-                      className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center disabled:opacity-30 active:scale-90 transition-transform"
-                    >
-                      <ImageIcon className="w-5 h-5 text-white" />
-                    </button>
                   </div>
                 </div>
               )}

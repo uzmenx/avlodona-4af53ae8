@@ -221,6 +221,16 @@ const translations = {
   newChannel: { uz: "Yangi kanal", ru: "Новый канал", en: "New channel" },
   channelName: { uz: "Kanal nomi", ru: "Название канала", en: "Channel name" },
   namePlaceholder: { uz: "Nomini kiriting", ru: "Введите название", en: "Enter name" },
+  gallery: { uz: "Galereya", ru: "Галерея", en: "Gallery" },
+  gifs: { uz: "GIFlar", ru: "GIF", en: "GIFs" },
+  searchGifs: { uz: "GIPHY'dan izlash...", ru: "Поиск в GIPHY...", en: "Search GIPHY..." },
+  allowPermission: { uz: "Ruxsat berish", ru: "Разрешить", en: "Allow" },
+  givePermissionDesc: { uz: "Rasmlarni ko'rish uchun ruxsat bering", ru: "Разрешите доступ к фотографиям", en: "Please grant access to photos" },
+  cropHint: { uz: "Moslashtirish uchun suring yoki masshtablang", ru: "Перетащите или масштабируйте для настройки", en: "Drag or pinch to adjust" },
+  uploadFromDevice: { uz: "Tizimdan rasm yuklash", ru: "Загрузить с устройства", en: "Upload from device" },
+  uploadFromDeviceDesc: { uz: "Istalgan PNG, JPG formatidagi rasmni yuklang", ru: "Загрузите любое изображение PNG, JPG", en: "Upload any PNG, JPG image" },
+  selectGif: { uz: "GIF tanlang", ru: "Выберите GIF", en: "Select a GIF" },
+  selectPhoto: { uz: "Rasm tanlang", ru: "Выберите фото", en: "Select a photo" },
 } as const;
 
 type TranslationKey = keyof typeof translations;

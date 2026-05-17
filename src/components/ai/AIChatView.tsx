@@ -3,6 +3,7 @@ import { Send, Paperclip, X, Cpu, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Icon } from '@iconify/react';
 
 interface AIChatMessage {
   id: string;
@@ -183,7 +184,7 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
             </div>
           </div> :
 
-        <div className="space-y-3 pt-2">
+        <div className="space-y-3 pt-2 pb-20">
             {messages.map((msg) => {
             const isUser = msg.role === 'user';
             return (
@@ -236,45 +237,46 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
         }
       </div>
 
-      {/* Input */}
-      <div className="p-3 pb-[max(1rem,env(safe-area-inset-bottom))] mt-auto shrink-0 w-full bg-background/50 backdrop-blur-sm">
-        {attachments.length > 0 &&
-        <div className="flex gap-2 px-2 pb-2 overflow-x-auto">
-            {attachments.map((att, idx) =>
-          <div key={idx} className="relative shrink-0">
-                {att.type === 'image' ?
-            <img src={`data:${att.mimeType};base64,${att.data}`} className="h-12 w-12 rounded-xl object-cover border border-border/50" alt="preview" /> :
-
-            <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center border border-border/50 text-xs">📄</div>
-            }
+    {/* Premium Floating Input Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent border-none p-2 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pointer-events-none">
+        {attachments.length > 0 && (
+          <div className="flex gap-2 px-4 py-2 bg-background/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-border/40 rounded-2xl mx-1 shadow-lg pointer-events-auto mb-2 overflow-x-auto">
+            {attachments.map((att, idx) => (
+              <div key={idx} className="relative shrink-0">
+                {att.type === 'image' ? (
+                  <img src={`data:${att.mimeType};base64,${att.data}`} className="h-12 w-12 rounded-xl object-cover border border-border/50" alt="preview" />
+                ) : (
+                  <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center border border-border/50 text-xs">📄</div>
+                )}
                 <button onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
-            className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-destructive rounded-full text-white text-[8px] flex items-center justify-center">
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-destructive rounded-full text-white text-[8px] flex items-center justify-center">
                   <X className="h-2.5 w-2.5" />
                 </button>
               </div>
-          )}
+            ))}
           </div>
-        }
-        <div className="relative bg-card/50 backdrop-blur-2xl border border-border/50 rounded-[28px] flex items-center p-1.5 shadow-lg">
+        )}
+        <div className="flex items-center gap-1.5 bg-background/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-border/40 rounded-[28px] px-2 py-1.5 shadow-lg shadow-black/5 pointer-events-auto mx-1">
+          <input 
+            value={input} 
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {if (e.key === 'Enter' && !e.shiftKey) {e.preventDefault();sendMessage(input);}}}
+            placeholder={attachments.length > 0 ? "Fayl haqida so'rang..." : "Xabar yozing..."}
+            className="flex-1 bg-transparent border-none focus:outline-none text-foreground placeholder:text-muted-foreground px-3.5 h-9 text-sm"
+            disabled={isLoading} 
+          />
           
-
-
-          
-          <input value={input} onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {if (e.key === 'Enter' && !e.shiftKey) {e.preventDefault();sendMessage(input);}}}
-          placeholder={attachments.length > 0 ? "Fayl haqida so'rang..." : "Xabar yozing..."}
-          className="flex-1 bg-transparent border-none focus:outline-none text-foreground placeholder:text-muted-foreground px-3 h-9 text-sm"
-          disabled={isLoading} />
-          
-          <button onClick={() => sendMessage(input)}
-          disabled={!input.trim() && attachments.length === 0 || isLoading}
-          className={cn(
-            'w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-md',
-            input.trim() || attachments.length > 0 ?
-            'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:scale-105 hover:shadow-purple-500/40' :
-            'bg-muted text-muted-foreground opacity-50'
-          )}>
-            <Send className="h-4 w-4" />
+          <button 
+            onClick={() => sendMessage(input)}
+            disabled={!input.trim() && attachments.length === 0 || isLoading}
+            className={cn(
+              'w-[2.25rem] h-[2.25rem] rounded-full flex items-center justify-center transition-all shadow-md shrink-0 active:scale-90',
+              input.trim() || attachments.length > 0 ?
+              'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:opacity-90 hover:scale-105' :
+              'bg-muted text-muted-foreground opacity-50 cursor-not-allowed'
+            )}
+          >
+            <Icon icon="heroicons:paper-airplane-16-solid" className="h-[1.35rem] w-[1.35rem]" />
           </button>
         </div>
       </div>

@@ -217,6 +217,14 @@ export const UserProfilePage = () => {
 
 
   const lastProfileTapTsRef = useRef<number>(0);
+  
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('app:transparentBars', { detail: { transparent: true } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('app:transparentBars', { detail: { transparent: false } }));
+    };
+  }, []);
+
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [viewerStartIndex, setViewerStartIndex] = useState(0);
   const [viewerPosts, setViewerPosts] = useState<Post[]>([]);
@@ -736,7 +744,7 @@ export const UserProfilePage = () => {
               placeholder="Qidirish"
               className={cn(
                 'h-9 bg-white/15 text-white placeholder:text-white/70 border border-white/20 rounded-full transition-all duration-200 mr-2',
-                searchExpanded ? 'w-44 px-3 opacity-100' : 'w-0 px-0 opacity-0 pointer-events-none'
+                searchExpanded ? 'w-[100px] min-[375px]:w-[140px] px-3 opacity-100' : 'w-0 px-0 opacity-0 pointer-events-none'
               )}
               style={{ backdropFilter: 'blur(8px)' }} />
             
