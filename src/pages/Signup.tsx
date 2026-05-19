@@ -96,13 +96,19 @@ const Signup = () => {
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: Capacitor.isNativePlatform() ? "com.avlodona.app://auth/callback" : "https://avlodona.com/auth/callback"
+          redirectTo: Capacitor.isNativePlatform() ? "com.avlodona.app://auth/callback" : "https://avlodona.com/auth/callback",
+          skipBrowserRedirect: Capacitor.isNativePlatform()
         }
       });
       if (error) throw error;
+      
+      if (Capacitor.isNativePlatform() && data?.url) {
+        const { Browser } = await import('@capacitor/browser');
+        await Browser.open({ url: data.url });
+      }
     } catch (error: unknown) {
       toast({ title: t("error"), description: (error as Error).message || t("googleError"), variant: "destructive" });
       setIsGoogleLoading(false);
@@ -143,16 +149,12 @@ const Signup = () => {
 
           <form onSubmit={handleSignup} className="space-y-3">
             <div className="space-y-2">
-              <div className="flex justify-between items-center px-1">
-                <Label htmlFor="fullName" className="text-[rgba(255,255,255,0.7)] text-sm">To'liq ism</Label>
-                <span className="text-xs text-[rgba(255,255,255,0.5)]">(Ixtiyoriy)</span>
-              </div>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 z-10 pointer-events-none" />
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="Ismingiz"
+                  placeholder={t('nameOptional')}
                   value={fullName}
                   maxLength={25}
                   onChange={(e) => setFullName(e.target.value)}
@@ -206,8 +208,7 @@ const Signup = () => {
             </div>
 
             {/* Gender Toggle */}
-            <div className="space-y-2 py-1 text-center">
-              <Label className="text-[rgba(255,255,255,0.7)] text-sm">{t('gender')}</Label>
+            <div className="py-1 text-center">
               <div className="flex justify-center gap-3">
                 <button
                   type="button"

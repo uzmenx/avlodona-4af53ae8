@@ -5,9 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export async function compressImage(
   file: File,
-  maxWidth = 1920,
-  maxHeight = 1920,
-  quality = 0.8
+  maxWidth = 3200,
+  maxHeight = 3200,
+  quality = 0.95
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -22,6 +22,8 @@ export async function compressImage(
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d')!;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, width, height);
       canvas.toBlob(
         (blob) => {

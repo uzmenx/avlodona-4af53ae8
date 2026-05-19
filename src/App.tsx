@@ -13,6 +13,7 @@ import { PlanOverlay } from "@/components/subscription/PlanOverlay";
 import { ErrorBoundary } from "react-error-boundary";
 import { ErrorFallback } from "@/components/ui/ErrorFallback";
 import { StatusBarHandler } from "@/components/layout/StatusBarHandler";
+import { useDeepLinks } from "@/hooks/useDeepLinks";
 
 
 import Home from "./pages/Home";
@@ -45,6 +46,11 @@ import { AudioProvider } from "@/contexts/AudioContext";
 
 const queryClient = new QueryClient();
 const FIRST_VISIT_KEY = 'avlodona:first-visit:v1';
+
+const DeepLinkListener = () => {
+  useDeepLinks();
+  return null;
+};
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -107,6 +113,7 @@ const App = () => (
           <PlanOverlay />
           <StatusBarHandler />
           <BrowserRouter>
+            <DeepLinkListener />
             <PushNotification />
             <GlobalMessageListener />
             <GlobalCallListener />

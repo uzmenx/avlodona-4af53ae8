@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2, compressImage } from '@/lib/r2Upload';
 import { cn } from '@/lib/utils';
 import { validateUsername } from '@/utils/usernameUtils';
+import { isVideoUrl, transcodeVideo } from '@/lib/videoUtils';
 
 const EditProfile = () => {
   const { profile, user, refreshProfile } = useAuth();
@@ -246,14 +247,21 @@ const EditProfile = () => {
     try {
       const response = await fetch(croppedUrl);
       const blob = await response.blob();
-      const file = new File([blob], `${cropperState.type}_${Date.now()}.jpg`, { type: 'image/jpeg' });
-      const compressed = await compressImage(
-        file,
-        cropperState.type === 'avatar' ? 256 : 800,
-        cropperState.type === 'avatar' ? 256 : 800,
-        0.85
-      );
-      const url = await uploadToR2(compressed, `avatars/${user.id}`);
+      let url = '';
+      if (blob.type.startsWith('video/')) {
+        const file = new File([blob], `${cropperState.type}_${Date.now()}.mp4`, { type: blob.type });
+        const transcodedBlob = await transcodeVideo(file, 10, 1080);
+        url = await uploadToR2(transcodedBlob, `${cropperState.type === 'avatar' ? 'avatars' : 'covers'}/${user.id}`);
+      } else {
+        const file = new File([blob], `${cropperState.type}_${Date.now()}.jpg`, { type: 'image/jpeg' });
+        const compressed = await compressImage(
+          file,
+          cropperState.type === 'avatar' ? 1024 : 3200,
+          cropperState.type === 'avatar' ? 1024 : 3200,
+          0.98
+        );
+        url = await uploadToR2(compressed, `${cropperState.type === 'avatar' ? 'avatars' : 'covers'}/${user.id}`);
+      }
 
       if (cropperState.type === 'avatar') {
         setFormData((prev) => ({ ...prev, avatar_url: url }));
@@ -304,10 +312,26 @@ const EditProfile = () => {
               onClick={() => { setCropperState({ isOpen: true, imageUrl: '', type: 'cover' }); }}>
               
               {formData.cover_url ?
-              <img
-                src={formData.cover_url}
-                alt="Cover"
-                className="w-full h-full object-cover" /> :
+                isVideoUrl(formData.cover_url) ? (
+                  <video
+                    src={formData.cover_url}
+                    className="w-full h-full object-cover"
+                    autoPlay loop muted playsInline
+                    ref={(el) => {
+                      if (el) {
+                        el.addEventListener('timeupdate', () => {
+                          if (el.currentTime >= 10) {
+                            el.currentTime = 0;
+                            el.play().catch(() => {});
+                          }
+                        });
+                      }
+                    }}
+                  />
+                ) : (
+                  <img src={formData.cover_url} alt="Cover" className="w-full h-full object-cover" />
+                )
+              :
               <div className="w-full h-full bg-gradient-to-br from-indigo-500/25 via-purple-500/15 to-cyan-500/25" />
               }
               <div className="absolute inset-0 bg-black/20" />
@@ -324,7 +348,25 @@ const EditProfile = () => {
                   onClick={() => { setCropperState({ isOpen: true, imageUrl: '', type: 'avatar' }); }}>
                   
                   <Avatar className="h-20 w-20">
-                    <AvatarImage src={formData.avatar_url || undefined} className="object-cover" />
+                    {isVideoUrl(formData.avatar_url) ? (
+                      <video
+                        src={formData.avatar_url}
+                        className="w-full h-full object-cover rounded-full"
+                        autoPlay loop muted playsInline
+                        ref={(el) => {
+                          if (el) {
+                            el.addEventListener('timeupdate', () => {
+                              if (el.currentTime >= 10) {
+                                el.currentTime = 0;
+                                el.play().catch(() => {});
+                              }
+                            });
+                          }
+                        }}
+                      />
+                    ) : (
+                      <AvatarImage src={formData.avatar_url || undefined} className="object-cover" />
+                    )}
                     <AvatarFallback className={cn('text-xl text-white', getGenderBgColor())}>
                       {getInitials(formData.name) || <User className="h-6 w-6" />}
                     </AvatarFallback>

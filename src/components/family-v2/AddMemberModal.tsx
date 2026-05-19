@@ -101,7 +101,7 @@ export const AddMemberModal = ({
       const response = await fetch(croppedUrl);
       const blob = await response.blob();
       const file = new File([blob], `family_member_${Date.now()}.jpg`, { type: 'image/jpeg' });
-      const compressed = await compressImage(file, 256, 256, 0.85);
+      const compressed = await compressImage(file, 1024, 1024, 0.98);
       const url = await uploadToR2(compressed, 'family-members', `tmp_${Date.now()}`);
       setPhotoUrl(url);
     } finally {

@@ -47,13 +47,19 @@ const AuthLogin = () => {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: Capacitor.isNativePlatform() ? "com.avlodona.app://auth/callback" : "https://avlodona.com/auth/callback"
+          redirectTo: Capacitor.isNativePlatform() ? "com.avlodona.app://auth/callback" : "https://avlodona.com/auth/callback",
+          skipBrowserRedirect: Capacitor.isNativePlatform()
         }
       });
       if (error) throw error;
+      
+      if (Capacitor.isNativePlatform() && data?.url) {
+        const { Browser } = await import('@capacitor/browser');
+        await Browser.open({ url: data.url });
+      }
     } catch (error: unknown) {
       toast({ title: t("error"), description: (error as Error).message || t("googleError"), variant: "destructive" });
       setIsGoogleLoading(false);

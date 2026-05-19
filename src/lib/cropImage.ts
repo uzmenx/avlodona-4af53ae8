@@ -78,6 +78,9 @@ export default async function getCroppedImg(
   croppedCanvas.width = pixelCrop.width;
   croppedCanvas.height = pixelCrop.height;
 
+  croppedCtx.imageSmoothingEnabled = true;
+  croppedCtx.imageSmoothingQuality = 'high';
+
   // Draw the cropped image onto the new canvas
   croppedCtx.drawImage(
     canvas,

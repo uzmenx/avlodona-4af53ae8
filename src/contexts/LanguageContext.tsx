@@ -80,6 +80,7 @@ const translations = {
   },
   createAccount: { uz: "Yangi akkaunt yarating", ru: "Создайте аккаунт", en: "Create an account" },
   username: { uz: "Ism va Familiya", ru: "Имя и Фамилия", en: "Full Name" },
+  nameOptional: { uz: "Ismingiz (ixtiyoriy)", ru: "Ваше имя (необязательно)", en: "Your name (optional)" },
   userHandle: { uz: "Foydalanuvchi nomi", ru: "Имя пользователя", en: "Username" },
   password: { uz: "Parol", ru: "Пароль", en: "Password" },
   signup: { uz: "RO'YXATDAN O'TISH", ru: "РЕГИСТРАЦИЯ", en: "SIGN UP" },

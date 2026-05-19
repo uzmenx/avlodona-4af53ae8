@@ -41,8 +41,8 @@ import { formatCount } from '@/lib/formatCount';
 import { getStoryRingGradient } from '@/components/stories/storyRings';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Post } from '@/types';
 import { useAutoPreviewVideo } from '@/hooks/useAutoPreviewVideo';
+import { isVideoUrl } from '@/lib/videoUtils';
 import { Icon } from '@iconify/react';
 
 const PremiumStarsIcon = ({ className, active, size = 'default' }: { className?: string; active?: boolean; size?: 'default' | 'sm' }) => (
@@ -376,7 +376,7 @@ const Profile = () => {
   const hasMore = false;
 
   return (
-    <AppLayout showSafeAreaPadding={false}>
+    <AppLayout showSafeAreaPadding={true}>
       <div
         className="min-h-screen pb-20 relative"
         onPointerUp={(e) => {
@@ -467,10 +467,29 @@ const Profile = () => {
         <div className="relative h-28 overflow-hidden rounded-b-2xl rounded-t-none">
 
           {(profile as any)?.cover_url ?
-            <img
-              src={(profile as any).cover_url}
-              alt="Cover"
-              className="w-full h-full object-cover" /> :
+            isVideoUrl((profile as any).cover_url) ? (
+              <video
+                src={(profile as any).cover_url}
+                className="w-full h-full object-cover"
+                autoPlay loop muted playsInline
+                ref={(el) => {
+                  if (el) {
+                    el.addEventListener('timeupdate', () => {
+                      if (el.currentTime >= 10) {
+                        el.currentTime = 0;
+                        el.play().catch(() => {});
+                      }
+                    });
+                  }
+                }}
+              />
+            ) : (
+              <img
+                src={(profile as any).cover_url}
+                alt="Cover"
+                className="w-full h-full object-cover" /> 
+            )
+          :
 
             <div className="w-full h-full bg-white/5 dark:bg-white/0" />
             }
@@ -526,7 +545,25 @@ const Profile = () => {
                           
                         <div className="w-full h-full rounded-full bg-background p-[2px]">
                           <Avatar className="h-full w-full">
-                            <AvatarImage src={profile?.avatar_url || undefined} />
+                            {isVideoUrl(profile?.avatar_url) ? (
+                              <video
+                                src={profile!.avatar_url}
+                                className="w-full h-full object-cover rounded-full"
+                                autoPlay loop muted playsInline
+                                ref={(el) => {
+                                  if (el) {
+                                    el.addEventListener('timeupdate', () => {
+                                      if (el.currentTime >= 10) {
+                                        el.currentTime = 0;
+                                        el.play().catch(() => {});
+                                      }
+                                    });
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <AvatarImage src={profile?.avatar_url || undefined} className="object-cover" />
+                            )}
                             <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-accent text-white font-bold">
                               {getInitials(profile?.name)}
                             </AvatarFallback>
@@ -537,7 +574,25 @@ const Profile = () => {
                   }
                   return (
                     <Avatar className="h-16 w-16 border-4 border-background shadow-2xl ring-2 ring-primary/30">
-                      <AvatarImage src={profile?.avatar_url || undefined} />
+                      {isVideoUrl(profile?.avatar_url) ? (
+                        <video
+                          src={profile!.avatar_url}
+                          className="w-full h-full object-cover rounded-full"
+                          autoPlay loop muted playsInline
+                          ref={(el) => {
+                            if (el) {
+                              el.addEventListener('timeupdate', () => {
+                                if (el.currentTime >= 10) {
+                                  el.currentTime = 0;
+                                  el.play().catch(() => {});
+                                }
+                              });
+                            }
+                          }}
+                        />
+                      ) : (
+                        <AvatarImage src={profile?.avatar_url || undefined} className="object-cover" />
+                      )}
                       <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-accent text-white font-bold">
                         {getInitials(profile?.name)}
                       </AvatarFallback>

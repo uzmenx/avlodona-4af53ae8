@@ -249,7 +249,7 @@ export const ProfileModal = ({
       const response = await fetch(croppedUrl);
       const blob = await response.blob();
       const file = new File([blob], `family_avatar_${member.id}_${Date.now()}.jpg`, { type: 'image/jpeg' });
-      const compressed = await compressImage(file, 256, 256, 0.85);
+      const compressed = await compressImage(file, 1024, 1024, 0.98);
       const url = await uploadToR2(compressed, `family-members/${member.id}`);
       setPhotoUrl(url);
     } finally {
@@ -279,7 +279,7 @@ export const ProfileModal = ({
       const response = await fetch(croppedUrl);
       const blob = await response.blob();
       const file = new File([blob], `family_cover_${member.id}_${Date.now()}.jpg`, { type: 'image/jpeg' });
-      const compressed = await compressImage(file, 800, 800, 0.85);
+      const compressed = await compressImage(file, 3200, 3200, 0.98);
       const url = await uploadToR2(compressed, `family-members/${member.id}-cover`);
       setCoverUrl(url);
     } finally {

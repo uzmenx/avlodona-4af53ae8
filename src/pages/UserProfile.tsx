@@ -45,6 +45,7 @@ import { StoryViewer } from '@/components/stories/StoryViewer';
 import type { StoryGroup, Story } from '@/hooks/useStories';
 import { Post } from '@/types';
 import { useAutoPreviewVideo } from '@/hooks/useAutoPreviewVideo';
+import { isVideoUrl, transcodeVideo } from '@/lib/videoUtils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 
@@ -641,9 +642,16 @@ export const UserProfilePage = () => {
       const filename = type === 'cover'
         ? `memorial_cover_${userId}_${Date.now()}.jpg`
         : `memorial_avatar_${userId}_${Date.now()}.jpg`;
-      const file = new File([blob], filename, { type: 'image/jpeg' });
-      const compressed = await compressImage(file, type === 'cover' ? 800 : 256, type === 'cover' ? 800 : 256, 0.85);
-      const url = await uploadToR2(compressed, type === 'cover' ? `memorial-covers/${userId}` : `memorial-avatars/${userId}`);
+      let url = '';
+      if (blob.type.startsWith('video/')) {
+        const file = new File([blob], filename.replace('.jpg', '.mp4'), { type: blob.type });
+        const transcodedBlob = await transcodeVideo(file, 10, 1080);
+        url = await uploadToR2(transcodedBlob, type === 'cover' ? `memorial-covers/${userId}` : `memorial-avatars/${userId}`);
+      } else {
+        const file = new File([blob], filename, { type: 'image/jpeg' });
+        const compressed = await compressImage(file, type === 'cover' ? 3200 : 1024, type === 'cover' ? 3200 : 1024, 0.98);
+        url = await uploadToR2(compressed, type === 'cover' ? `memorial-covers/${userId}` : `memorial-avatars/${userId}`);
+      }
       if (type === 'cover') {
         setEditCoverUrl(url);
       } else {
@@ -690,7 +698,7 @@ export const UserProfilePage = () => {
   }
 
   return (
-    <AppLayout showSafeAreaPadding={false}>
+    <AppLayout showSafeAreaPadding={true}>
       <div
         className="min-h-screen pb-20"
         onPointerUp={(e) => {
@@ -856,8 +864,26 @@ export const UserProfilePage = () => {
         {/* Cover Image */}
         <div className="relative h-28 overflow-hidden rounded-b-2xl rounded-t-none">
           {profile.cover_url ?
-          <img src={profile.cover_url} alt="Cover" className="w-full h-full object-cover" /> :
-
+            isVideoUrl(profile.cover_url) ? (
+              <video
+                src={profile.cover_url}
+                className="w-full h-full object-cover"
+                autoPlay loop muted playsInline
+                ref={(el) => {
+                  if (el) {
+                    el.addEventListener('timeupdate', () => {
+                      if (el.currentTime >= 10) {
+                        el.currentTime = 0;
+                        el.play().catch(() => {});
+                      }
+                    });
+                  }
+                }}
+              />
+            ) : (
+              <img src={profile.cover_url} alt="Cover" className="w-full h-full object-cover" />
+            )
+          :
           <div className="w-full h-full bg-gradient-to-br from-primary via-accent to-primary/60" />
           }
           {/* Dark overlay for readability */}
@@ -922,7 +948,25 @@ export const UserProfilePage = () => {
                       
                       <div className="w-full h-full rounded-full bg-background p-[2px]">
                         <Avatar className="h-full w-full">
-                          <AvatarImage src={profile.avatar_url || undefined} className="object-cover" />
+                          {isVideoUrl(profile.avatar_url) ? (
+                            <video
+                              src={profile.avatar_url}
+                              className="w-full h-full object-cover rounded-full"
+                              autoPlay loop muted playsInline
+                              ref={(el) => {
+                                if (el) {
+                                  el.addEventListener('timeupdate', () => {
+                                    if (el.currentTime >= 10) {
+                                      el.currentTime = 0;
+                                      el.play().catch(() => {});
+                                    }
+                                  });
+                                }
+                              }}
+                            />
+                          ) : (
+                            <AvatarImage src={profile.avatar_url || undefined} className="object-cover" />
+                          )}
                           <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-accent text-white font-bold">
                             {getInitials(profile.name)}
                           </AvatarFallback>
@@ -934,7 +978,25 @@ export const UserProfilePage = () => {
 
                 return (
                   <Avatar className="h-16 w-16 border-4 border-background shadow-2xl ring-2 ring-primary/30">
-                    <AvatarImage src={profile.avatar_url || undefined} className="object-cover" />
+                    {isVideoUrl(profile.avatar_url) ? (
+                      <video
+                        src={profile.avatar_url}
+                        className="w-full h-full object-cover rounded-full"
+                        autoPlay loop muted playsInline
+                        ref={(el) => {
+                          if (el) {
+                            el.addEventListener('timeupdate', () => {
+                              if (el.currentTime >= 10) {
+                                el.currentTime = 0;
+                                el.play().catch(() => {});
+                              }
+                            });
+                          }
+                        }}
+                      />
+                    ) : (
+                      <AvatarImage src={profile.avatar_url || undefined} className="object-cover" />
+                    )}
                     <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-accent text-white font-bold">
                       {getInitials(profile.name)}
                     </AvatarFallback>

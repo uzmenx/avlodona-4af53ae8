@@ -62,17 +62,17 @@ export const PlanOverlay = () => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="w-[95vw] max-w-md bg-card/95 backdrop-blur-2xl border-border/40 rounded-[32px] !z-[250] p-6 shadow-2xl overflow-hidden [&>button[aria-label='Close']]:bg-muted/50 [&>button[aria-label='Close']]:rounded-full [&>button[aria-label='Close']]:h-8 [&>button[aria-label='Close']]:w-8 [&>button[aria-label='Close']]:top-4 [&>button[aria-label='Close']]:right-4">
+      <DialogContent className="w-[95vw] max-w-md max-h-[92vh] overflow-y-auto bg-card/95 backdrop-blur-2xl border-border/40 rounded-[28px] sm:rounded-[32px] !z-[250] p-4 sm:p-6 shadow-2xl [&>button[aria-label='Close']]:bg-muted/50 [&>button[aria-label='Close']]:rounded-full [&>button[aria-label='Close']]:h-8 [&>button[aria-label='Close']]:w-8 [&>button[aria-label='Close']]:top-3 sm:[&>button[aria-label='Close']]:top-4 [&>button[aria-label='Close']]:right-3 sm:[&>button[aria-label='Close']]:right-4">
         
-        <DialogHeader className="text-center pb-2 pt-2 relative">
+        <DialogHeader className="text-center pb-1 pt-1 sm:pb-2 sm:pt-2 relative">
           {/* Glowing background blob */}
           <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-48 h-48 bg-purple-500/20 blur-[60px] rounded-full pointer-events-none" />
           
-          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-500 p-[2px] rounded-2xl mb-4 shadow-xl shadow-purple-500/20 transform rotate-3 relative group cursor-default">
-            <div className="absolute inset-0 bg-white/20 blur-md rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-full h-full bg-card rounded-[14px] flex items-center justify-center -rotate-3 overflow-hidden relative">
+          <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-indigo-500 to-purple-500 p-[2px] rounded-xl sm:rounded-2xl mb-2 sm:mb-4 shadow-xl shadow-purple-500/20 transform rotate-3 relative group cursor-default">
+            <div className="absolute inset-0 bg-white/20 blur-md rounded-xl sm:rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-full h-full bg-card rounded-[10px] sm:rounded-[14px] flex items-center justify-center -rotate-3 overflow-hidden relative">
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10" />
-              <Zap className="h-8 w-8 text-transparent fill-[url(#zap-gradient)] relative z-10 drop-shadow-md" />
+              <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-transparent fill-[url(#zap-gradient)] relative z-10 drop-shadow-md" />
               <svg width="0" height="0" className="absolute">
                 <linearGradient id="zap-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop stopColor="#6366f1" offset="0%" />
@@ -82,52 +82,52 @@ export const PlanOverlay = () => {
             </div>
           </div>
 
-          <DialogTitle className="text-3xl font-black tracking-tight mb-2">
+          <DialogTitle className="text-2xl sm:text-3xl font-black tracking-tight mb-1 sm:mb-2">
             Avlodona <span className="bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent drop-shadow-sm">Pro</span>
           </DialogTitle>
-          <DialogDescription className="text-center font-medium text-muted-foreground/80 px-2">
+          <DialogDescription className="text-center text-xs sm:text-sm font-medium text-muted-foreground/80 px-1 sm:px-2">
             Cheklovlarni olib tashlang. Yuqori imkoniyatlardan to'liq va erkin foydalaning!
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-4 mb-6 rounded-3xl bg-background/50 border border-border/50 overflow-hidden shadow-inner ring-1 ring-white/5">
+        <div className="mt-3 mb-4 sm:mt-4 sm:mb-6 rounded-2xl sm:rounded-3xl bg-background/50 border border-border/50 overflow-hidden shadow-inner ring-1 ring-white/5">
           {/* Header Row */}
-          <div className="grid grid-cols-[1fr_80px_100px] border-b border-border/40 bg-muted/20 items-center">
-            <div className="p-3 pl-4 text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Imkoniyat</div>
-            <div className="p-3 text-center text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Bepul</div>
-            <div className="p-3 text-center text-[10px] font-black text-purple-600 dark:text-purple-400 tracking-widest uppercase bg-purple-500/10 border-b-2 border-purple-500 relative overflow-hidden">
+          <div className="grid grid-cols-[1fr_70px_85px] sm:grid-cols-[1fr_80px_100px] border-b border-border/40 bg-muted/20 items-center">
+            <div className="p-2 sm:p-3 pl-3 sm:pl-4 text-[9px] sm:text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Imkoniyat</div>
+            <div className="p-2 sm:p-3 text-center text-[9px] sm:text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Bepul</div>
+            <div className="p-2 sm:p-3 text-center text-[9px] sm:text-[10px] font-black text-purple-600 dark:text-purple-400 tracking-widest uppercase bg-purple-500/10 border-b-2 border-purple-500 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10" />
-              <span className="relative z-10 flex items-center justify-center gap-1">
-                PRO <Star className="h-3 w-3 fill-current text-yellow-500/80 drop-shadow-sm" />
+              <span className="relative z-10 flex items-center justify-center gap-0.5 sm:gap-1">
+                PRO <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 fill-current text-yellow-500/80 drop-shadow-sm" />
               </span>
             </div>
           </div>
 
           {/* Feature Rows */}
           <FeatureRow title="AI Xabarlari" free="50 / kun" pro="500 / kun" />
-          <FeatureRow title="AI Rasm yaratish" free="1 dona/ 15 soat" pro="20 dona/kun" />
-          <FeatureRow title="1 post xotira hajmi" free="200 MB" pro="2 GB" />
+          <FeatureRow title="AI Rasm" free="1 / 15 s" pro="20 / kun" />
+          <FeatureRow title="Post xotirasi" free="200 MB" pro="2 GB" />
           <FeatureRow title="Video qo'ng'iroq" free="10 daq" pro="60 daq" isLast />
 
           {/* Pricing Row */}
-          <div className="grid grid-cols-[1fr_100px] border-t-2 border-purple-500/20 bg-purple-500/5 items-center relative overflow-hidden">
+          <div className="grid grid-cols-[1fr_90px] sm:grid-cols-[1fr_100px] border-t-2 border-purple-500/20 bg-purple-500/5 items-center relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 pointer-events-none" />
-            <div className="p-4 pl-4 relative z-10 flex items-center gap-3">
+            <div className="p-3 sm:p-4 pl-3 sm:pl-4 relative z-10 flex items-center gap-2 sm:gap-3">
               <div className="hidden sm:flex h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 p-[1px] shadow-md shadow-purple-500/20">
                 <div className="h-full w-full rounded-full bg-card flex items-center justify-center">
                   <Sparkles className="h-5 w-5 text-purple-500" />
                 </div>
               </div>
               <div>
-                <p className="font-bold text-sm text-foreground leading-tight">Pro Obuna</p>
-                <p className="text-[10px] font-medium text-muted-foreground mt-0.5">Avtomatik yangilanadi</p>
+                <p className="font-bold text-xs sm:text-sm text-foreground leading-tight">Pro Obuna</p>
+                <p className="text-[9px] sm:text-[10px] font-medium text-muted-foreground mt-0.5">Avtomatik yangilanadi</p>
               </div>
             </div>
-            <div className="p-4 relative z-10 text-center border-l border-purple-500/10 bg-purple-500/5">
-              <p className="text-lg font-black bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent leading-none mb-1 drop-shadow-sm">
+            <div className="p-3 sm:p-4 relative z-10 text-center border-l border-purple-500/10 bg-purple-500/5">
+              <p className="text-base sm:text-lg font-black bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent leading-none mb-0.5 sm:mb-1 drop-shadow-sm">
                 29.9K
               </p>
-              <p className="text-[9px] font-bold text-muted-foreground tracking-wider uppercase">so'm/oy</p>
+              <p className="text-[8px] sm:text-[9px] font-bold text-muted-foreground tracking-wider uppercase">so'm/oy</p>
             </div>
           </div>
         </div>
@@ -137,27 +137,27 @@ export const PlanOverlay = () => {
           <Button 
             disabled={loading || isPro} 
             onClick={handleUpgrade}
-            className="relative w-full h-14 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-xl shadow-purple-500/25 transition-all active:scale-[0.98] overflow-hidden group border-0"
+            className="relative w-full h-11 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-xl shadow-purple-500/25 transition-all active:scale-[0.98] overflow-hidden group border-0"
           >
             {/* Premium Metallic Shimmer animation */}
             {!loading && !isPro && (
               <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12" />
             )}
             
-            <div className="relative flex items-center justify-center gap-2 font-bold text-base sm:text-lg tracking-wide z-10">
+            <div className="relative flex items-center justify-center gap-1.5 sm:gap-2 font-bold text-sm sm:text-base tracking-wide z-10">
               {loading ? (
-                <Loader2 className="h-6 w-6 animate-spin" />
+                <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" />
               ) : isPro ? (
                 "Sizda allaqachon Pro tarif! 🎉"
               ) : (
                 <>
-                  Pro tarifga o'tish <Zap className="h-5 w-5 fill-current text-yellow-300 drop-shadow-md" />
+                  Pro tarifga o'tish <Zap className="h-4.5 w-4.5 sm:h-5 sm:w-5 fill-current text-yellow-300 drop-shadow-md" />
                 </>
               )}
             </div>
           </Button>
           
-          <p className="text-center text-[10px] text-muted-foreground/60 mt-3 font-medium px-4">
+          <p className="text-center text-[9px] sm:text-[10px] text-muted-foreground/60 mt-2 sm:mt-3 font-medium px-4">
             To'lov Stripe orqali xavfsiz amalga oshiriladi.
           </p>
         </div>

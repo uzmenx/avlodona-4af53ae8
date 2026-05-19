@@ -28,8 +28,8 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, in
     requestPermission
   } = useGallery({ pageSize: 120 });
 
-  const [localPhotos, setLocalPhotos] = useState<{ id: string; url: string }[]>([]);
-  const [selectedPhoto, setSelectedPhoto] = useState<{ id: string; url: string } | null>(null);
+  const [localPhotos, setLocalPhotos] = useState<{ id: string; url: string; isVideo?: boolean }[]>([]);
+  const [selectedPhoto, setSelectedPhoto] = useState<{ id: string; url: string; isVideo?: boolean } | null>(null);
   
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -119,7 +119,8 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, in
     if (!e.target.files) return;
     const newPhotos = Array.from(e.target.files).map(file => ({
       id: Math.random().toString(),
-      url: URL.createObjectURL(file)
+      url: URL.createObjectURL(file),
+      isVideo: file.type.startsWith('video/')
     }));
     setLocalPhotos(prev => [...newPhotos, ...prev]);
     if (newPhotos.length > 0) {
@@ -132,13 +133,13 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, in
   const handleConfirm = async () => {
     if (!selectedPhoto) return;
     
-    if (mode === 'gif') {
+    if (mode === 'gif' || selectedPhoto.isVideo) {
       try {
         setIsLoading(true);
         await onCropComplete(selectedPhoto.url);
         onClose();
       } catch (error) {
-        console.error('GIF error:', error);
+        console.error('Bypass error:', error);
       } finally {
         setIsLoading(false);
       }
@@ -249,17 +250,25 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, in
             {/* Top Half: Auto-Cropped Circle Preview (aspect-square for perfect 1:1, edge-to-edge) */}
             <div className="relative w-full aspect-square bg-zinc-900 shrink-0 border-b border-white/[0.04]">
               {selectedPhoto ? (
-                mode === 'gif' ? (
+                mode === 'gif' || selectedPhoto.isVideo ? (
                    <div className="w-full h-full flex items-center justify-center p-6">
                      <div className={cn(
                        "relative overflow-hidden bg-black/40 border border-white/10 shadow-2xl flex items-center justify-center",
                        type === 'avatar' ? 'w-[75%] aspect-square rounded-full' : 'w-[90%] aspect-[3/1] rounded-2xl'
                      )}>
-                       <img 
-                         src={selectedPhoto.url} 
-                         alt="GIF Preview"
-                         className="w-full h-full object-cover" 
-                       />
+                       {selectedPhoto.isVideo ? (
+                         <video 
+                           src={selectedPhoto.url} 
+                           className="w-full h-full object-cover" 
+                           autoPlay loop muted playsInline
+                         />
+                       ) : (
+                         <img 
+                           src={selectedPhoto.url} 
+                           alt="GIF Preview"
+                           className="w-full h-full object-cover" 
+                         />
+                       )}
                      </div>
                    </div>
                 ) : (
@@ -344,7 +353,7 @@ export const InstagramPhotoPicker = ({ isOpen, onClose, onCropComplete, type, in
                       type="file" 
                       ref={fileInputRef} 
                       className="hidden" 
-                      accept="image/*" 
+                      accept="image/*,video/*" 
                       onChange={handleFallbackUpload} 
                     />
                   </button>
