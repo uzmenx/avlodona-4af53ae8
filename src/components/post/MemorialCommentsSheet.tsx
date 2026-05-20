@@ -4,7 +4,9 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Heart, Send, Trash2 } from 'lucide-react';
+import { Heart, Send, Trash2, X, Image as ImageIcon } from 'lucide-react';
+import { uploadMedia } from '@/lib/r2Upload';
+import { toast } from 'sonner';
 
 import { formatDistanceToNow } from 'date-fns';
 import { useMemorialComments, MemorialComment } from '@/hooks/useMemorialComments';
@@ -25,7 +27,18 @@ export const MemorialCommentsSheet = ({ open, onOpenChange, memorialPostId }: Me
   const [replyTo, setReplyTo] = useState<{id: string;name: string;} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<{ file: File; preview: string } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (selectedImage) {
+        URL.revokeObjectURL(selectedImage.preview);
+      }
+    };
+  }, [selectedImage]);
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('app:forceHideNav', { detail: { hide: open } }));
@@ -49,11 +62,30 @@ export const MemorialCommentsSheet = ({ open, onOpenChange, memorialPostId }: Me
   };
 
   const handleSubmit = async () => {
-    if (!newComment.trim() || isSubmitting) return;
+    if ((!newComment.trim() && !selectedImage) || isSubmitting) return;
 
     setIsSubmitting(true);
-    await addComment(newComment, replyTo?.id);
+    let finalContent = newComment;
+    if (selectedImage && user?.id) {
+      try {
+        const imageUrl = await uploadMedia(selectedImage.file, 'comments', user.id);
+        if (imageUrl) {
+          finalContent = `[IMAGE]:${imageUrl}${newComment.trim() ? `||${newComment.trim()}` : ''}`;
+        } else {
+          toast.error("Rasmni yuklash imkoni bo'lmadi");
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (err: any) {
+        console.error("Failed to upload image to R2:", err);
+        toast.error(err?.message || "Rasmni yuklashda xatolik yuz berdi");
+        setIsSubmitting(false);
+        return;
+      }
+    }
+    await addComment(finalContent, replyTo?.id);
     setNewComment('');
+    setSelectedImage(null);
     setReplyTo(null);
     setIsSubmitting(false);
     setIsInputFocused(false);
@@ -112,7 +144,23 @@ export const MemorialCommentsSheet = ({ open, onOpenChange, memorialPostId }: Me
                 {' • '}
                 <span className="text-muted-foreground text-xs">{timeAgo}</span>
               </p>
-              <p className="text-sm mt-0.5">{comment.content}</p>
+              {comment.content.startsWith('[IMAGE]:') ? (
+                <div className="space-y-1.5 mt-1.5">
+                  <div className="rounded-xl overflow-hidden max-w-[240px] border relative bg-muted">
+                    <img
+                      src={comment.content.split('||')[0].substring(8)}
+                      alt="Rasm izoh"
+                      className="w-full h-auto object-cover max-h-[280px]"
+                      loading="lazy"
+                    />
+                  </div>
+                  {comment.content.includes('||') && (
+                    <p className="text-sm">{comment.content.split('||')[1]}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm mt-0.5">{comment.content}</p>
+              )}
               
               <div className="flex items-center gap-4 mt-1.5">
                 <button
@@ -199,37 +247,98 @@ export const MemorialCommentsSheet = ({ open, onOpenChange, memorialPostId }: Me
             </div>
           }
           
-          {user ?
-          <div className="flex items-center gap-2">
-              {!isInputFocused ?
-            <button
-              onClick={handleInputButtonClick}
-              className="flex-1 text-left px-4 py-3 bg-muted/50 rounded-full text-muted-foreground text-sm">
-                  Izoh yozing...
-                </button> :
-            <textarea
-              ref={inputRef}
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyPress={handleKeyPress}
-              onBlur={() => {
-                if (!newComment.trim()) {
-                  setTimeout(() => setIsInputFocused(false), 100);
-                }
-              }}
-              placeholder="Izoh yozing..."
-              className="flex-1 resize-none bg-muted/50 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[44px] max-h-[120px]"
-              rows={1}
-              disabled={isSubmitting} />
-            }
-              <Button
-              size="icon"
-              onClick={handleSubmit}
-              disabled={!newComment.trim() || isSubmitting}
-              className="rounded-full h-10 w-10 flex-shrink-0">
-                <Send className="h-4 w-4" />
-              </Button>
-            </div> :
+          {user ? (
+            <div className="flex flex-col gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    if (selectedImage) {
+                      URL.revokeObjectURL(selectedImage.preview);
+                    }
+                    setSelectedImage({
+                      file,
+                      preview: URL.createObjectURL(file)
+                    });
+                    setIsInputFocused(true);
+                  }
+                  e.target.value = '';
+                }}
+                disabled={isSubmitting}
+              />
+
+              {/* Selected Image Preview */}
+              {selectedImage && (
+                <div className="relative inline-block mb-1 ml-2 self-start">
+                  <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-border bg-muted">
+                    <img src={selectedImage.preview} alt="Yuklanayotgan rasm" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedImage) {
+                          URL.revokeObjectURL(selectedImage.preview);
+                          setSelectedImage(null);
+                        }
+                      }}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-sm hover:bg-destructive/90 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                {!isInputFocused && !selectedImage ? (
+                  <button
+                    onClick={handleInputButtonClick}
+                    className="flex-1 text-left px-4 py-3 bg-muted/50 rounded-full text-muted-foreground text-sm"
+                  >
+                    Izoh yozing...
+                  </button>
+                ) : (
+                  <div className="flex-1 relative flex items-center bg-muted/50 rounded-2xl border border-white/10 px-3">
+                    <textarea
+                      ref={inputRef}
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      onBlur={() => {
+                        if (!newComment.trim() && !selectedImage) {
+                          setTimeout(() => setIsInputFocused(false), 100);
+                        }
+                      }}
+                      placeholder="Izoh yozing..."
+                      className="flex-1 resize-none bg-transparent py-3 text-sm focus:outline-none min-h-[44px] max-h-[120px] pr-8"
+                      rows={1}
+                      disabled={isSubmitting}
+                    />
+                    
+                    {/* Attachment Button */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isSubmitting}
+                      className="absolute right-2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                    >
+                      <ImageIcon className="h-4.5 w-4.5" />
+                    </button>
+                  </div>
+                )}
+                <Button
+                  size="icon"
+                  onClick={handleSubmit}
+                  disabled={(!newComment.trim() && !selectedImage) || isSubmitting}
+                  className="rounded-full h-10 w-10 flex-shrink-0"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>) :
           <p className="text-center text-sm text-muted-foreground py-2">
               Izoh qoldirish uchun tizimga kiring
             </p>
