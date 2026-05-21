@@ -1504,7 +1504,6 @@ export type Database = {
           cover_url: string | null
           created_at: string
           family_network_id: string | null
-          fcm_token: string | null
           gender: string | null
           hide_collections: boolean
           hide_highlights: boolean
@@ -1530,7 +1529,6 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           family_network_id?: string | null
-          fcm_token?: string | null
           gender?: string | null
           hide_collections?: boolean
           hide_highlights?: boolean
@@ -1556,7 +1554,6 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           family_network_id?: string | null
-          fcm_token?: string | null
           gender?: string | null
           hide_collections?: boolean
           hide_highlights?: boolean
