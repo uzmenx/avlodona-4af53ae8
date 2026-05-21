@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { generateBaseUsername, ensureUniqueUsername } from '@/utils/usernameUtils';
+import { signOutFromGoogleNative } from '@/lib/googleSignIn';
 
 interface Profile {
   id: string;
@@ -202,6 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = async () => {
+    await signOutFromGoogleNative();
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);

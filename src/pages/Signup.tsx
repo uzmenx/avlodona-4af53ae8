@@ -12,7 +12,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { LangSwitcher } from "@/components/LangSwitcher";
 import { LegalFooter } from "@/components/legal/LegalFooter";
 import { ensureUniqueUsername, generateBaseUsername } from "@/utils/usernameUtils";
-import { Capacitor } from "@capacitor/core";
+import { signInWithGoogle } from "@/lib/googleSignIn";
 
 const Signup = () => {
   const [fullName, setFullName] = useState("");
@@ -96,21 +96,14 @@ const Signup = () => {
   const handleGoogleSignup = async () => {
     setIsGoogleLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: Capacitor.isNativePlatform() ? "com.avlodona.app://auth/callback" : "https://avlodona.com/auth/callback",
-          skipBrowserRedirect: Capacitor.isNativePlatform()
-        }
-      });
-      if (error) throw error;
-      
-      if (Capacitor.isNativePlatform() && data?.url) {
-        const { Browser } = await import('@capacitor/browser');
-        await Browser.open({ url: data.url });
+      const result = await signInWithGoogle();
+      if (!result.redirected) {
+        toast({ title: t("success"), description: "Ro'yxatdan o'tdingiz!" });
+        navigate("/");
       }
     } catch (error: unknown) {
       toast({ title: t("error"), description: (error as Error).message || t("googleError"), variant: "destructive" });
+    } finally {
       setIsGoogleLoading(false);
     }
   };
