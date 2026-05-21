@@ -159,6 +159,8 @@ export type Database = {
           created_at: string
           id: string
           likes_count: number
+          media_type: string | null
+          media_url: string | null
           parent_id: string | null
           post_id: string
           updated_at: string
@@ -169,6 +171,8 @@ export type Database = {
           created_at?: string
           id?: string
           likes_count?: number
+          media_type?: string | null
+          media_url?: string | null
           parent_id?: string | null
           post_id: string
           updated_at?: string
@@ -179,6 +183,8 @@ export type Database = {
           created_at?: string
           id?: string
           likes_count?: number
+          media_type?: string | null
+          media_url?: string | null
           parent_id?: string | null
           post_id?: string
           updated_at?: string
@@ -703,42 +709,16 @@ export type Database = {
             referencedRelation: "group_messages"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      group_message_comments: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          message_id: string
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          message_id: string
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          message_id?: string
-          user_id?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "group_message_comments_message_id_fkey"
-            columns: ["message_id"]
+            foreignKeyName: "group_message_reactions_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "group_messages"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
       group_messages: {
-
         Row: {
           content: string
           created_at: string
@@ -1044,6 +1024,13 @@ export type Database = {
             referencedRelation: "messages"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "message_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       messages: {
@@ -1340,40 +1327,7 @@ export type Database = {
           },
         ]
       }
-      post_reactions: {
-        Row: {
-          created_at: string
-          emoji: string
-          id: string
-          post_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          emoji: string
-          id?: string
-          post_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          emoji?: string
-          id?: string
-          post_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "post_reactions_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "posts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       post_mentions: {
-
         Row: {
           created_at: string
           family_member_id: string | null
@@ -1408,6 +1362,45 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_reactions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
