@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LangSwitcher } from "@/components/LangSwitcher";
 import { LegalFooter } from "@/components/legal/LegalFooter";
@@ -60,7 +59,7 @@ const AuthLogin = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-[#0a0a1a] via-[#1a1a3e] to-[#0a0a1a]">
+    <div className="min-h-[100dvh] flex flex-col justify-between items-center relative overflow-hidden bg-gradient-to-br from-[#0a0a1a] via-[#1a1a3e] to-[#0a0a1a] px-4 py-4 sm:py-6">
       {/* Animated Bokeh Background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 left-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
@@ -70,28 +69,27 @@ const AuthLogin = () => {
         <div className="absolute bottom-20 right-20 w-52 h-52 bg-teal-400/15 rounded-full blur-2xl animate-pulse delay-1500" />
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-4 w-full">
+      {/* Content Container */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center w-full max-w-md my-auto py-2">
         {/* Glass Card */}
-        <div className="w-full max-w-md backdrop-blur-xl bg-white/8 border border-white/20 rounded-3xl shadow-2xl p-5 sm:p-6 space-y-4 relative">
+        <div className="w-full backdrop-blur-xl bg-white/8 border border-white/20 rounded-3xl shadow-2xl p-4 sm:p-5 space-y-3 relative">
           
           {/* Top Controls inside card */}
-          <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 hover:bg-white/10 rounded-full transition-all duration-300 backdrop-blur-sm flex items-center justify-center h-10 w-10"
-            >
-              <ArrowLeft className="h-5 w-5 text-white" />
-            </button>
+          <div className="absolute top-4 right-4 z-20">
             <LangSwitcher glow />
           </div>
 
-          <div className="text-center pt-8 mb-5">
-            <h1 className="text-xl sm:text-2xl font-bold text-white mb-2 leading-tight px-2">{t('landingH1')}</h1>
-            <p className="text-white/70 text-sm leading-relaxed max-w-[280px] mx-auto">{t('landingTagline')}</p>
+          <div className="text-center pt-6 mb-2 flex flex-col items-center">
+            <img 
+              src="/app-logo.png" 
+              alt="Avlodona Logo" 
+              className="w-12 h-12 sm:w-14 sm:h-14 object-contain mb-2 rounded-2xl" 
+            />
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-1 leading-tight px-2">{t('landingH1')}</h1>
+            <p className="text-white/70 text-xs sm:text-sm leading-relaxed max-w-[280px] mx-auto">{t('landingTagline')}</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-3">
+          <form onSubmit={handleLogin} className="space-y-2.5">
             <div className="space-y-2">
               <Label htmlFor="email" className="sr-only">
                 Email
@@ -104,7 +102,7 @@ const AuthLogin = () => {
                   placeholder={t('email')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-12 h-12 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-2xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm"
+                  className="pl-12 h-10 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm text-sm"
                   required
                 />
               </div>
@@ -122,7 +120,7 @@ const AuthLogin = () => {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-12 pr-12 h-12 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-2xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm"
+                  className="pl-12 pr-12 h-10 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm text-sm"
                   required
                 />
                 <button
@@ -137,12 +135,12 @@ const AuthLogin = () => {
 
             <Button
               type="submit"
-              className="w-full h-12 rounded-full bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#16a34a] hover:to-[#15803d] text-white font-bold text-sm transition-all duration-300 transform hover:scale-105 shadow-lg shadow-[rgba(34,197,94,0.4)] tracking-[0.04em]"
+              className="w-full h-10 rounded-full bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#16a34a] hover:to-[#15803d] text-white font-bold text-sm transition-all duration-300 transform hover:scale-105 shadow-lg shadow-[rgba(34,197,94,0.4)] tracking-[0.04em]"
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {t('loggingIn')}
                 </>
               ) : (
@@ -151,23 +149,12 @@ const AuthLogin = () => {
             </Button>
           </form>
 
-          <p className="text-xs text-white/60 leading-relaxed">
-            By continuing, you agree to our{' '}
-            <Link to="/terms" className="text-white/80 hover:text-white underline underline-offset-4">
-              Terms of Service
-            </Link>{' '}
-            and{' '}
-            <Link to="/privacy-policy" className="text-white/80 hover:text-white underline underline-offset-4">
-              Privacy Policy
-            </Link>.
-          </p>
-
-          <div className="relative py-3">
+          <div className="relative py-2">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-[rgba(255,255,255,0.15)]" />
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-transparent px-4 text-[rgba(255,255,255,0.5)]">{t('or')}</span>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-transparent px-3 text-[rgba(255,255,255,0.5)]">{t('or')}</span>
             </div>
           </div>
 
@@ -175,15 +162,15 @@ const AuthLogin = () => {
           <Button
             type="button"
             variant="outline"
-            className="w-full h-12 rounded-full bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.12)] hover:border-[rgba(255,255,255,0.3)] transition-all duration-300 backdrop-blur-sm"
+            className="w-full h-10 rounded-full bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.12)] hover:border-[rgba(255,255,255,0.3)] transition-all duration-300 backdrop-blur-sm"
             onClick={handleGoogleLogin}
             disabled={isGoogleLoading}
           >
             {isGoogleLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin text-white" />
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
             ) : (
               <div className="flex items-center justify-center gap-3">
-                <svg className="h-5 w-5" viewBox="0 0 24 24">
+                <svg className="h-4 w-4" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -201,23 +188,26 @@ const AuthLogin = () => {
                     fill="#EA4335"
                   />
                 </svg>
-                <span className="text-white font-medium text-sm">{t('socialSignup')}</span>
+                <span className="text-white font-medium text-xs">{t('socialSignup')}</span>
               </div>
             )}
           </Button>
         </div>
 
-        {/* Footer */}
-        <div className="mt-8 text-center">
-          <span className="text-sm text-[rgba(255,255,255,0.6)]">
+        {/* Footer Link */}
+        <div className="mt-4 text-center">
+          <span className="text-xs text-[rgba(255,255,255,0.6)]">
             {t('noAccount')}{" "}
             <Link to="/signup" className="text-[#22c55e] font-bold hover:text-[#16a34a] transition-colors">
               {t('register')}
             </Link>
           </span>
         </div>
+      </div>
 
-        <LegalFooter className="mt-6" />
+      {/* Anchored Footer */}
+      <div className="relative z-10 w-full mt-2">
+        <LegalFooter />
       </div>
     </div>
   );

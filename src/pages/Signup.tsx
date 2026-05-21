@@ -3,11 +3,9 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Lock, User, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { Loader2, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LangSwitcher } from "@/components/LangSwitcher";
 import { LegalFooter } from "@/components/legal/LegalFooter";
@@ -109,7 +107,7 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-[#0a0a1a] via-[#1a1a3e] to-[#0a0a1a]">
+    <div className="min-h-[100dvh] flex flex-col justify-between items-center relative overflow-hidden bg-gradient-to-br from-[#0a0a1a] via-[#1a1a3e] to-[#0a0a1a] px-4 py-4 sm:py-6">
       {/* Animated Bokeh Background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 left-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
@@ -119,28 +117,27 @@ const Signup = () => {
         <div className="absolute bottom-20 right-20 w-52 h-52 bg-teal-400/15 rounded-full blur-2xl animate-pulse delay-1500" />
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-4 w-full">
+      {/* Content Container */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center w-full max-w-md my-auto py-2">
         {/* Glass Card */}
-        <div className="w-full max-w-md backdrop-blur-xl bg-white/8 border border-white/20 rounded-3xl shadow-2xl p-5 sm:p-6 space-y-4 relative">
+        <div className="w-full backdrop-blur-xl bg-white/8 border border-white/20 rounded-3xl shadow-2xl p-4 sm:p-5 space-y-3 relative">
           
           {/* Top Controls inside card */}
-          <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 hover:bg-white/10 rounded-full transition-all duration-300 backdrop-blur-sm flex items-center justify-center h-10 w-10"
-            >
-              <ArrowLeft className="h-5 w-5 text-white" />
-            </button>
+          <div className="absolute top-4 right-4 z-20">
             <LangSwitcher glow />
           </div>
 
-          <div className="text-center pt-8 mb-5">
-            <h1 className="text-xl sm:text-2xl font-bold text-white mb-2 leading-tight px-2">{t('landingH1')}</h1>
+          <div className="text-center pt-6 mb-2 flex flex-col items-center">
+            <img 
+              src="/app-logo.png" 
+              alt="Avlodona Logo" 
+              className="w-12 h-12 sm:w-14 sm:h-14 object-contain mb-2 rounded-2xl" 
+            />
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-1 leading-tight px-2">{t('landingH1')}</h1>
             <p className="text-white/70 text-xs sm:text-sm leading-relaxed max-w-[280px] mx-auto">{t('landingTagline')}</p>
           </div>
 
-          <form onSubmit={handleSignup} className="space-y-3">
+          <form onSubmit={handleSignup} className="space-y-2.5">
             <div className="space-y-2">
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 z-10 pointer-events-none" />
@@ -151,7 +148,7 @@ const Signup = () => {
                   value={fullName}
                   maxLength={25}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="pl-12 h-12 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-2xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm"
+                  className="pl-12 h-10 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm text-sm"
                 />
               </div>
             </div>
@@ -168,7 +165,7 @@ const Signup = () => {
                   placeholder={t('email')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-12 h-12 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-2xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm"
+                  className="pl-12 h-10 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm text-sm"
                   required
                 />
               </div>
@@ -186,7 +183,7 @@ const Signup = () => {
                   placeholder="•••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-12 pr-12 h-12 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-2xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm"
+                  className="pl-12 pr-12 h-10 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm text-sm"
                   required
                   minLength={6}
                 />
@@ -201,12 +198,12 @@ const Signup = () => {
             </div>
 
             {/* Gender Toggle */}
-            <div className="py-1 text-center">
-              <div className="flex justify-center gap-3">
+            <div className="py-0.5 text-center">
+              <div className="flex justify-center gap-2">
                 <button
                   type="button"
                   onClick={() => setGender("male")}
-                  className={`h-8 px-4 rounded-full border transition-all duration-200 ease-in-out text-[13px] font-medium ${
+                  className={`h-7 px-3.5 rounded-full border transition-all duration-200 ease-in-out text-xs font-medium ${
                     gender === "male"
                       ? "bg-[rgba(59,130,246,0.25)] border-[#3b82f6] text-white font-semibold"
                       : "bg-[rgba(255,255,255,0.06)] border-[rgba(255,255,255,0.15)] text-[rgba(255,255,255,0.5)]"
@@ -217,7 +214,7 @@ const Signup = () => {
                 <button
                   type="button"
                   onClick={() => setGender("female")}
-                  className={`h-8 px-4 rounded-full border transition-all duration-200 ease-in-out text-[13px] font-medium ${
+                  className={`h-7 px-3.5 rounded-full border transition-all duration-200 ease-in-out text-xs font-medium ${
                     gender === "female"
                       ? "bg-[rgba(236,72,153,0.25)] border-[#ec4899] text-white font-semibold"
                       : "bg-[rgba(255,255,255,0.06)] border-[rgba(255,255,255,0.15)] text-[rgba(255,255,255,0.5)]"
@@ -230,12 +227,12 @@ const Signup = () => {
 
             <Button
               type="submit"
-              className="w-full h-12 rounded-full bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#16a34a] hover:to-[#15803d] text-white font-bold text-sm transition-all duration-300 transform hover:scale-105 shadow-lg shadow-[rgba(34,197,94,0.4)] tracking-[0.04em]"
+              className="w-full h-10 rounded-full bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#16a34a] hover:to-[#15803d] text-white font-bold text-sm transition-all duration-300 transform hover:scale-105 shadow-lg shadow-[rgba(34,197,94,0.4)] tracking-[0.04em]"
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {t('signingUp')}
                 </>
               ) : (
@@ -244,23 +241,12 @@ const Signup = () => {
             </Button>
           </form>
 
-          <p className="text-xs text-white/60 leading-relaxed">
-            By continuing, you agree to our{' '}
-            <Link to="/terms" className="text-white/80 hover:text-white underline underline-offset-4">
-              Terms of Service
-            </Link>{' '}
-            and{' '}
-            <Link to="/privacy-policy" className="text-white/80 hover:text-white underline underline-offset-4">
-              Privacy Policy
-            </Link>.
-          </p>
-
-          <div className="relative py-3">
+          <div className="relative py-2">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-[rgba(255,255,255,0.15)]" />
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-transparent px-4 text-[rgba(255,255,255,0.5)]">{t('or')}</span>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-transparent px-3 text-[rgba(255,255,255,0.5)]">{t('or')}</span>
             </div>
           </div>
 
@@ -268,15 +254,15 @@ const Signup = () => {
           <Button
             type="button"
             variant="outline"
-            className="w-full h-12 rounded-full bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.12)] hover:border-[rgba(255,255,255,0.3)] transition-all duration-300 backdrop-blur-sm"
+            className="w-full h-10 rounded-full bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.12)] hover:border-[rgba(255,255,255,0.3)] transition-all duration-300 backdrop-blur-sm"
             onClick={handleGoogleSignup}
             disabled={isGoogleLoading}
           >
             {isGoogleLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin text-white" />
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
             ) : (
               <div className="flex items-center justify-center gap-3">
-                <svg className="h-5 w-5" viewBox="0 0 24 24">
+                <svg className="h-4 w-4" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -294,23 +280,26 @@ const Signup = () => {
                     fill="#EA4335"
                   />
                 </svg>
-                <span className="text-white font-medium text-sm">{t('socialSignup')}</span>
+                <span className="text-white font-medium text-xs">{t('socialSignup')}</span>
               </div>
             )}
           </Button>
         </div>
 
-        {/* Footer */}
+        {/* Footer Link */}
         <div className="mt-4 text-center">
-          <span className="text-sm text-white/60">
+          <span className="text-xs text-white/60">
             Akkauntingiz bormi?{" "}
             <Link to="/auth" className="text-sky-200/80 font-semibold hover:text-sky-100 transition-colors">
               Kirish
             </Link>
           </span>
         </div>
+      </div>
 
-        <LegalFooter className="mt-4" />
+      {/* Anchored Footer */}
+      <div className="relative z-10 w-full mt-2">
+        <LegalFooter />
       </div>
     </div>
   );
