@@ -10,7 +10,10 @@ const ensureInitialized = async () => {
     throw new Error('VITE_GOOGLE_WEB_CLIENT_ID topilmadi');
   }
   const { GoogleSignIn } = await import('@capawesome/capacitor-google-sign-in');
-  await GoogleSignIn.initialize({ clientId });
+  await GoogleSignIn.initialize({
+    clientId,
+    scopes: ['https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile']
+  });
   isInitialized = true;
 };
 
@@ -28,7 +31,16 @@ export const signInWithGoogle = async () => {
 
   await ensureInitialized();
   const { GoogleSignIn } = await import('@capawesome/capacitor-google-sign-in');
-  const result = await GoogleSignIn.signIn();
+  let result: Awaited<ReturnType<typeof GoogleSignIn.signIn>>;
+  try {
+    result = await GoogleSignIn.signIn();
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (message.toLowerCase().includes('canceled')) {
+      throw new Error("Google oynasi yopilib ketdi (cancel). Android Client ID va SHA-1 (debug/release) to'g'ri qo'yilganini tekshiring.");
+    }
+    throw new Error(message);
+  }
   if (!result?.idToken) {
     throw new Error('Google idToken kelmadi');
   }
