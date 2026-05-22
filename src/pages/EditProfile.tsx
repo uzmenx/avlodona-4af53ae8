@@ -253,14 +253,15 @@ const EditProfile = () => {
         const transcodedBlob = await transcodeVideo(file, 10, 1080);
         url = await uploadToR2(transcodedBlob, `${cropperState.type === 'avatar' ? 'avatars' : 'covers'}/${user.id}`);
       } else {
-        const file = new File([blob], `${cropperState.type}_${Date.now()}.jpg`, { type: 'image/jpeg' });
-        const compressed = await compressImage(
-          file,
-          cropperState.type === 'avatar' ? 1024 : 3200,
-          cropperState.type === 'avatar' ? 1024 : 3200,
-          0.98
+        // Cropper already produced a properly sized, high-quality JPEG.
+        // Re-compressing/transcoding to WebP here would only DEGRADE quality
+        // (especially noticeable on Android). Upload the cropped blob as-is.
+        const file = new File(
+          [blob],
+          `${cropperState.type}_${Date.now()}.jpg`,
+          { type: blob.type || 'image/jpeg' }
         );
-        url = await uploadToR2(compressed, `${cropperState.type === 'avatar' ? 'avatars' : 'covers'}/${user.id}`);
+        url = await uploadToR2(file, `${cropperState.type === 'avatar' ? 'avatars' : 'covers'}/${user.id}`);
       }
 
       if (cropperState.type === 'avatar') {
