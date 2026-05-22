@@ -2,6 +2,9 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { registerPushNotifications } from "./lib/pushNotifications";
+import { applyPlatformPerfMode } from "./lib/platformPerf";
+
+applyPlatformPerfMode();
 
 const SW_RESET_KEY = "avlodona:sw-reset:v1";
 
