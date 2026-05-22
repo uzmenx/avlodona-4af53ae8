@@ -27,6 +27,11 @@ export function rotateSize(width: number, height: number, rotation: number) {
   };
 }
 
+// Most mobile browsers (especially Android Chrome / WebView) silently clamp
+// canvas dimensions over ~4096px which destroys image quality. We cap the
+// output here so the final image stays sharp on every device.
+const MAX_OUTPUT_DIMENSION = 4096;
+
 export default async function getCroppedImg(
   imageSrc: string,
   pixelCrop: { x: number; y: number; width: number; height: number },
@@ -34,74 +39,87 @@ export default async function getCroppedImg(
   flip = { horizontal: false, vertical: false }
 ): Promise<string> {
   const image = await createImage(imageSrc);
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    throw new Error('No 2d context');
-  }
 
   if (!pixelCrop || pixelCrop.width <= 0 || pixelCrop.height <= 0) {
     throw new Error('Invalid crop dimensions. Width and height must be > 0');
   }
 
-  const rotRad = getRadianAngle(rotation);
-
-  // calculate bounding box of the rotated image
-  const { width: bBoxWidth, height: bBoxHeight } = rotateSize(
-    image.width,
-    image.height,
-    rotation
+  // Determine target output size — never upscale, never exceed safe canvas size.
+  const scale = Math.min(
+    1,
+    MAX_OUTPUT_DIMENSION / Math.max(pixelCrop.width, pixelCrop.height)
   );
-
-  // set canvas size to match the bounding box
-  canvas.width = bBoxWidth;
-  canvas.height = bBoxHeight;
-
-  // translate canvas context to a central location to allow rotating and flipping around the center
-  ctx.translate(bBoxWidth / 2, bBoxHeight / 2);
-  ctx.rotate(rotRad);
-  ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1);
-  ctx.translate(-image.width / 2, -image.height / 2);
-
-  // draw rotated image
-  ctx.drawImage(image, 0, 0);
+  const outW = Math.round(pixelCrop.width * scale);
+  const outH = Math.round(pixelCrop.height * scale);
 
   const croppedCanvas = document.createElement('canvas');
+  croppedCanvas.width = outW;
+  croppedCanvas.height = outH;
   const croppedCtx = croppedCanvas.getContext('2d');
-
-  if (!croppedCtx) {
-    throw new Error('No 2d context');
-  }
-
-  // Set the size of the cropped canvas
-  croppedCanvas.width = pixelCrop.width;
-  croppedCanvas.height = pixelCrop.height;
+  if (!croppedCtx) throw new Error('No 2d context');
 
   croppedCtx.imageSmoothingEnabled = true;
   croppedCtx.imageSmoothingQuality = 'high';
 
-  // Draw the cropped image onto the new canvas
-  croppedCtx.drawImage(
-    canvas,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
-  );
+  // Fast path: no rotation, no flip -> draw the source crop directly.
+  // Avoids creating a huge intermediate canvas (which Android often clamps).
+  if (rotation === 0 && !flip.horizontal && !flip.vertical) {
+    croppedCtx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      outW,
+      outH
+    );
+  } else {
+    const rotRad = getRadianAngle(rotation);
+    const { width: bBoxWidth, height: bBoxHeight } = rotateSize(
+      image.width,
+      image.height,
+      rotation
+    );
 
-  // As a blob
+    const canvas = document.createElement('canvas');
+    // Clamp the intermediate rotated canvas too.
+    const bScale = Math.min(1, MAX_OUTPUT_DIMENSION / Math.max(bBoxWidth, bBoxHeight));
+    canvas.width = Math.round(bBoxWidth * bScale);
+    canvas.height = Math.round(bBoxHeight * bScale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('No 2d context');
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(rotRad);
+    ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1);
+    ctx.translate((-image.width * bScale) / 2, (-image.height * bScale) / 2);
+    ctx.drawImage(image, 0, 0, image.width * bScale, image.height * bScale);
+
+    croppedCtx.drawImage(
+      canvas,
+      pixelCrop.x * bScale,
+      pixelCrop.y * bScale,
+      pixelCrop.width * bScale,
+      pixelCrop.height * bScale,
+      0,
+      0,
+      outW,
+      outH
+    );
+  }
+
   return new Promise((resolve, reject) => {
-    croppedCanvas.toBlob((file) => {
-      if (file) {
-        resolve(URL.createObjectURL(file));
-      } else {
-        reject(new Error('Canvas is empty'));
-      }
-    }, 'image/jpeg');
+    croppedCanvas.toBlob(
+      (file) => {
+        if (file) resolve(URL.createObjectURL(file));
+        else reject(new Error('Canvas is empty'));
+      },
+      'image/jpeg',
+      0.95
+    );
   });
 }
