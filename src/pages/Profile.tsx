@@ -13,6 +13,7 @@ import { ArrowLeft, Settings, Edit, Search, Grid3X3, Bookmark, Users, AtSign, Ch
 import { HighlightsRow, FollowHubDrawer, SocialLinksList, CollectionsFilter, FamilyMembersSheet } from '@/components/profile';
 
 import { useUserPosts } from '@/hooks/useUserPosts';
+import type { Post } from '@/types';
 import { useSavedPosts } from '@/hooks/useSavedPosts';
 import { useFollow } from '@/hooks/useFollow';
 import { useStoryHighlights } from '@/hooks/useStoryHighlights';

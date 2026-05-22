@@ -25,7 +25,7 @@ export const useGroupMessageComments = (messageId: string | null) => {
 
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('group_message_comments')
         .select(`
           id,
@@ -88,7 +88,7 @@ export const useGroupMessageComments = (messageId: string | null) => {
     if (!user?.id || !messageId || !content.trim()) return false;
 
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('group_message_comments')
         .insert({
           message_id: messageId,
@@ -109,7 +109,7 @@ export const useGroupMessageComments = (messageId: string | null) => {
     if (!user?.id) return false;
     
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('group_message_comments')
         .delete()
         .eq('id', commentId)

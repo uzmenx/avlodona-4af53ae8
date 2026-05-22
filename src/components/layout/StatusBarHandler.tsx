@@ -4,7 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Capacitor } from '@capacitor/core';
 
 export const StatusBarHandler = () => {
-  const { theme } = useTheme();
+  const { mode } = useTheme();
 
   useEffect(() => {
     const initStatusBar = async () => {
@@ -12,11 +12,7 @@ export const StatusBarHandler = () => {
 
       try {
         await StatusBar.setOverlaysWebView({ overlay: true });
-        
-        // Set style based on theme
-        // If theme is dark, status bar text should be light (Style.Dark)
-        // If theme is light, status bar text should be dark (Style.Light)
-        const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
       } catch (e) {
         console.error('Failed to configure status bar', e);
@@ -24,7 +20,7 @@ export const StatusBarHandler = () => {
     };
 
     void initStatusBar();
-  }, [theme]);
+  }, [mode]);
 
   return null;
 };
