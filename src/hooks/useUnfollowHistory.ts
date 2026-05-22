@@ -6,7 +6,7 @@ interface UnfollowRecord {
   id: string;
   unfollowed_user_id: string;
   created_at: string;
-  profile?: { name: string | null; username: string | null; avatar_url: string | null };
+  profile?: { id: string; name: string | null; username: string | null; avatar_url: string | null };
 }
 
 export type UnfollowHistoryMode = 'incoming';

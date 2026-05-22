@@ -403,7 +403,7 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
         {/* Send or Mic button */}
         {showSend ? (
           <button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={isUploading}
             className="w-[2.25rem] h-[2.25rem] rounded-full bg-green-500 flex items-center justify-center shadow-md hover:opacity-90 transition-all active:scale-90 disabled:opacity-50 shrink-0"
           >
