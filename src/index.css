@@ -870,3 +870,64 @@ select:-webkit-autofill:focus {
     will-change: backdrop-filter, transform;
   }
 }
+
+/* ============================================================
+   ANDROID / LOW-END FPS OPTIMIZATIONS
+   Triggered by data-perf="low" on <html> (Capacitor Android,
+   <=4 CPU cores, <=4GB RAM, or prefers-reduced-motion).
+   Goal: keep visual identity but cut GPU-heavy backdrop-filter
+   layers and unnecessary infinite animations that drop FPS
+   from 60-90 down to 15-30 on mid-range Android devices.
+   ============================================================ */
+
+html[data-perf="low"] *,
+html[data-perf="low"] *::before,
+html[data-perf="low"] *::after {
+  /* Downgrade every backdrop-blur tier to a cheap small blur.
+     Tailwind compiles backdrop-blur-xl => blur(24px) which is
+     the single biggest Android WebView frame-time cost. */
+  --tw-backdrop-blur: blur(6px) !important;
+}
+
+html[data-perf="low"] .backdrop-blur-2xl,
+html[data-perf="low"] .backdrop-blur-3xl,
+html[data-perf="low"] .backdrop-blur-xl {
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+html[data-perf="low"] .backdrop-blur-lg,
+html[data-perf="low"] .backdrop-blur-md {
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+/* Avoid composite explosions: long shadows are CPU-heavy on Android */
+html[data-perf="low"] .shadow-2xl,
+html[data-perf="low"] .shadow-xl {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Stop infinite shimmer animations that keep the compositor busy
+   even when the element is off-screen */
+html[data-perf="low"] .shimmer {
+  animation-duration: 2.4s !important;
+}
+
+/* Off-screen rendering skip — huge win for long feeds */
+html[data-perf="low"] [data-feed-card],
+html[data-perf="low"] [data-post-card] {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 600px;
+}
+
+/* Respect explicit reduced motion */
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
