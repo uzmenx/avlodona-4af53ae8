@@ -72,40 +72,66 @@ export const useConversations = () => {
 
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      const conversationsWithDetails = await Promise.all(
-        convData.map(async (conv) => {
-          const otherUserId = conv.participant1_id === user.id 
-            ? conv.participant2_id 
-            : conv.participant1_id;
+      // Batch-fetch last messages for all conversations at once (instead of N+1)
+      const convIds = convData.map(c => c.id);
+      
+      // Fetch the most recent message per conversation in one query
+      const { data: allMessages } = await supabase
+        .from('messages')
+        .select('conversation_id, content, sender_id, created_at, status')
+        .in('conversation_id', convIds)
+        .order('created_at', { ascending: false });
 
-          const { data: lastMsgData } = await supabase
-            .from('messages')
-            .select('content, sender_id, created_at, status')
-            .eq('conversation_id', conv.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+      // Build a map of conversation_id -> last message
+      const lastMessageMap = new Map<string, typeof allMessages extends (infer T)[] | null ? T : never>();
+      if (allMessages) {
+        for (const msg of allMessages) {
+          if (!lastMessageMap.has(msg.conversation_id)) {
+            lastMessageMap.set(msg.conversation_id, msg);
+          }
+        }
+      }
 
-          const { count: unreadCount } = await supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('conversation_id', conv.id)
-            .neq('sender_id', user.id)
-            .neq('status', 'seen');
+      // Batch-fetch unread counts: all unread messages not sent by me
+      const { data: unreadMessages } = await supabase
+        .from('messages')
+        .select('conversation_id')
+        .in('conversation_id', convIds)
+        .neq('sender_id', user.id)
+        .neq('status', 'seen');
 
-          return {
-            ...conv,
-            otherUser: profileMap.get(otherUserId) || {
-              id: otherUserId,
-              name: null,
-              username: null,
-              avatar_url: null
-            },
-            lastMessage: lastMsgData || undefined,
-            unreadCount: unreadCount || 0
-          };
-        })
-      );
+      // Count unreads per conversation
+      const unreadCountMap = new Map<string, number>();
+      if (unreadMessages) {
+        for (const msg of unreadMessages) {
+          unreadCountMap.set(msg.conversation_id, (unreadCountMap.get(msg.conversation_id) || 0) + 1);
+        }
+      }
+
+      const conversationsWithDetails = convData.map((conv) => {
+        const otherUserId = conv.participant1_id === user.id 
+          ? conv.participant2_id 
+          : conv.participant1_id;
+
+        const lastMsg = lastMessageMap.get(conv.id);
+
+        return {
+          ...conv,
+          otherUser: profileMap.get(otherUserId) || {
+            id: otherUserId,
+            name: null,
+            username: null,
+            avatar_url: null
+          },
+          lastMessage: lastMsg ? {
+            content: lastMsg.content,
+            sender_id: lastMsg.sender_id,
+            created_at: lastMsg.created_at,
+            status: lastMsg.status,
+          } : undefined,
+          unreadCount: unreadCountMap.get(conv.id) || 0
+        };
+      });
 
       setConversations(conversationsWithDetails);
       setTotalUnread(conversationsWithDetails.reduce((acc, c) => acc + c.unreadCount, 0));

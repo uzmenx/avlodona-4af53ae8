@@ -3,6 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCache, setCache } from '@/lib/localCache';
 
+// Track whether messages have been loaded for the initial fetch loading state
+const useMessageCountRef = () => {
+  const ref = useRef(0);
+  return ref;
+};
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -78,10 +84,17 @@ export const useMessages = (conversationId: string | null) => {
     memoryCursorCache.set(convId, cursor);
   }, []);
 
+  const messageCountRef = useMessageCountRef();
+
+  // Keep ref in sync with actual message count
+  useEffect(() => {
+    messageCountRef.current = messages.length;
+  }, [messages.length]);
+
   const fetchMessages = useCallback(async () => {
     if (!conversationId) return;
 
-    if (messages.length === 0) {
+    if (messageCountRef.current === 0) {
       setIsLoading(true);
     }
 
@@ -115,7 +128,7 @@ export const useMessages = (conversationId: string | null) => {
     } finally {
       setIsLoading(false);
     }
-  }, [conversationId, messages.length, updateCursor, user?.id]);
+  }, [conversationId, updateCursor, user?.id]);
 
   const loadOlder = useCallback(async () => {
     if (!conversationId) return;
@@ -235,7 +248,7 @@ export const useMessages = (conversationId: string | null) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId, user?.id]);
+  }, [conversationId, user?.id, updateCursor]);
 
   // Typing indicator subscription
   useEffect(() => {

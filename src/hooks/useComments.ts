@@ -249,20 +249,25 @@ export const useComments = (postId: string) => {
     }
   }, [userId, postId, profile]);
 
-  // Delete comment with optimistic update
   const deleteComment = useCallback(async (commentId: string) => {
     if (!userId) return false;
 
-    // Store for rollback
-    const prevComments = [...comments];
-    const prevCount = commentsCount;
+    // Store for rollback using ref-like pattern via functional setState
+    let prevComments: Comment[] = [];
+    let prevCount = 0;
 
     // OPTIMISTIC DELETE
-    setComments(prev => prev.filter(c => c.id !== commentId).map(c => ({
-      ...c,
-      replies: c.replies?.filter(r => r.id !== commentId)
-    })));
-    setCommentsCount(prev => Math.max(0, prev - 1));
+    setComments(prev => {
+      prevComments = prev;
+      return prev.filter(c => c.id !== commentId).map(c => ({
+        ...c,
+        replies: c.replies?.filter(r => r.id !== commentId)
+      }));
+    });
+    setCommentsCount(prev => {
+      prevCount = prev;
+      return Math.max(0, prev - 1);
+    });
 
     try {
       const { error } = await supabase
@@ -280,57 +285,60 @@ export const useComments = (postId: string) => {
       setCommentsCount(prevCount);
       return false;
     }
-  }, [userId, comments, commentsCount]);
+  }, [userId]);
 
-  // OPTIMISTIC Toggle comment like
   const toggleCommentLike = useCallback(async (commentId: string) => {
     if (!userId) return;
 
-    // Find the comment
-    let targetComment: Comment | undefined;
-    let isReply = false;
-    let parentId: string | undefined;
+    // Find the target comment and its current state
+    let prevIsLiked = false;
+    let prevCount = 0;
+    let found = false;
 
-    for (const c of comments) {
-      if (c.id === commentId) {
-        targetComment = c;
-        break;
+    setComments(prev => {
+      // Search for the comment
+      for (const c of prev) {
+        if (c.id === commentId) {
+          prevIsLiked = !!c.isLiked;
+          prevCount = c.likes_count;
+          found = true;
+          break;
+        }
+        const reply = c.replies?.find(r => r.id === commentId);
+        if (reply) {
+          prevIsLiked = !!reply.isLiked;
+          prevCount = reply.likes_count;
+          found = true;
+          break;
+        }
       }
-      const reply = c.replies?.find(r => r.id === commentId);
-      if (reply) {
-        targetComment = reply;
-        isReply = true;
-        parentId = c.id;
-        break;
-      }
-    }
-    
-    if (!targetComment) return;
 
-    const prevIsLiked = targetComment.isLiked;
-    const prevCount = targetComment.likes_count;
+      if (!found) return prev;
 
-    // OPTIMISTIC UPDATE
-    setComments(prev => prev.map(c => {
-      if (c.id === commentId) {
-        return {
-          ...c,
-          isLiked: !c.isLiked,
-          likes_count: c.isLiked ? Math.max(0, c.likes_count - 1) : c.likes_count + 1
-        };
-      }
-      if (c.replies) {
-        return {
-          ...c,
-          replies: c.replies.map(r => 
-            r.id === commentId
-              ? { ...r, isLiked: !r.isLiked, likes_count: r.isLiked ? Math.max(0, r.likes_count - 1) : r.likes_count + 1 }
-              : r
-          )
-        };
-      }
-      return c;
-    }));
+      // OPTIMISTIC UPDATE
+      return prev.map(c => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            isLiked: !c.isLiked,
+            likes_count: c.isLiked ? Math.max(0, c.likes_count - 1) : c.likes_count + 1
+          };
+        }
+        if (c.replies) {
+          return {
+            ...c,
+            replies: c.replies.map(r => 
+              r.id === commentId
+                ? { ...r, isLiked: !r.isLiked, likes_count: r.isLiked ? Math.max(0, r.likes_count - 1) : r.likes_count + 1 }
+                : r
+            )
+          };
+        }
+        return c;
+      });
+    });
+
+    if (!found) return;
 
     try {
       if (prevIsLiked) {
@@ -364,7 +372,7 @@ export const useComments = (postId: string) => {
         return c;
       }));
     }
-  }, [userId, comments]);
+  }, [userId]);
 
   // Retry failed comment
   const retryComment = useCallback(async (tempId: string) => {

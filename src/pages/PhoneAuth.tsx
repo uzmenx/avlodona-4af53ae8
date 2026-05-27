@@ -139,7 +139,7 @@ const PhoneAuth = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-[100dvh] flex flex-col bg-background pt-[env(safe-area-inset-top,0px)]">
       {/* Header */}
       <div className="p-4">
         <button

@@ -1,94 +1,228 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+
+const NUM_BARS = 36;
+
+export type WaveformData = number[];
 
 export interface VoiceRecorderState {
   isRecording: boolean;
   duration: number;
   audioBlob: Blob | null;
+  waveformData: WaveformData;
+  recordedWaveformSnapshot: WaveformData;
+  playbackSpeed: 1 | 1.5 | 2;
 }
 
 export const useVoiceRecorder = () => {
-  const [isRecording, setIsRecording] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const startTimeRef = useRef<number>(0);
+  const [isRecording, setIsRecording]                         = useState(false);
+  const [duration, setDuration]                               = useState(0);
+  const [audioBlob, setAudioBlob]                             = useState<Blob | null>(null);
+  const [waveformData, setWaveformData]                       = useState<WaveformData>(Array(NUM_BARS).fill(0));
+  const [recordedWaveformSnapshot, setRecordedWaveformSnapshot] = useState<WaveformData>(Array(NUM_BARS).fill(0.15));
+  const [playbackSpeed, setPlaybackSpeed]                     = useState<1 | 1.5 | 2>(1);
 
-  const startRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-      
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+  const mediaRecorderRef  = useRef<MediaRecorder | null>(null);
+  const audioChunksRef    = useRef<Blob[]>([]);
+  const startTimeRef      = useRef<number>(0);
+  const durationRef       = useRef<number>(0); // Keeps real-time track without depending on state
+  const isInitializingRef = useRef<boolean>(false);
+
+  const animFrameRef      = useRef<number>(0);
+  const analyserRef       = useRef<AnalyserNode | null>(null);
+  const audioCtxRef       = useRef<AudioContext | null>(null);
+  const sourceRef         = useRef<MediaStreamAudioSourceNode | null>(null);
+  const streamRef         = useRef<MediaStream | null>(null);
+
+  const accumulatedBarsRef = useRef<number[]>(Array(NUM_BARS).fill(0));
+  const frameCountRef      = useRef<number>(0);
+
+  // ─── RAF waveform loop ───────────────────────────────────────────────────
+  const startWaveformLoop = useCallback(() => {
+    const analyser = analyserRef.current;
+    if (!analyser) return;
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray    = new Uint8Array(bufferLength);
+
+    const tick = () => {
+      // 1. Update duration reliably inside RAF
+      if (startTimeRef.current > 0) {
+        const currentSecs = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        if (currentSecs !== durationRef.current) {
+          durationRef.current = currentSecs;
+          setDuration(currentSecs);
         }
-      };
-      
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        setAudioBlob(audioBlob);
-        
-        // Stop all tracks
-        stream.getTracks().forEach(track => track.stop());
-      };
-      
-      mediaRecorder.start(100);
-      setIsRecording(true);
-      setDuration(0);
-      startTimeRef.current = Date.now();
-      
-      // Timer for duration
-      timerRef.current = setInterval(() => {
-        setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
-      }, 100);
-      
-    } catch (error) {
-      console.error('Error starting recording:', error);
+      }
+
+      // 2. Update waveform
+      analyser.getByteFrequencyData(dataArray);
+      const bucketSize = Math.floor(bufferLength / NUM_BARS);
+      const bars: number[] = [];
+
+      for (let b = 0; b < NUM_BARS; b++) {
+        let sum = 0;
+        for (let k = 0; k < bucketSize; k++) {
+          sum += dataArray[b * bucketSize + k];
+        }
+        const avg = sum / bucketSize / 255;
+        bars.push(avg);
+        accumulatedBarsRef.current[b] += avg;
+      }
+
+      frameCountRef.current += 1;
+      setWaveformData([...bars]);
+      animFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    animFrameRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  const stopWaveformLoop = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
     }
   }, []);
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    }
-  }, [isRecording]);
+  // ─── Build snapshot ───────────────────────────────────────────────────────
+  const buildSnapshot = useCallback((): WaveformData => {
+    const count = frameCountRef.current || 1;
+    return accumulatedBarsRef.current.map(total => {
+      const avg = total / count;
+      return Math.min(1, avg * 1.4 + 0.08);
+    });
+  }, []);
 
-  const cancelRecording = useCallback(() => {
-    if (mediaRecorderRef.current) {
-      if (isRecording) {
-        mediaRecorderRef.current.stop();
-      }
-      setIsRecording(false);
-      setAudioBlob(null);
-      setDuration(0);
-      audioChunksRef.current = [];
+  // ─── startRecording ──────────────────────────────────────────────────────
+  const startRecording = useCallback(async () => {
+    try {
+      isInitializingRef.current = true;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+      // If user released pointer while we were waiting for permissions:
+      if (!isInitializingRef.current) {
+        stream.getTracks().forEach(t => t.stop());
+        return;
       }
+
+      streamRef.current = stream;
+
+      const audioCtx = new AudioContext();
+      audioCtxRef.current = audioCtx;
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.75;
+      analyserRef.current = analyser;
+      const source = audioCtx.createMediaStreamSource(stream);
+      sourceRef.current = source;
+      source.connect(analyser);
+
+      accumulatedBarsRef.current = Array(NUM_BARS).fill(0);
+      frameCountRef.current = 0;
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.start(100);
+      setIsRecording(true);
+      
+      // Reset timer
+      durationRef.current = 0;
+      setDuration(0);
+      startTimeRef.current = Date.now();
+
+      startWaveformLoop();
+
+    } catch (err) {
+      console.error('useVoiceRecorder: startRecording error', err);
+      isInitializingRef.current = false;
     }
-  }, [isRecording]);
+  }, [startWaveformLoop]);
+
+  // ─── stopRecording ────────────────────────────────────────────────────────
+  const stopRecording = useCallback(() => {
+    return new Promise<{ blob: Blob; snapshot: number[] }>((resolve) => {
+      isInitializingRef.current = false;
+      stopWaveformLoop();
+
+      const snapshot = buildSnapshot();
+      setRecordedWaveformSnapshot(snapshot);
+      setWaveformData(Array(NUM_BARS).fill(0));
+
+      const mr = mediaRecorderRef.current;
+      if (mr && mr.state !== 'inactive') {
+        mr.onstop = () => {
+          const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          setAudioBlob(blob);
+          streamRef.current?.getTracks().forEach(t => t.stop());
+          resolve({ blob, snapshot });
+        };
+        mr.stop();
+        setIsRecording(false);
+      } else {
+        resolve({ blob: new Blob([], { type: 'audio/webm' }), snapshot });
+      }
+
+      audioCtxRef.current?.close().catch(() => {});
+      audioCtxRef.current = null;
+    });
+  }, [stopWaveformLoop, buildSnapshot]);
+
+  // ─── cancelRecording ──────────────────────────────────────────────────────
+  const cancelRecording = useCallback(() => {
+    isInitializingRef.current = false;
+    stopWaveformLoop();
+
+    const mr = mediaRecorderRef.current;
+    if (mr && mr.state !== 'inactive') {
+      mr.onstop = null;
+      mr.stop();
+    }
+
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+
+    setIsRecording(false);
+    setAudioBlob(null);
+    setDuration(0);
+    durationRef.current = 0;
+    setWaveformData(Array(NUM_BARS).fill(0));
+    audioChunksRef.current = [];
+  }, [stopWaveformLoop]);
 
   const clearAudio = useCallback(() => {
     setAudioBlob(null);
     setDuration(0);
+    durationRef.current = 0;
+    setWaveformData(Array(NUM_BARS).fill(0));
+    setRecordedWaveformSnapshot(Array(NUM_BARS).fill(0.15));
     audioChunksRef.current = [];
+  }, []);
+
+  const cyclePlaybackSpeed = useCallback(() => {
+    setPlaybackSpeed(prev => prev === 1 ? 1.5 : prev === 1.5 ? 2 : 1);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopWaveformLoop();
+      audioCtxRef.current?.close().catch(() => {});
+      streamRef.current?.getTracks().forEach(t => t.stop());
+    };
+  }, [stopWaveformLoop]);
+
+  const getDurationMs = useCallback(() => {
+    return startTimeRef.current > 0 ? Date.now() - startTimeRef.current : 0;
   }, []);
 
   const formatDuration = (seconds: number) => {
@@ -101,10 +235,15 @@ export const useVoiceRecorder = () => {
     isRecording,
     duration,
     audioBlob,
+    waveformData,
+    recordedWaveformSnapshot,
+    playbackSpeed,
     startRecording,
     stopRecording,
     cancelRecording,
     clearAudio,
-    formatDuration
+    cyclePlaybackSpeed,
+    formatDuration,
+    getDurationMs,
   };
 };

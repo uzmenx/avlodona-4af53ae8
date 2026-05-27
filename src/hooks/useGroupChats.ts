@@ -79,42 +79,57 @@ export const useGroupChats = () => {
         index === self.findIndex(c => c.id === chat.id)
       );
 
-      // Compute details & unread counts
-      const chatsWithDetails = await Promise.all(
-        uniqueChats.map(async (chat) => {
-          const { count: memberCount } = await supabase
-            .from('group_members')
-            .select('*', { count: 'exact', head: true })
-            .eq('group_id', chat.id);
+      // Batch-fetch member counts for all groups at once (instead of N+1)
+      const allGroupIds = uniqueChats.map(c => c.id);
+      
+      const { data: allMembers } = await supabase
+        .from('group_members')
+        .select('group_id')
+        .in('group_id', allGroupIds);
+      
+      const memberCountMap = new Map<string, number>();
+      if (allMembers) {
+        for (const m of allMembers) {
+          memberCountMap.set(m.group_id, (memberCountMap.get(m.group_id) || 0) + 1);
+        }
+      }
 
+      // Batch-fetch unread counts for groups with new messages
+      const groupsNeedingUnread = uniqueChats.filter(chat => {
+        const lastReadAt = memberMap.get(chat.id) || chat.created_at;
+        const lastMessageAt = chat.last_message_at || null;
+        return lastMessageAt && new Date(lastMessageAt).getTime() > new Date(lastReadAt).getTime();
+      });
+
+      const unreadCountMap = new Map<string, number>();
+      if (groupsNeedingUnread.length > 0) {
+        const groupIdsWithUnread = groupsNeedingUnread.map(c => c.id);
+        // For each group, we need messages after last_read_at — fetch all recent and filter
+        for (const chat of groupsNeedingUnread) {
           const lastReadAt = memberMap.get(chat.id) || chat.created_at;
+          const { count } = await supabase
+            .from('group_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('group_id', chat.id)
+            .gt('created_at', lastReadAt);
+          unreadCountMap.set(chat.id, count || 0);
+        }
+      }
 
-          const lastMessageAt = chat.last_message_at || null;
-          
-          let unreadCount = 0;
-          if (lastMessageAt && new Date(lastMessageAt).getTime() > new Date(lastReadAt).getTime()) {
-            const { count } = await supabase
-              .from('group_messages')
-              .select('*', { count: 'exact', head: true })
-              .eq('group_id', chat.id)
-              .gt('created_at', lastReadAt);
-            unreadCount = count || 0;
-          }
-
-          return {
-            ...chat,
-            memberCount: memberCount || 0,
-            lastMessage: lastMessageAt
-              ? {
-                  content: chat.last_message_content || '',
-                  sender_id: '',
-                  created_at: lastMessageAt,
-                }
-              : undefined,
-            unreadCount
-          };
-        })
-      );
+      const chatsWithDetails = uniqueChats.map((chat) => {
+        return {
+          ...chat,
+          memberCount: memberCountMap.get(chat.id) || 0,
+          lastMessage: chat.last_message_at
+            ? {
+                content: chat.last_message_content || '',
+                sender_id: '',
+                created_at: chat.last_message_at,
+              }
+            : undefined,
+          unreadCount: unreadCountMap.get(chat.id) || 0
+        };
+      });
 
       // Sort by recent activity
       chatsWithDetails.sort((a, b) => {

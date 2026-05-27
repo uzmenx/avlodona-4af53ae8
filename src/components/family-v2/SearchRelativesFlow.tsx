@@ -210,7 +210,7 @@ export const RelativeSearchSheet = ({ open, onOpenChange, onSelect }: SearchRela
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[88vh] rounded-t-3xl p-0 flex flex-col overflow-hidden">
-        <div className="px-4 pt-4 pb-3 border-b border-white/10 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl">
+        <div className="px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-3 border-b border-white/10 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl">
           <div className="flex items-center justify-between">
             <div>
               <SheetTitle className="text-lg font-extrabold">Qarindoshni qidirish</SheetTitle>

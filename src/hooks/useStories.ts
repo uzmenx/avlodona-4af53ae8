@@ -163,7 +163,7 @@ export const useStories = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   const recordView = async (storyId: string) => {
     if (!user) return;

@@ -23,6 +23,30 @@ export const useGlobalMessageListener = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const locationRef = useRef(location.pathname);
+  const myConversationIdsRef = useRef<Set<string>>(new Set());
+
+  // Load user's conversation IDs so we only process our own messages
+  useEffect(() => {
+    if (!user?.id) {
+      myConversationIdsRef.current = new Set();
+      return;
+    }
+
+    const loadConversationIds = async () => {
+      const { data } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`);
+      myConversationIdsRef.current = new Set((data || []).map(c => c.id));
+    };
+
+    loadConversationIds();
+
+    // Refresh conversation IDs when new conversations are created
+    const handler = () => { loadConversationIds(); };
+    window.addEventListener('avlodona:new-message', handler);
+    return () => window.removeEventListener('avlodona:new-message', handler);
+  }, [user?.id]);
 
   useEffect(() => {
     locationRef.current = location.pathname;
@@ -53,6 +77,19 @@ export const useGlobalMessageListener = () => {
         async (payload) => {
           const msg = payload.new as IncomingMessage;
           if (!msg || msg.sender_id === user.id) return;
+
+          // Only process messages from our own conversations
+          if (!myConversationIdsRef.current.has(msg.conversation_id)) {
+            // Possibly a new conversation — refresh IDs and re-check
+            const { data } = await supabase
+              .from('conversations')
+              .select('id')
+              .eq('id', msg.conversation_id)
+              .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`)
+              .maybeSingle();
+            if (!data) return; // Not our conversation
+            myConversationIdsRef.current.add(msg.conversation_id);
+          }
 
           // If user is already in this specific chat, don't show banner
           const currentPath = locationRef.current;

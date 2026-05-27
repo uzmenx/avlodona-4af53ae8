@@ -166,7 +166,7 @@ export default function InviteAccept() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold tracking-tight">Oila daraxtiga taklif</h1>
           <p className="text-muted-foreground">
-            <span className="font-semibold text-foreground">{invite.sender_name}</span> sizni o'zining oila daraxtiga qo'shilishga taklif qilmoqda.
+            <span className="font-semibold text-foreground">{invite.sender_name}</span> sizni o'zining oila daraxtiga {invite.relation_type && invite.relation_type !== "family_member" && invite.relation_type !== "oila a'zosi" ? <span className="font-semibold text-foreground">"{invite.relation_type}" sifatida</span> : "qo'shilishga"} taklif qilmoqda.
           </p>
         </div>
 

@@ -75,7 +75,7 @@ export const useUnfollowHistory = (options?: UseUnfollowHistoryOptions) => {
 
     // Insert is allowed by RLS policy (see migration) where actor is auth.uid() = unfollowed_user_id.
     await supabase.from('unfollow_history').insert({ user_id: unfollowedUserId, unfollowed_user_id: user.id });
-  }, [getCutoffIso, user?.id]);
+  }, [user?.id]);
 
   return { history, recordUnfollow, refetch: fetchHistory };
 };

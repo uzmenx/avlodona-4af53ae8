@@ -37,6 +37,7 @@ export const useFollowLists = (userId: string | undefined, mode: FollowListMode,
         .from('follows')
         .select(idColumn)
         .eq(filterColumn, userId)
+        .or('status.eq.accepted,status.is.null')
         .limit(500);
 
       if (followsError) throw followsError;

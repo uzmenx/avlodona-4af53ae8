@@ -97,6 +97,12 @@ export const useIntersectionObserver = (
   onIntersect: () => void,
   options: IntersectionObserverInit = {}
 ) => {
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
+  const onIntersectRef = useRef(onIntersect);
+  onIntersectRef.current = onIntersect;
+
   useEffect(() => {
     const element = elementRef.current;
     if (!element) return;
@@ -105,13 +111,13 @@ export const useIntersectionObserver = (
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            onIntersect();
+            onIntersectRef.current();
           }
         });
       },
       {
         threshold: 0.5,
-        ...options
+        ...optionsRef.current
       }
     );
 
@@ -120,5 +126,5 @@ export const useIntersectionObserver = (
     return () => {
       observer.disconnect();
     };
-  }, [elementRef, onIntersect, options]);
+  }, [elementRef]);
 };

@@ -18,6 +18,7 @@ export interface CapturedMedia {
   file: File;
   url: string;
   thumbnail?: string;
+  galleryAssetId?: string;
 }
 
 type CaptureMode = 'photo' | 'video';
@@ -158,6 +159,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   const justStoppedRecordingAtRef = useRef<number>(0);
   const swipeStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  const isStartingCameraRef = useRef(false);
+  const nextFacingModeRef = useRef<'environment' | 'user' | null>(null);
+
   const [focusedMediaId, setFocusedMediaId] = useState<string | null>(null);
   const [trayOpen, setTrayOpen] = useState(false);
   const trayStartYRef = useRef<number | null>(null);
@@ -233,71 +237,120 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   }, [activeIndex]);
 
   const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => {
+        try { t.stop(); } catch (e) { /* ignore error */ }
+      });
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setCameraReady(false);
   }, []);
 
   const startCamera = useCallback(async () => {
-    stopCamera();
+    if (isStartingCameraRef.current) {
+      nextFacingModeRef.current = facingMode;
+      return;
+    }
+    isStartingCameraRef.current = true;
+
     try {
+      stopCamera();
+      
+      // Delay to let hardware release the camera sensor cleanly
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const videoConstraints = [
+        // 1. Exact facingMode with ideal HD resolution (targets back camera group explicitly)
+        { facingMode: { exact: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        // 2. Ideal facingMode with ideal HD resolution
+        { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        // 3. Exact facingMode with Full HD
+        { facingMode: { exact: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        // 4. Ideal facingMode with Full HD
+        { facingMode: { ideal: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        // 5. Exact facingMode raw
+        { facingMode: { exact: facingMode } },
+        // 6. Ideal facingMode raw
+        { facingMode: { ideal: facingMode } },
+        // 7. Legacy direct string facingMode
+        { facingMode: facingMode },
+        // 8. Generic video
+        true
+      ];
+
       let stream: MediaStream | null = null;
-      try {
-        // Preferred: 1280x720 (720p HD) - Gold Standard for mobile WebRTC (picks primary sensor with focus)
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { 
-            facingMode: { ideal: facingMode }, 
-            width: { ideal: 1280 }, 
-            height: { ideal: 720 } 
-          },
-          audio: true,
-        });
-      } catch (e1) {
-        try {
-          // Fallback: 1080p full resolution
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-            audio: true,
-          });
-        } catch (e2) {
+      let audioRequested = captureMode === 'video';
+
+      // 1. Try starting stream with audio (if in video capture mode)
+      if (audioRequested) {
+        for (const vc of videoConstraints) {
           try {
-            // Fallback: raw ideal facingMode without resolution
-            stream = await navigator.mediaDevices.getUserMedia({ 
-              video: { facingMode: { ideal: facingMode } }, 
-              audio: true 
-            });
-          } catch (e3) {
-            try {
-              // Fallback: legacy facingMode direct string
-              stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: true });
-            } catch (e4) {
-              try {
-                // Fallback: generic camera with audio
-                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-              } catch (e5) {
-                // Fallback: generic camera without audio
-                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: vc,
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true
               }
-            }
+            });
+            if (stream) break;
+          } catch (e) {
+            // Try next constraints
           }
         }
       }
 
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
+      // 2. Fallback to starting stream without audio (photo mode, or if mic failed/denied in video mode)
+      if (!stream) {
+        audioRequested = false;
+        for (const vc of videoConstraints) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: vc,
+              audio: false
+            });
+            if (stream) {
+              console.warn('Camera started without audio stream (mic denied or photo mode active)');
+              break;
+            }
+          } catch (e) {
+            // Try next constraints
+          }
+        }
+      }
+
+      if (stream) {
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            setCameraReady(true);
+            videoRef.current?.play().catch(err => {
+              console.warn("videoRef.play() call failed:", err);
+            });
+          };
+        } else {
           setCameraReady(true);
-        };
+        }
       } else {
-        setCameraReady(true);
+        console.error('All getUserMedia attempts failed.');
+        setCameraReady(false);
       }
     } catch (err) {
-      console.error('Camera error:', err);
+      console.error('Critical camera start error:', err);
       setCameraReady(false);
+    } finally {
+      isStartingCameraRef.current = false;
+      // If facingMode changed while starting, queue the new request
+      if (nextFacingModeRef.current && nextFacingModeRef.current !== facingMode) {
+        const target = nextFacingModeRef.current;
+        nextFacingModeRef.current = null;
+        setFacingMode(target);
+      }
     }
-  }, [facingMode, stopCamera]);
+  }, [facingMode, captureMode, stopCamera]);
 
   useEffect(() => {
     startCamera();
@@ -316,6 +369,26 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
       clearTimeout(captureTimerRef.current);
       clearTimeout(filterTimerRef.current);
       clearTimeout(musicStopTimerRef.current);
+
+      // Stop and release camera tracks
+      if (streamRef.current) {
+        try {
+          streamRef.current.getTracks().forEach(t => t.stop());
+        } catch (e) { /* ignore */ }
+        streamRef.current = null;
+      }
+      // Release audio contexts
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(e => console.warn('Unmount: Error closing AudioContext:', e));
+        audioContextRef.current = null;
+      }
+      // Stop music playback
+      if (musicAudioRef.current) {
+        try {
+          musicAudioRef.current.pause();
+        } catch (e) { /* ignore */ }
+        musicAudioRef.current = null;
+      }
     };
   }, []);
 
@@ -366,7 +439,8 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
         id: crypto.randomUUID(), 
         type: isVideo ? 'video' : 'photo', 
         file, 
-        url: objectUrl 
+        url: objectUrl,
+        galleryAssetId: asset.identifier
       });
 
     } catch (e) {
@@ -470,6 +544,12 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
       if (e.data.size > 0) recordedChunksRef.current.push(e.data);
     };
     recorder.onstop = () => {
+      // Close and release audio context to free resources
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(e => console.warn('Error closing AudioContext onstop:', e));
+        audioContextRef.current = null;
+      }
+
       const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
       const file = new File([blob], `video-${Date.now()}.webm`, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
@@ -1677,6 +1757,9 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
 
   return (
     <div className="fixed inset-0 z-[60] bg-black flex flex-col overflow-hidden overscroll-none">
+      {/* Top safe area glassmorphism */}
+      <div className="fixed top-0 left-0 right-0 z-[70] pointer-events-none h-[calc(env(safe-area-inset-top,0px)+4px)] bg-black/40 backdrop-blur-md border-b border-white/5" />
+
       <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={handleFileSelect} className="hidden" />
       <input ref={stickerInputRef} type="file" accept="image/*" onChange={handleStickerFileSelect} className="hidden" />
 
@@ -1770,8 +1853,13 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
           autoPlay
           playsInline
           muted
-          className={cn('absolute inset-0 w-full h-full object-cover')}
-          style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}
+          className={cn('absolute inset-0 w-full h-full object-cover will-change-transform')}
+          style={{ 
+            transform: `scale(${zoom})`, 
+            transformOrigin: 'center',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden'
+          }}
         />
         <canvas ref={canvasRef} className="hidden" />
 
@@ -2531,18 +2619,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
 
               {/* Expanded: grid of selected items */}
               {trayOpen && (
-                <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)]">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-white/70 text-xs font-semibold">{items.length > 0 ? 'Tanlanganlar' : 'Galereya'}</span>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={!canAddMore}
-                      className="text-white/80 text-xs font-semibold px-3 py-2 rounded-full bg-white/10 border border-white/15 disabled:opacity-30"
-                    >
-                      Barchasi
-                    </button>
-                  </div>
-
+                <div className="px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pt-2">
                   <div 
                     className="grid grid-cols-3 gap-2 max-h-[52vh] overflow-y-auto"
                     onScroll={(e) => {
@@ -2552,44 +2629,48 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                       }
                     }}
                   >
-                    {items.length > 0 ? items.map((it, idx) => (
-                      <button
-                        key={it.media.id}
-                        onClick={() => {
-                          setTrayOpen(false);
-                          setActiveIndex(idx);
-                          setFocusedMediaId(it.media.id);
-                        }}
-                        className={cn(
-                          'relative aspect-square rounded-xl overflow-hidden border-2',
-                          idx === activeIndex ? 'border-primary' : 'border-white/15'
-                        )}
-                      >
-                        <img src={it.media.thumbnail || it.media.url} alt="" className="w-full h-full object-cover" />
-                        {it.media.type === 'video' && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                            <Play className="w-5 h-5 text-white fill-white" />
-                          </div>
-                        )}
-                      </button>
-                    )) : galleryItems.map((asset) => (
-                      <button
-                        key={asset.identifier}
-                        onClick={() => {
-                          handleSelectGalleryItem(asset);
-                          setTrayOpen(false);
-                        }}
-                        className="relative aspect-square rounded-xl overflow-hidden border border-white/15 active:scale-95 transition-transform"
-                      >
-                        <img src={asset.thumbnail} alt="" className="w-full h-full object-cover" />
-                        {asset.mediaType === 'video' && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                            <Play className="w-5 h-5 text-white fill-white" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                    {items.length === 0 && galleryItems.length === 0 && isGalleryLoading && Array.from({ length: 6 }).map((_, i) => (
+                    {galleryItems.map((asset) => {
+                      const selectedItemIndex = items.findIndex(it => it.media.galleryAssetId === asset.identifier);
+                      const isSelected = selectedItemIndex !== -1;
+
+                      return (
+                        <button
+                          key={asset.identifier}
+                          onClick={() => {
+                            if (isSelected) {
+                              setTrayOpen(false);
+                              setActiveIndex(selectedItemIndex);
+                              setFocusedMediaId(items[selectedItemIndex].media.id);
+                            } else {
+                              handleSelectGalleryItem(asset);
+                              setTrayOpen(false);
+                            }
+                          }}
+                          className={cn(
+                            'relative aspect-square rounded-xl overflow-hidden border-2 transition-all active:scale-95 duration-200',
+                            isSelected ? 'border-emerald-500 scale-[0.96] shadow-[0_0_12px_rgba(16,185,129,0.3)]' : 'border-white/15'
+                          )}
+                        >
+                          <img src={asset.thumbnail} alt="" className="w-full h-full object-cover" />
+                          
+                          {isSelected && (
+                            <>
+                              <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+                              <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold shadow-lg border border-white/20 pointer-events-none">
+                                {selectedItemIndex + 1}
+                              </div>
+                            </>
+                          )}
+
+                          {asset.mediaType === 'video' && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                              <Play className="w-5 h-5 text-white fill-white" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                    {galleryItems.length === 0 && isGalleryLoading && Array.from({ length: 6 }).map((_, i) => (
                       <div key={`skel-${i}`} className="aspect-square rounded-xl bg-white/5 animate-pulse" />
                     ))}
                   </div>

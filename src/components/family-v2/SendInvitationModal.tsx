@@ -46,6 +46,8 @@ export const SendInvitationModal = ({
   const [isLoadingFollows, setIsLoadingFollows] = useState(false);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [roleInput, setRoleInput] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // The gender that the invited person should be (matches the placeholder member's gender)
   const requiredGender = member?.gender;
@@ -55,6 +57,7 @@ export const SendInvitationModal = ({
     if (isOpen && user?.id) {
       fetchFollowData();
       setCopiedLink(false);
+      setIsSearchFocused(false);
     }
   }, [isOpen, user?.id]);
 
@@ -113,7 +116,7 @@ export const SendInvitationModal = ({
         .insert({
           invited_by: user.id,
           tree_node_id: member.id,
-          relation_type: 'family_member', 
+          relation_type: roleInput.trim() || 'oila a\'zosi', 
         })
         .select('token')
         .single();
@@ -140,9 +143,12 @@ export const SendInvitationModal = ({
     // Base URL dynamically based on environment or fixed
     const baseUrl = window.location.origin;
     const inviteLink = `${baseUrl}/invite/${token}`;
+    const senderName = profile?.name || "foydalanuvchi";
+    const roleText = roleInput.trim() ? `${roleInput.trim()} sifatida` : "oila a'zosi sifatida";
+    const message = `Sizni ${senderName} o'zining oila daraxtiga ${roleText} taklif qildi. Havola orqali tasdiqlagan holda joyingizni egallang:\n${inviteLink}`;
     
     try {
-      await navigator.clipboard.writeText(inviteLink);
+      await navigator.clipboard.writeText(message);
       setCopiedLink(true);
       toast({
         title: "Nusxalandi!",
@@ -199,7 +205,8 @@ export const SendInvitationModal = ({
       const baseUrl = window.location.origin;
       const inviteLink = `${baseUrl}/invite/${token}`;
       const senderName = profile?.name || "foydalanuvchi";
-      const message = `Siz ${senderName} oila daraxtiga qo'shilishga taklif qilindingiz!\n${inviteLink}`;
+      const roleText = roleInput.trim() ? `${roleInput.trim()} sifatida` : "oila a'zosi sifatida";
+      const message = `Sizni ${senderName} o'zining oila daraxtiga ${roleText} taklif qildi. Havola orqali tasdiqlagan holda joyingizni egallang:\n${inviteLink}`;
       
       // Open native SMS composer
       window.open(`sms:${phoneNumber}?body=${encodeURIComponent(message)}`, '_system');
@@ -304,6 +311,8 @@ export const SendInvitationModal = ({
   const handleClose = () => {
     setSearchQuery('');
     setSearchResults([]);
+    setRoleInput('');
+    setIsSearchFocused(false);
     onClose();
   };
 
@@ -396,16 +405,31 @@ export const SendInvitationModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col p-0 rounded-[28px] border border-white/10 bg-background/80 backdrop-blur-2xl shadow-2xl">
-        <DialogHeader className="px-5 pt-4 pb-3 border-b border-border/40">
+      <DialogContent hideCloseButton className="sm:max-w-md w-[92vw] max-h-[92vh] sm:max-h-[85vh] overflow-hidden flex flex-col p-0 rounded-3xl border border-white/10 bg-background/80 backdrop-blur-2xl shadow-2xl">
+        <DialogHeader className="px-4 pt-3.5 pb-2.5 border-b border-border/40">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-[15px] font-semibold tracking-tight">Taklifnoma yuborish</DialogTitle>
+            <div className="flex items-center gap-2">
+              <DialogTitle className="text-[14px] font-bold tracking-tight">Taklifnoma yuborish</DialogTitle>
+              {requiredGender && (
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "rounded-full px-2 py-0 h-4 flex items-center justify-center text-[9px] font-semibold leading-none",
+                    requiredGender === 'male' 
+                      ? "border-sky-500/50 text-sky-600 dark:text-sky-400 bg-sky-500/5" 
+                      : "border-pink-500/50 text-pink-600 dark:text-pink-400 bg-pink-500/5"
+                  )}
+                >
+                  {requiredGender === 'male' ? 'Faqat erkaklar' : 'Faqat ayollar'}
+                </Badge>
+              )}
+            </div>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={handleClose}
-              className="h-9 w-9 rounded-2xl bg-muted/30 hover:bg-muted/50"
+              className="h-8 w-8 rounded-xl bg-muted/30 hover:bg-muted/50"
               aria-label="Yopish"
             >
               <X className="h-4 w-4" />
@@ -413,95 +437,105 @@ export const SendInvitationModal = ({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-4 px-5 py-4">
-          {member && (
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">{member.name || "Noma'lum"}</span> uchun foydalanuvchi taklif qiling
-              </p>
-              {requiredGender && (
-                <Badge 
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-3 px-4 py-3">
+          {!isSearchFocused && (
+            <>
+              <div className="px-0.5">
+                <Input
+                  value={roleInput}
+                  onChange={(e) => setRoleInput(e.target.value)}
+                  placeholder="Qarindoshlik (Masalan: Ota, Ona, Aka...)"
+                  className="h-9 rounded-xl bg-muted/30 border-border/50 text-center font-medium text-xs"
+                />
+              </div>
+
+              {/* New prominent action buttons */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <Button 
                   variant="outline" 
-                  className={cn(
-                    "mt-2 mb-0 rounded-full px-3 py-1 text-[11px] font-semibold",
-                    requiredGender === 'male' 
-                      ? "border-sky-500/50 text-sky-600 dark:text-sky-400" 
-                      : "border-pink-500/50 text-pink-600 dark:text-pink-400"
-                  )}
+                  onClick={handlePickContactAndSend}
+                  disabled={isGeneratingLink}
+                  className="h-[74px] flex flex-col gap-1 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 dark:bg-white/5 dark:hover:bg-white/10 shadow-sm"
                 >
-                  Faqat {requiredGender === 'male' ? 'erkak' : 'ayol'} foydalanuvchilar
-                </Badge>
-              )}
-            </div>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                    <Phone className="h-3.5 w-3.5 text-emerald-500" />
+                  </div>
+                  <div className="text-center leading-tight">
+                    <div className="text-[12px] font-semibold">Kontaktlar</div>
+                    <div className="text-[10px] text-muted-foreground">SMS orqali yuborish</div>
+                  </div>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleCopyLink}
+                  disabled={isGeneratingLink}
+                  className="h-[74px] flex flex-col gap-1 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 dark:bg-white/5 dark:hover:bg-white/10 shadow-sm"
+                >
+                  <div className={cn(
+                    "w-8 h-8 rounded-xl flex items-center justify-center transition-colors border",
+                    copiedLink ? "bg-emerald-500/10 border-emerald-500/20" : "bg-primary/10 border-primary/20"
+                  )}>
+                    {copiedLink ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    ) : (
+                      <LinkIcon className="h-3.5 w-3.5 text-primary" />
+                    )}
+                  </div>
+                  <div className="text-center leading-tight">
+                    <div className="text-[12px] font-semibold">Havola</div>
+                    <div className="text-[10px] text-muted-foreground">Nusxalash</div>
+                  </div>
+                </Button>
+              </div>
+
+              <div className="relative flex items-center py-0.5">
+                <div className="flex-grow border-t border-border"></div>
+                <span className="flex-shrink-0 mx-3 text-[9px] text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1 opacity-70">
+                  <UserPlus className="w-2.5 h-2.5" /> Yoki tizim ichidan
+                </span>
+                <div className="flex-grow border-t border-border"></div>
+              </div>
+            </>
           )}
 
-          {/* New prominent action buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <Button 
-              variant="outline" 
-              onClick={handlePickContactAndSend}
-              disabled={isGeneratingLink}
-              className="h-[92px] flex flex-col gap-2 rounded-[22px] border-white/10 bg-white/5 hover:bg-white/10 dark:bg-white/5 dark:hover:bg-white/10 shadow-sm"
-            >
-              <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                <Phone className="h-4 w-4 text-emerald-500" />
-              </div>
-              <div className="text-center leading-tight">
-                <div className="text-[13px] font-semibold">Kontaktlar</div>
-                <div className="text-[11px] text-muted-foreground">SMS orqali yuborish</div>
-              </div>
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleCopyLink}
-              disabled={isGeneratingLink}
-              className="h-[92px] flex flex-col gap-2 rounded-[22px] border-white/10 bg-white/5 hover:bg-white/10 dark:bg-white/5 dark:hover:bg-white/10 shadow-sm"
-            >
-              <div className={cn(
-                "w-9 h-9 rounded-2xl flex items-center justify-center transition-colors border",
-                copiedLink ? "bg-emerald-500/10 border-emerald-500/20" : "bg-primary/10 border-primary/20"
-              )}>
-                {copiedLink ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                ) : (
-                  <LinkIcon className="h-4 w-4 text-primary" />
-                )}
-              </div>
-              <div className="text-center leading-tight">
-                <div className="text-[13px] font-semibold">Havola</div>
-                <div className="text-[11px] text-muted-foreground">Nusxalash</div>
-              </div>
-            </Button>
-          </div>
-
-          <div className="relative flex items-center py-1">
-            <div className="flex-grow border-t border-border"></div>
-            <span className="flex-shrink-0 mx-4 text-[10px] text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1.5 opacity-80">
-              <UserPlus className="w-3 h-3" /> Yoki tizim ichidan
-            </span>
-            <div className="flex-grow border-t border-border"></div>
-          </div>
-
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Ism yoki username bo'yicha qidirish..."
-              className="pl-10 h-11 rounded-2xl bg-muted/30 border-border/50 focus-visible:ring-1 focus-visible:border-primary/40"
-            />
+          {/* Search Input Layout */}
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                type="text"
+                value={searchQuery}
+                onFocus={() => setIsSearchFocused(true)}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Ism yoki username bo'yicha qidirish..."
+                className="pl-9 h-9 rounded-xl bg-muted/30 border-border/50 focus-visible:ring-1 focus-visible:border-primary/40 text-xs"
+              />
+            </div>
+            {isSearchFocused && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsSearchFocused(false);
+                  setSearchQuery('');
+                  setSearchResults([]);
+                }}
+                className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/20 rounded-xl"
+              >
+                Orqaga
+              </Button>
+            )}
           </div>
 
           {/* Search Results or Tabs */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-[140px] overflow-hidden flex flex-col">
             {searchQuery.length >= 2 ? (
-              <ScrollArea className="h-[250px] sm:h-[300px]">
-                <div className="pr-4">
-                  <p className="text-sm text-muted-foreground mb-2">Qidiruv natijalari</p>
+              <ScrollArea className="flex-grow h-full">
+                <div className="pr-3">
+                  <p className="text-[11px] text-muted-foreground mb-1.5">Qidiruv natijalari</p>
                   {isSearching ? (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className="text-center py-6 text-muted-foreground text-xs">
                       Qidirilmoqda...
                     </div>
                   ) : (
@@ -510,23 +544,23 @@ export const SendInvitationModal = ({
                 </div>
               </ScrollArea>
             ) : (
-              <Tabs defaultValue="followers" className="flex-1 flex flex-col h-[250px] sm:h-[300px]">
-                <TabsList className="w-full rounded-2xl bg-muted/30 p-1 border border-border/50">
-                  <TabsTrigger value="followers" className="flex-1 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                    <Users className="h-4 w-4 mr-2" />
+              <Tabs defaultValue="followers" className="flex-1 flex flex-col overflow-hidden">
+                <TabsList className="w-full rounded-xl bg-muted/30 p-0.5 border border-border/50 h-8">
+                  <TabsTrigger value="followers" className="flex-1 rounded-lg text-xs py-1 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <Users className="h-3.5 w-3.5 mr-1.5" />
                     Kuzatuvchilar
                   </TabsTrigger>
-                  <TabsTrigger value="following" className="flex-1 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                    <UserPlus className="h-4 w-4 mr-2" />
+                  <TabsTrigger value="following" className="flex-1 rounded-lg text-xs py-1 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <UserPlus className="h-3.5 w-3.5 mr-1.5" />
                     Kuzatilmoqda
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="followers" className="mt-4 flex-1 overflow-hidden">
+                <TabsContent value="followers" className="mt-2.5 flex-1 overflow-hidden focus-visible:ring-0 focus-visible:outline-none">
                   <ScrollArea className="h-full">
-                    <div className="pr-4 pb-4">
+                    <div className="pr-3 pb-3">
                       {isLoadingFollows ? (
-                        <div className="text-center py-8 text-muted-foreground">
+                        <div className="text-center py-6 text-muted-foreground text-xs">
                           Yuklanmoqda...
                         </div>
                       ) : (
@@ -536,11 +570,11 @@ export const SendInvitationModal = ({
                   </ScrollArea>
                 </TabsContent>
 
-                <TabsContent value="following" className="mt-4 flex-1 overflow-hidden">
+                <TabsContent value="following" className="mt-2.5 flex-1 overflow-hidden focus-visible:ring-0 focus-visible:outline-none">
                   <ScrollArea className="h-full">
-                    <div className="pr-4 pb-4">
+                    <div className="pr-3 pb-3">
                       {isLoadingFollows ? (
-                        <div className="text-center py-8 text-muted-foreground">
+                        <div className="text-center py-6 text-muted-foreground text-xs">
                           Yuklanmoqda...
                         </div>
                       ) : (

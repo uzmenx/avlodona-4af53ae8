@@ -29,7 +29,7 @@
    return (
      <div className="fixed inset-x-0 top-0 z-50 pointer-events-none">
        {/* Top bar */}
-       <div className="pointer-events-auto bg-gradient-to-b from-background/95 to-background/80 backdrop-blur-lg border-b border-border shadow-lg">
+       <div className="pointer-events-auto bg-gradient-to-b from-background/95 to-background/80 backdrop-blur-lg border-b border-border shadow-lg pt-[env(safe-area-inset-top,0px)]">
          <div className="container mx-auto px-4 py-3">
            <div className="flex items-center justify-between">
              <div className="flex items-center gap-3">

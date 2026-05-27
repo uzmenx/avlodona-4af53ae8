@@ -105,7 +105,7 @@ const VerifyOtp = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/20 via-background to-accent/20 p-4">
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-gradient-to-br from-primary/20 via-background to-accent/20 p-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Button 

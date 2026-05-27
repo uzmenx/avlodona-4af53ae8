@@ -793,7 +793,15 @@ const Chat = () => {
 
     // Voice message
     if (msg.media_type === 'audio') {
-      return <VoiceMessage audioUrl={msg.media_url || ''} isMine={isMine} uploadProgress={uploadProgress} />;
+      return (
+        <VoiceMessage
+          audioUrl={msg.media_url || ''}
+          isMine={isMine}
+          uploadProgress={uploadProgress}
+          deliveryStatus={msg.status === 'seen' ? 'read' : msg.status}
+          senderAvatarUrl={!isMine ? otherUser?.avatar_url || undefined : undefined}
+        />
+      );
     }
 
     // Image or video message

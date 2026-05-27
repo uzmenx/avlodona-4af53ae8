@@ -115,7 +115,7 @@ export const TreePostEditor = ({
   return (
     <div className="fixed inset-0 z-[100] bg-background flex flex-col pb-28">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-background/70 backdrop-blur-xl flex-shrink-0">
+      <div className="flex items-center justify-between px-3 pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] pb-2 border-b border-border/40 bg-background/70 backdrop-blur-xl flex-shrink-0">
         <Button
           variant="ghost"
           size="icon"

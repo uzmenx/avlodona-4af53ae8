@@ -61,7 +61,7 @@ export const useActiveStories = () => {
     } catch (err) {
       console.error('useActiveStories error:', err);
     }
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => { fetch(); }, [fetch]);
 

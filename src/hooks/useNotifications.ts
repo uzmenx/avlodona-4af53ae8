@@ -221,13 +221,10 @@ export const useNotifications = () => {
         },
         (payload) => {
           const updated = payload.new as RawNotification;
-          setNotifications(prev =>
-            prev.map(n => n.id === updated.id ? { ...n, ...updated } as Notification : n)
-          );
-          // Recompute unread count
           setNotifications(prev => {
-            setUnreadCount(prev.filter(n => !n.is_read).length);
-            return prev;
+            const next = prev.map(n => n.id === updated.id ? { ...n, ...updated } as Notification : n);
+            setUnreadCount(next.filter(n => !n.is_read).length);
+            return next;
           });
         }
       )
