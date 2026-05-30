@@ -151,7 +151,7 @@ export const PlanOverlay = () => {
                 "Sizda allaqachon Pro tarif! 🎉"
               ) : (
                 <>
-                  Pro tarifga o'tish <Zap className="h-4.5 w-4.5 sm:h-5 sm:w-5 fill-current text-yellow-300 drop-shadow-md" />
+                  Tez kunda Pro ta'rif <Zap className="h-4.5 w-4.5 sm:h-5 sm:w-5 fill-current text-yellow-300 drop-shadow-md" />
                 </>
               )}
             </div>
