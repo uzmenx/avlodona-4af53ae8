@@ -399,7 +399,7 @@ const Profile = () => {
         <div className="max-w-md mx-auto relative">
           {/* Floating Action Buttons Container — top right */}
           <div 
-            className="sticky top-[env(safe-area-inset-top,0px)] z-40 px-3 py-1 flex items-center justify-end rounded-2xl mx-3 mt-0.5 -mb-11 pointer-events-none"
+            className="absolute top-[env(safe-area-inset-top,0px)] left-0 right-0 z-40 px-3 py-1 flex items-center justify-end rounded-2xl mx-3 mt-0.5 -mb-11 pointer-events-none"
           >
             {/* Right Side: Action buttons */}
             <div className="flex items-center gap-1.5 pointer-events-auto">
@@ -688,7 +688,7 @@ const Profile = () => {
                   <div className="relative">
                     <div
                     ref={bioRef}
-                    className={`text-xs text-muted-foreground leading-relaxed transition-all duration-300 cursor-pointer text-center whitespace-pre-wrap ${
+                    className={`text-xs text-muted-foreground leading-relaxed transition-all duration-300 cursor-pointer text-center whitespace-pre-wrap select-text ${
                     !bioExpanded && needsMoreButton ? 'line-clamp-2' : ''}`
                     }
                     style={{

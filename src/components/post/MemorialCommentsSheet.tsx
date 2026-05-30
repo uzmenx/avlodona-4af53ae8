@@ -155,11 +155,11 @@ export const MemorialCommentsSheet = ({ open, onOpenChange, memorialPostId }: Me
                     />
                   </div>
                   {comment.content.includes('||') && (
-                    <p className="text-sm">{comment.content.split('||')[1]}</p>
+                    <p className="text-sm select-text">{comment.content.split('||')[1]}</p>
                   )}
                 </div>
               ) : (
-                <p className="text-sm mt-0.5">{comment.content}</p>
+                <p className="text-sm mt-0.5 select-text">{comment.content}</p>
               )}
               
               <div className="flex items-center gap-4 mt-1.5">

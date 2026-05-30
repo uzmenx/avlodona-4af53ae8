@@ -439,7 +439,7 @@ const GroupChat = () => {
       return (
         <div className="space-y-2">
           {joinInvite.messageText && (
-            <p className="break-words whitespace-pre-wrap">{joinInvite.messageText}</p>
+            <p className="break-words whitespace-pre-wrap select-text">{joinInvite.messageText}</p>
           )}
           <div className="w-[280px] max-w-[75vw] overflow-hidden rounded-3xl border border-white/10 bg-black/20 backdrop-blur-md text-left shadow-lg">
             <div className="p-3 flex items-center gap-3">
@@ -484,7 +484,7 @@ const GroupChat = () => {
       );
     }
 
-    return <p className="break-words whitespace-pre-wrap">{message.content}</p>;
+    return <p className="break-words whitespace-pre-wrap select-text">{message.content}</p>;
   };
 
   const visibleMessages = messages.filter(m => {

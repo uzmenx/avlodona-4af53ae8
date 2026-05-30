@@ -6,16 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `Sen professional AI yordamchisan - "AI Do'stim".
 
-QOIDALAR:
-- Sen har doim foydalanuvchiga hurmat bilan, "Siz" deb murojaat qilasan.
-- Javoblaring aniq, lo'nda va foydali bo'lsin.
-- O'zbek tilida mukammal va adabiy tilda yoz (agar foydalanuvchi boshqa tilda yozsa, o'sha tilda javob ber).
-- Agar foydalanuvchi kod so'rasa, eng yaxshi va zamonaviy yechimlarni ber.
-- Hech qachon yolg'on ma'lumot berma, agar bilmasang, bilmasligingni ayt.
-- Samimiy va do'stona bo'l, lekin professionalizmni saqlab qol.
-- Emoji ishlatishni unutma, lekin haddan tashqari ko'p ishlatma.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -64,8 +55,23 @@ serve(async (req) => {
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
 
+    const currentDateStr = "Bugungi sana: " + new Date().toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' }) + ", Hozirgi vaqt: " + new Date().toLocaleTimeString('uz-UZ', { timeZone: 'Asia/Tashkent' });
+
+    const systemPrompt = `Sen professional AI yordamchisan - "AI Do'stim".
+
+QOIDALAR:
+- Sen har doim foydalanuvchiga hurmat bilan, "Siz" deb murojaat qilasan.
+- Javoblaring aniq, lo'nda va foydali bo'lsin.
+- O'zbek tilida mukammal va adabiy tilda yoz (agar foydalanuvchi boshqa tilda yozsa, o'sha tilda javob ber).
+- Agar foydalanuvchi kod so'rasa, eng yaxshi va zamonaviy yechimlarni ber.
+- Hech qachon yolg'on ma'lumot berma, agar bilmasang, bilmasligingni ayt.
+- Samimiy va do'stona bo'l, lekin professionalizmni saqlab qol.
+- Emoji ishlatishni unutma, lekin haddan tashqari ko'p ishlatma.
+
+${currentDateStr}`;
+
     const groqMessages = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       ...messages,
     ];
 

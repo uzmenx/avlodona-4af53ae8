@@ -136,12 +136,19 @@ export const SendInvitationModal = ({
     }
   };
 
+  const getBaseUrl = () => {
+    let url = window.location.origin;
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      url = 'https://avlodona.com'; // Fallback to production URL for Capacitor apps
+    }
+    return url;
+  };
+
   const handleCopyLink = async () => {
     const token = await createInviteToken();
     if (!token) return;
     
-    // Base URL dynamically based on environment or fixed
-    const baseUrl = window.location.origin;
+    const baseUrl = getBaseUrl();
     const inviteLink = `${baseUrl}/invite/${token}`;
     const senderName = profile?.name || "foydalanuvchi";
     const roleText = roleInput.trim() ? `${roleInput.trim()} sifatida` : "oila a'zosi sifatida";
@@ -202,14 +209,15 @@ export const SendInvitationModal = ({
       const token = await createInviteToken();
       if (!token) return;
       
-      const baseUrl = window.location.origin;
+      const baseUrl = getBaseUrl();
       const inviteLink = `${baseUrl}/invite/${token}`;
       const senderName = profile?.name || "foydalanuvchi";
       const roleText = roleInput.trim() ? `${roleInput.trim()} sifatida` : "oila a'zosi sifatida";
       const message = `Sizni ${senderName} o'zining oila daraxtiga ${roleText} taklif qildi. Havola orqali tasdiqlagan holda joyingizni egallang:\n${inviteLink}`;
       
-      // Open native SMS composer
-      window.open(`sms:${phoneNumber}?body=${encodeURIComponent(message)}`, '_system');
+      // Open native SMS composer correctly for Android/iOS
+      const separator = Capacitor.getPlatform() === 'ios' ? '&' : '?';
+      window.location.href = `sms:${phoneNumber}${separator}body=${encodeURIComponent(message)}`;
       
       handleClose();
       

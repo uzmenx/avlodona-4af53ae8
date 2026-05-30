@@ -80,7 +80,7 @@ serve(async (req) => {
     
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const currentDateStr = "Bugungi sana: " + new Date().toLocaleDateString('uz-UZ');
+    const currentDateStr = "Bugungi sana: " + new Date().toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' }) + ", Hozirgi vaqt: " + new Date().toLocaleTimeString('uz-UZ', { timeZone: 'Asia/Tashkent' });
 
     const userQuery = messages[messages.length - 1]?.content || "";
     let searchContext = "";

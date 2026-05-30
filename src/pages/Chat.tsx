@@ -648,7 +648,7 @@ const Chat = () => {
       return (
         <div className="space-y-2">
           {joinInvite.messageText && (
-            <p className="text-sm whitespace-pre-wrap break-words">{joinInvite.messageText}</p>
+            <p className="text-sm whitespace-pre-wrap break-words select-text">{joinInvite.messageText}</p>
           )}
           <div
             className={cn(
@@ -711,7 +711,7 @@ const Chat = () => {
       return (
         <div className="space-y-2">
           {shared.messageText && (
-            <p className="text-sm whitespace-pre-wrap break-words">{shared.messageText}</p>
+            <p className="text-sm whitespace-pre-wrap break-words select-text">{shared.messageText}</p>
           )}
           <button
             type="button"
@@ -766,7 +766,7 @@ const Chat = () => {
       return (
         <div className="space-y-2">
           {sharedShort.messageText && (
-            <p className="text-sm whitespace-pre-wrap break-words">{sharedShort.messageText}</p>
+            <p className="text-sm whitespace-pre-wrap break-words select-text">{sharedShort.messageText}</p>
           )}
           <button
             type="button"
@@ -819,7 +819,7 @@ const Chat = () => {
 
     // Text message
     return (
-      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+      <p className="text-sm whitespace-pre-wrap break-words select-text">{msg.content}</p>
     );
   };
 

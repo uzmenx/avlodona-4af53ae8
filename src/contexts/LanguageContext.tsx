@@ -74,7 +74,7 @@ const translations = {
     en: "Avlodona",
   },
   landingTagline: {
-    uz: "Oila daraxti va raqamli xotira",
+    uz: "O'zbekistonda yaratilgan 🇺🇿",
     ru: "Семейное древо и цифровая память",
     en: "Family tree and digital memory",
   },

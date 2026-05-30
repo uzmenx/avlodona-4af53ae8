@@ -73,7 +73,7 @@ export const PostCaption = ({ username, content, className, variant = 'default',
   const isFullscreen = variant === 'fullscreen';
 
   return (
-    <div className={cn("text-sm", className)}>
+    <div className={cn("text-sm select-text", className)}>
       <span
         className={cn(
           isFullscreen ? 'text-white/90' : 'text-foreground',

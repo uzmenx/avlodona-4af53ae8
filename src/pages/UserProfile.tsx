@@ -718,7 +718,7 @@ export const UserProfilePage = () => {
         
         {/* Floating Action Buttons Container */}
         <div 
-          className="sticky top-[env(safe-area-inset-top,0px)] z-40 px-3 py-1 flex items-center justify-between rounded-2xl mx-3 mt-0.5 -mb-11 pointer-events-none"
+          className="absolute top-[env(safe-area-inset-top,0px)] left-0 right-0 z-40 px-3 py-1 flex items-center justify-between rounded-2xl mx-3 mt-0.5 -mb-11 pointer-events-none"
         >
           {/* Left Side: Back Button */}
           <div className="pointer-events-auto">
@@ -1169,7 +1169,7 @@ export const UserProfilePage = () => {
                 <div className="relative">
                   <div
                     ref={bioRef}
-                    className={`text-xs text-muted-foreground leading-relaxed transition-all duration-300 cursor-pointer text-center whitespace-pre-wrap break-words ${
+                    className={`text-xs text-muted-foreground leading-relaxed transition-all duration-300 cursor-pointer text-center whitespace-pre-wrap break-words select-text ${
                     !bioExpanded && needsMoreButton ? 'line-clamp-2' : ''}`}
                     style={{
                       overflow: 'hidden',
