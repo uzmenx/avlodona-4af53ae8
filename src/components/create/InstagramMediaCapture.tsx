@@ -1863,6 +1863,15 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
         />
         <canvas ref={canvasRef} className="hidden" />
 
+        {/* Camera loading overlay — hides browser default video icon during camera flip/init */}
+        {!cameraReady && (
+          <div className="absolute inset-0 z-20 bg-black flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 rounded-full border-2 border-white/20 border-t-white/80 animate-spin" />
+            </div>
+          </div>
+        )}
+
         {/* Flip camera */}
         {showCaptureUi && (
           <>
@@ -2132,7 +2141,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                 onTouchEnd={handleEditTouchEnd}
               >
                 <div
-                  className="absolute inset-0 will-change-transform"
+                  className="absolute inset-0 will-change-transform bg-black"
                   style={{
                     transform: `translate(${active.mediaTransform.x}%, ${active.mediaTransform.y}%) scale(${active.mediaTransform.scale}) rotate(${active.mediaTransform.rotation}deg)`,
                     transformOrigin: 'center',
@@ -2143,11 +2152,12 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
                     <video
                       ref={previewVideoRef}
                       src={active.media.url}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover bg-black"
                       style={{ filter: currentFilter.css }}
                       playsInline
                       loop
                       muted={isMuted}
+                      autoPlay
                       onClick={togglePlay}
                     />
                   ) : (

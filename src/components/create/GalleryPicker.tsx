@@ -62,7 +62,18 @@ export default function GalleryPicker({ maxSelection = 10, onConfirm, onClose }:
                 onClick={() => toggleSelect(asset)}
               >
                 {asset.mediaType === 'video' ? (
-                  <video src={asset.webUrl} className="w-full h-full object-cover" />
+                  /* Use thumbnail for video — avoids ugly browser default play icon */
+                  asset.thumbnail ? (
+                    <img src={asset.thumbnail} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    <video
+                      src={asset.webUrl}
+                      className="w-full h-full object-cover"
+                      preload="none"
+                      muted
+                      playsInline
+                    />
+                  )
                 ) : (
                   <img src={asset.webUrl} className="w-full h-full object-cover" alt="" />
                 )}
