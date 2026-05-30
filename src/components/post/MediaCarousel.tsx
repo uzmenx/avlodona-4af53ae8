@@ -196,6 +196,16 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
     if (dx > 8 || dy > 8) touchMoved.current = true;
   };
 
+  const handleSwipeEnd = (e: React.TouchEvent) => {
+    if (mediaUrls.length <= 1) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) goNext();
+      else goPrev();
+    }
+  };
+
   const showMute = isVideo(mediaUrls[currentIndex]);
 
   return (
