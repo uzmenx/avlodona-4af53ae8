@@ -1369,11 +1369,20 @@ export const UnifiedFullScreenViewer = ({
 
             }}
 
-            onTouchEnd={() => {
+            onTouchEnd={(e) => {
 
-              // Native scroll-snap handles all swipe navigation.
-
-              // This overlay only sets touchMoved so handleMediaClick knows if it was a swipe or tap.
+              // Horizontal swipe → carousel navigation
+              if (mediaUrls.length > 1) {
+                const dx = e.changedTouches[0].clientX - touchStartX.current;
+                const dy = e.changedTouches[0].clientY - touchStartY.current;
+                if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                  if (dx < 0 && currentMediaIndex < mediaUrls.length - 1) {
+                    setCurrentMediaIndex((p) => p + 1);
+                  } else if (dx > 0 && currentMediaIndex > 0) {
+                    setCurrentMediaIndex((p) => p - 1);
+                  }
+                }
+              }
 
             }}
 
@@ -1411,55 +1420,8 @@ export const UnifiedFullScreenViewer = ({
 
             <>
 
-              {/* Previous button */}
+              {/* Arrows removed — swipe left/right to navigate */}
 
-              {currentMediaIndex > 0 && (
-
-                <button
-
-                  onClick={(e) => {
-
-                    e.stopPropagation();
-
-                    setCurrentMediaIndex(prev => prev - 1);
-
-                  }}
-
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/20 backdrop-blur-sm border border-white/10 hover:bg-black/30 transition-colors"
-
-                >
-
-                  <ChevronLeft className="h-6 w-6 text-white" />
-
-                </button>
-
-              )}
-
-
-
-              {/* Next button */}
-
-              {currentMediaIndex < mediaUrls.length - 1 && (
-
-                <button
-
-                  onClick={(e) => {
-
-                    e.stopPropagation();
-
-                    setCurrentMediaIndex(prev => prev + 1);
-
-                  }}
-
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/20 backdrop-blur-sm border border-white/10 hover:bg-black/30 transition-colors"
-
-                >
-
-                  <ChevronRight className="h-6 w-6 text-white" />
-
-                </button>
-
-              )}
 
 
 
@@ -1610,29 +1572,8 @@ export const UnifiedFullScreenViewer = ({
 
               </div>
 
-              {currentMediaIndex > 0 &&
+              {/* Arrows removed — swipe to navigate */}
 
-            <button onClick={(e) => {e.stopPropagation();setCurrentMediaIndex((p) => p - 1);}}
-
-            className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 bg-black/20 backdrop-blur-sm rounded-full">
-
-                  <ChevronLeft className="h-4 w-4 text-white" />
-
-                </button>
-
-            }
-
-              {currentMediaIndex < mediaUrls.length - 1 &&
-
-            <button onClick={(e) => {e.stopPropagation();setCurrentMediaIndex((p) => p + 1);}}
-
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-black/20 backdrop-blur-sm rounded-full">
-
-                  <ChevronRight className="h-4 w-4 text-white" />
-
-                </button>
-
-            }
 
             </>
 
