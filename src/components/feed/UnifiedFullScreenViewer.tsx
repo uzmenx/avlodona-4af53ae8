@@ -1572,29 +1572,8 @@ export const UnifiedFullScreenViewer = ({
 
               </div>
 
-              {currentMediaIndex > 0 &&
+              {/* Arrows removed — swipe to navigate */}
 
-            <button onClick={(e) => {e.stopPropagation();setCurrentMediaIndex((p) => p - 1);}}
-
-            className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 bg-black/20 backdrop-blur-sm rounded-full">
-
-                  <ChevronLeft className="h-4 w-4 text-white" />
-
-                </button>
-
-            }
-
-              {currentMediaIndex < mediaUrls.length - 1 &&
-
-            <button onClick={(e) => {e.stopPropagation();setCurrentMediaIndex((p) => p + 1);}}
-
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-black/20 backdrop-blur-sm rounded-full">
-
-                  <ChevronRight className="h-4 w-4 text-white" />
-
-                </button>
-
-            }
 
             </>
 
