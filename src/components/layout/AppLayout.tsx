@@ -87,7 +87,7 @@ export const AppLayout = ({ children, showNav = true, showSafeAreaPadding = true
 
   useEffect(() => {
     const handleScroll = (e: Event) => {
-      const target = e.target as HTMLElement | Document;
+      const target = e.target as unknown;
       let scrollTop = 0;
       if (target === document || target === document.documentElement || target === window) {
         scrollTop = window.scrollY || document.documentElement.scrollTop;
