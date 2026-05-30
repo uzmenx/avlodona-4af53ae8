@@ -354,7 +354,7 @@ const Settings = () => {
               >
                 <Zap className="h-5 w-5 fill-current text-yellow-300" />
                 <span className="text-base tracking-wide">
-                  {profile?.subscription_tier === 'pro' ? "Pro rejani ko'rish" : "Pro rejaga o'tish"}
+                  {profile?.subscription_tier === 'pro' ? "Pro rejani ko'rish" : "Tez kunda Pro ta'rif"}
                 </span>
               </Button>
             </CardContent>
