@@ -323,37 +323,8 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
 
       <>
 
-          <button
+          {/* swipe-only navigation, arrows removed */}
 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            goPrev();
-          }}
-
-          className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 bg-white/20 backdrop-blur-[10px] border border-white/30 rounded-full shadow-md hover:bg-white/30 transition-colors mr-0 px-px opacity-75">
-
-
-
-            <ChevronLeft className="h-[15px] w-[15px] text-white" />
-
-          </button>
-
-          <button
-
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            goNext();
-          }}
-
-          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-white/20 backdrop-blur-[10px] border border-white/30 rounded-full shadow-md hover:bg-white/30 transition-colors px-px opacity-75">
-
-
-
-            <ChevronRight className="h-[15px] w-[15px] text-white" />
-
-          </button>
 
 
 
