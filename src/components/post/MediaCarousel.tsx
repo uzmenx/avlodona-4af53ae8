@@ -196,6 +196,16 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
     if (dx > 8 || dy > 8) touchMoved.current = true;
   };
 
+  const handleSwipeEnd = (e: React.TouchEvent) => {
+    if (mediaUrls.length <= 1) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) goNext();
+      else goPrev();
+    }
+  };
+
   const showMute = isVideo(mediaUrls[currentIndex]);
 
   return (
@@ -205,6 +215,7 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
       style={{ touchAction: 'pan-y' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
+      onTouchEnd={handleSwipeEnd}
     >
       <div className="relative w-full overflow-hidden bg-white/10 backdrop-blur-[10px] border border-white/20 flex items-center justify-center" style={{ maxHeight: '80vh', minHeight: '200px', touchAction: 'pan-y' }}>
         {stage === 'meta' && (
@@ -312,37 +323,8 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
 
       <>
 
-          <button
+          {/* swipe-only navigation, arrows removed */}
 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            goPrev();
-          }}
-
-          className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 bg-white/20 backdrop-blur-[10px] border border-white/30 rounded-full shadow-md hover:bg-white/30 transition-colors mr-0 px-px opacity-75">
-
-
-
-            <ChevronLeft className="h-[15px] w-[15px] text-white" />
-
-          </button>
-
-          <button
-
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            goNext();
-          }}
-
-          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-white/20 backdrop-blur-[10px] border border-white/30 rounded-full shadow-md hover:bg-white/30 transition-colors px-px opacity-75">
-
-
-
-            <ChevronRight className="h-[15px] w-[15px] text-white" />
-
-          </button>
 
 
 
