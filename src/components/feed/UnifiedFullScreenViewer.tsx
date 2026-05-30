@@ -1369,11 +1369,20 @@ export const UnifiedFullScreenViewer = ({
 
             }}
 
-            onTouchEnd={() => {
+            onTouchEnd={(e) => {
 
-              // Native scroll-snap handles all swipe navigation.
-
-              // This overlay only sets touchMoved so handleMediaClick knows if it was a swipe or tap.
+              // Horizontal swipe → carousel navigation
+              if (mediaUrls.length > 1) {
+                const dx = e.changedTouches[0].clientX - touchStartX.current;
+                const dy = e.changedTouches[0].clientY - touchStartY.current;
+                if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                  if (dx < 0 && currentMediaIndex < mediaUrls.length - 1) {
+                    setCurrentMediaIndex((p) => p + 1);
+                  } else if (dx > 0 && currentMediaIndex > 0) {
+                    setCurrentMediaIndex((p) => p - 1);
+                  }
+                }
+              }
 
             }}
 
