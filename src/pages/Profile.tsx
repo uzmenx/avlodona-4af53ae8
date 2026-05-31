@@ -78,6 +78,7 @@ const PremiumStarsIcon = ({ className, active, size = 'default' }: { className?:
 const ProfileMasonryItem = ({ post }: {post: Post;}) => {
   const mediaUrl = ((post.media_urls && post.media_urls.length > 0 ? post.media_urls[0] : post.image_url || '') || '') as string;
   const isVideo = !!mediaUrl && (mediaUrl.includes('.mp4') || mediaUrl.includes('.mov') || mediaUrl.includes('.webm'));
+  const thumbnailUrl = (post as any).thumbnail_url || (post as any).thumbnail || mediaUrl;
   const videoRef = useRef<HTMLVideoElement>(null);
   useAutoPreviewVideo(videoRef, { enabled: isVideo, delayMs: 3000, threshold: 0.6 });
 
@@ -98,7 +99,13 @@ const ProfileMasonryItem = ({ post }: {post: Post;}) => {
         preload="metadata" /> :
 
 
-      <img src={mediaUrl} alt="" className="w-full h-full object-cover" /> :
+      <img
+        src={thumbnailUrl}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="w-full h-full object-cover"
+      /> :
 
 
       <div className="w-full h-full bg-muted" />

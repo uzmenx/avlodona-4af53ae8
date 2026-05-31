@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { getCacheWithTTL, setCache } from '@/lib/localCache';
 
 export interface GifOverlay {
   id: string;
@@ -51,119 +53,120 @@ export interface StoryGroup {
 
 export const useStories = () => {
   const { user } = useAuth();
-  const [storyGroups, setStoryGroups] = useState<StoryGroup[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchStories = useCallback(async () => {
-    if (!user) {
-      setStoryGroups([]);
-      setIsLoading(false);
-      return;
-    }
+  // Disk cache: skeleton faqat birinchi marta (keyingi kirishlarda eski data ko‘rinadi)
+  const DISK_TTL_MS = 30 * 60 * 1000; // 30 daqiqa
+  const CACHE_KEY = useMemo(
+    () => (user?.id ? `stories_cache_v2_${user.id}` : 'stories_cache_v2'),
+    [user?.id]
+  );
 
-    try {
-      // Get users I follow
-      const { data: follows } = await supabase
-        .from('follows')
-        .select('following_id')
-        .eq('follower_id', user.id);
+  const fetchStoryGroups = useCallback(async (): Promise<StoryGroup[]> => {
+    if (!user?.id) return [];
 
-      const followingIds = follows?.map(f => f.following_id) || [];
-      // Include own stories too
-      const userIds = [...followingIds, user.id];
+    // Get users I follow
+    const { data: follows } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', user.id);
 
-      // Get active stories (not expired)
-      const { data: stories, error } = await supabase
-        .from('stories')
-        .select('*')
-        .in('user_id', userIds)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: true });
+    const followingIds = follows?.map(f => f.following_id) || [];
+    // Include own stories too
+    const userIds = [...followingIds, user.id];
 
-      if (error) throw error;
+    // Get active stories (not expired)
+    const { data: stories, error } = await supabase
+      .from('stories')
+      .select('*')
+      .in('user_id', userIds)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: true });
 
-      if (!stories || stories.length === 0) {
-        setStoryGroups([]);
-        setIsLoading(false);
-        return;
+    if (error) throw error;
+    if (!stories || stories.length === 0) return [];
+
+    const storyUserIds = [...new Set(stories.map(s => s.user_id))];
+    const storyIds = stories.map(s => s.id);
+
+    // Parallel fetch: profiles + views + likes
+    const [profilesRes, viewsRes, likesRes] = await Promise.all([
+      supabase.from('profiles').select('id, name, username, avatar_url').in('id', storyUserIds),
+      supabase.from('story_views').select('story_id').eq('viewer_id', user.id).in('story_id', storyIds),
+      supabase.from('story_likes').select('story_id').eq('user_id', user.id).in('story_id', storyIds),
+    ]);
+
+    const profiles = profilesRes.data || [];
+    const viewedStoryIds = new Set((viewsRes.data || []).map(v => v.story_id));
+    const likedStoryIds = new Set((likesRes.data || []).map(l => l.story_id));
+
+    // Group stories by user
+    const groupedMap = new Map<string, StoryGroup>();
+
+    for (const story of stories as any[]) {
+      const profile = profiles.find(p => p.id === story.user_id);
+      const storyWithMeta: Story = {
+        ...story,
+        media_type: story.media_type as 'image' | 'video',
+        ring_id: story.ring_id || 'default',
+        author: profile ? {
+          id: profile.id,
+          name: profile.name,
+          username: profile.username,
+          avatar_url: profile.avatar_url,
+        } : undefined,
+        has_viewed: viewedStoryIds.has(story.id),
+        has_liked: likedStoryIds.has(story.id),
+      };
+
+      if (!groupedMap.has(story.user_id)) {
+        groupedMap.set(story.user_id, {
+          user_id: story.user_id,
+          user: profile || { id: story.user_id, name: null, username: null, avatar_url: null },
+          stories: [],
+          has_unviewed: false,
+        });
       }
 
-      // Get profiles for story authors
-      const storyUserIds = [...new Set(stories.map(s => s.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, name, username, avatar_url')
-        .in('id', storyUserIds);
-
-      // Get view status for current user
-      const { data: views } = await supabase
-        .from('story_views')
-        .select('story_id')
-        .eq('viewer_id', user.id)
-        .in('story_id', stories.map(s => s.id));
-
-      const viewedStoryIds = new Set(views?.map(v => v.story_id) || []);
-
-      // Get like status for current user
-      const { data: likes } = await supabase
-        .from('story_likes')
-        .select('story_id')
-        .eq('user_id', user.id)
-        .in('story_id', stories.map(s => s.id));
-
-      const likedStoryIds = new Set(likes?.map(l => l.story_id) || []);
-
-      // Group stories by user
-      const groupedMap = new Map<string, StoryGroup>();
-
-      for (const story of stories) {
-        const profile = profiles?.find(p => p.id === story.user_id);
-        const storyWithMeta: Story = {
-          ...story,
-          media_type: story.media_type as 'image' | 'video',
-          ring_id: story.ring_id || 'default',
-          author: profile ? {
-            id: profile.id,
-            name: profile.name,
-            username: profile.username,
-            avatar_url: profile.avatar_url,
-          } : undefined,
-          has_viewed: viewedStoryIds.has(story.id),
-          has_liked: likedStoryIds.has(story.id),
-        };
-
-        if (!groupedMap.has(story.user_id)) {
-          groupedMap.set(story.user_id, {
-            user_id: story.user_id,
-            user: profile || { id: story.user_id, name: null, username: null, avatar_url: null },
-            stories: [],
-            has_unviewed: false,
-          });
-        }
-
-        const group = groupedMap.get(story.user_id)!;
-        group.stories.push(storyWithMeta);
-        if (!storyWithMeta.has_viewed) {
-          group.has_unviewed = true;
-        }
+      const group = groupedMap.get(story.user_id)!;
+      group.stories.push(storyWithMeta);
+      if (!storyWithMeta.has_viewed) {
+        group.has_unviewed = true;
       }
-
-      // Sort: own stories first, then unviewed, then viewed
-      const groups = Array.from(groupedMap.values()).sort((a, b) => {
-        if (a.user_id === user.id) return -1;
-        if (b.user_id === user.id) return 1;
-        if (a.has_unviewed && !b.has_unviewed) return -1;
-        if (!a.has_unviewed && b.has_unviewed) return 1;
-        return 0;
-      });
-
-      setStoryGroups(groups);
-    } catch (error) {
-      console.error('Error fetching stories:', error);
-    } finally {
-      setIsLoading(false);
     }
+
+    // Sort: own stories first, then unviewed, then viewed
+    return Array.from(groupedMap.values()).sort((a, b) => {
+      if (a.user_id === user.id) return -1;
+      if (b.user_id === user.id) return 1;
+      if (a.has_unviewed && !b.has_unviewed) return -1;
+      if (!a.has_unviewed && b.has_unviewed) return 1;
+      return 0;
+    });
   }, [user?.id]);
+
+  const initialData = useMemo(() => {
+    if (!user?.id) return undefined;
+    return getCacheWithTTL<StoryGroup[]>(CACHE_KEY, DISK_TTL_MS) ?? undefined;
+  }, [CACHE_KEY, user?.id]);
+
+  const query = useQuery({
+    queryKey: ['stories', user?.id],
+    enabled: !!user?.id,
+    queryFn: fetchStoryGroups,
+    staleTime: 120000, // 120000ms = 2 daqiqa
+    gcTime: 10 * 60 * 1000,   // 10 minutes
+    refetchOnWindowFocus: false,
+    initialData,
+    placeholderData: (prev) => prev,
+  });
+
+  // Persist to disk cache (2-qavat)
+  useEffect(() => {
+    if (!user?.id) return;
+    if (!query.data) return;
+    setCache(CACHE_KEY, query.data);
+  }, [CACHE_KEY, query.data, user?.id]);
 
   const recordView = async (storyId: string) => {
     if (!user) return;
@@ -175,6 +178,20 @@ export const useStories = () => {
           { story_id: storyId, viewer_id: user.id, viewed_at: new Date().toISOString() },
           { onConflict: 'story_id,viewer_id', ignoreDuplicates: true }
         );
+
+      // Update cached data (optimistic UI)
+      queryClient.setQueryData(['stories', user.id], (prev?: StoryGroup[]) => {
+        if (!prev) return prev;
+        const next = prev.map((g) => ({
+          ...g,
+          stories: g.stories.map((s) => s.id === storyId ? { ...s, has_viewed: true } : s),
+        }));
+        // Recompute has_unviewed
+        for (const g of next) {
+          g.has_unviewed = g.stories.some((s) => !s.has_viewed);
+        }
+        return next;
+      });
     } catch (error) {
       console.error('Error recording view:', error);
     }
@@ -202,6 +219,15 @@ export const useStories = () => {
         // Notification is automatically created by the database trigger
         // handle_story_like_notification on story_likes table
       }
+
+      // Update cached data (optimistic UI)
+      queryClient.setQueryData(['stories', user.id], (prev?: StoryGroup[]) => {
+        if (!prev) return prev;
+        return prev.map((g) => ({
+          ...g,
+          stories: g.stories.map((s) => s.id === storyId ? { ...s, has_liked: !isLiked } : s),
+        }));
+      });
     } catch (error) {
       console.error('Error toggling like:', error);
     }
@@ -249,14 +275,10 @@ export const useStories = () => {
     }));
   };
 
-  useEffect(() => {
-    fetchStories();
-  }, [fetchStories]);
-
   return {
-    storyGroups,
-    isLoading,
-    refetch: fetchStories,
+    storyGroups: query.data || [],
+    isLoading: query.isLoading && query.data === undefined,
+    refetch: () => query.refetch(),
     recordView,
     toggleLike,
     getStoryViewers,

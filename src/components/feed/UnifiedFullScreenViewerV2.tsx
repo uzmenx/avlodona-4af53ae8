@@ -162,10 +162,6 @@ export const UnifiedFullScreenViewer = ({
 
 
 
-  const lastShortsTouchTapTs = useRef(0);
-
-
-
   const mouseDownRef = useRef(false);
 
   const mouseStartY = useRef(0);
@@ -1225,32 +1221,18 @@ export const UnifiedFullScreenViewer = ({
       )}
 
       key={currentShort.id}
+      >
 
-      onClick={(e) => {
-
-        if (Date.now() - lastShortsTouchTapTs.current < 450) return;
-
-        const t = e.target as HTMLElement | null;
-
-        if (t?.closest('button') || t?.closest('a') || t?.tagName.toLowerCase() === 'iframe') return;
-
-        handleShortsTap();
-
-      }}>
-
-        <div className="relative w-full flex-1 min-h-0 z-[9999]" style={{ maxHeight: 'calc(100% - 120px)' }}>
+        <div className="relative w-full flex-1 min-h-0 z-[1]">
 
           {!isShortIframeReady &&
 
           <div className="absolute inset-0 flex items-center justify-center bg-black">
-
             <Loader2 className="h-7 w-7 text-white animate-spin" />
-
           </div>
 
           }
 
-          {/* Render current + adjacent iframes for instant switching */}
 
           {preloadRange.map((idx) => {
 

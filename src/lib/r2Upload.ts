@@ -40,6 +40,70 @@ export async function compressImage(
 }
 
 /**
+ * Create a square WEBP thumbnail with center-crop (Instagram-like cover).
+ * - size: output px (e.g., 300)
+ * - quality: webp quality (0..1)
+ */
+export async function createSquareThumbnailWebp(
+  file: File,
+  size = 300,
+  quality = 0.78
+): Promise<Blob> {
+  // Try createImageBitmap (faster, doesn't block layout as much)
+  const canUseBitmap = typeof createImageBitmap === 'function';
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    let srcWidth = 0;
+    let srcHeight = 0;
+    let drawSource: CanvasImageSource;
+
+    if (canUseBitmap) {
+      const bitmap = await createImageBitmap(file);
+      srcWidth = bitmap.width;
+      srcHeight = bitmap.height;
+      drawSource = bitmap;
+    } else {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error('Image load failed'));
+        el.src = objectUrl;
+      });
+      srcWidth = img.width;
+      srcHeight = img.height;
+      drawSource = img;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    // center-crop to square
+    const side = Math.min(srcWidth, srcHeight);
+    const sx = Math.floor((srcWidth - side) / 2);
+    const sy = Math.floor((srcHeight - side) / 2);
+
+    ctx.drawImage(drawSource, sx, sy, side, side, 0, 0, size, size);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('Canvas toBlob failed'))),
+        'image/webp',
+        quality
+      );
+    });
+
+    return blob;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+/**
  * Upload a file to Cloudflare R2 via edge function (with 1 retry)
  */
 export async function uploadToR2(
@@ -141,4 +205,50 @@ export async function uploadMedia(
 
   // Videos, audio (mp3, wav, ogg, m4a), and other files uploaded raw
   return uploadToR2(file, userFolder, undefined, onProgress);
+}
+
+export type UploadPostMediaResult = {
+  url: string;
+  thumbnailUrl: string | null;
+  mediaType: 'image' | 'video' | 'audio' | 'file';
+};
+
+/**
+ * Post uchun media upload: image bo‘lsa 300x300 WEBP thumbnail ham yaratadi.
+ * - thumbnailUrl faqat image (gif emas) uchun qaytadi
+ * - boshqa media turlari: thumbnailUrl = null
+ */
+export async function uploadPostMedia(
+  file: File,
+  folder: 'posts' | 'memorial',
+  userId: string,
+  onProgress?: (progress: number) => void
+): Promise<UploadPostMediaResult> {
+  const isImage = file.type.startsWith('image/');
+  const isVideo = file.type.startsWith('video/');
+  const isAudio = file.type.startsWith('audio/');
+  const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+
+  const mediaType: UploadPostMediaResult['mediaType'] =
+    isImage ? 'image' :
+    isVideo ? 'video' :
+    isAudio ? 'audio' :
+    'file';
+
+  const mainUrl = await uploadMedia(file, folder, userId, onProgress);
+
+  // Thumbnail only for non-gif images (webp)
+  if (!isImage || isGif) {
+    return { url: mainUrl, thumbnailUrl: null, mediaType };
+  }
+
+  try {
+    const thumbBlob = await createSquareThumbnailWebp(file, 300, 0.78);
+    const thumbFolder = `${folder}-thumbs/${userId}`;
+    const thumbnailUrl = await uploadToR2(thumbBlob, thumbFolder);
+    return { url: mainUrl, thumbnailUrl, mediaType };
+  } catch (e) {
+    console.warn('[uploadPostMedia] thumbnail create/upload failed (non-fatal):', e);
+    return { url: mainUrl, thumbnailUrl: null, mediaType };
+  }
 }

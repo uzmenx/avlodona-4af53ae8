@@ -1,11 +1,11 @@
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useStories, StoryGroup } from "@/hooks/useStories";
-import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
+
+import { Button } from "@/components/ui/button";
+import { useStories, type StoryGroup } from "@/hooks/useStories";
+import { useAuth } from "@/contexts/AuthContext";
 import { getStoryRingGradient } from "./storyRings";
 
 interface StoriesRowProps {
@@ -18,21 +18,23 @@ export const StoriesRow = ({ onStoryClick }: StoriesRowProps) => {
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const showSkeleton = isLoading && (storyGroups?.length ?? 0) === 0;
+
   const scroll = (direction: "left" | "right") => {
-    if (scrollRef.current) {
-      const scrollAmount = 200;
-      scrollRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      });
-    }
+    if (!scrollRef.current) return;
+    const scrollAmount = 200;
+    scrollRef.current.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    });
   };
 
   // Check if current user has stories
   const myStoryGroup = storyGroups.find((g) => g.user_id === user?.id);
   const otherGroups = storyGroups.filter((g) => g.user_id !== user?.id);
 
-  if (isLoading) {
+  // Skeleton faqat 1-marta (cache yo‘q bo‘lganda). Keyin placeholderData eski data’ni ko‘rsatadi.
+  if (showSkeleton) {
     return (
       <div className="px-4 py-3">
         <div className="flex gap-3">
@@ -47,9 +49,7 @@ export const StoriesRow = ({ onStoryClick }: StoriesRowProps) => {
     );
   }
 
-  if (storyGroups.length === 0 && !user) {
-    return null;
-  }
+  if (storyGroups.length === 0 && !user) return null;
 
   return (
     <div className="relative border-b border-border">
@@ -101,6 +101,8 @@ export const StoriesRow = ({ onStoryClick }: StoriesRowProps) => {
                   <img
                     src={profile.avatar_url}
                     alt="You"
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full rounded-full object-cover"
                   />
                 ) : (
@@ -126,9 +128,14 @@ export const StoriesRow = ({ onStoryClick }: StoriesRowProps) => {
         {/* Other users' stories */}
         {otherGroups.map((group) => {
           const groupIndex = storyGroups.findIndex((g) => g.user_id === group.user_id);
-          return <StoryAvatar key={group.user_id} group={group} onClick={() => onStoryClick(groupIndex)} />;
+          return (
+            <StoryAvatar
+              key={group.user_id}
+              group={group}
+              onClick={() => onStoryClick(groupIndex)}
+            />
+          );
         })}
-
       </div>
     </div>
   );
@@ -143,7 +150,13 @@ interface StoryAvatarProps {
 const StoryAvatar = ({ group, onClick, isOwn }: StoryAvatarProps) => {
   const displayName = group.user.name || group.user.username || "Foydalanuvchi";
   const avatarEl = group.user.avatar_url ? (
-    <img src={group.user.avatar_url} alt={displayName} className="w-full h-full rounded-full object-cover" />
+    <img
+      src={group.user.avatar_url}
+      alt={displayName}
+      loading="lazy"
+      decoding="async"
+      className="w-full h-full rounded-full object-cover"
+    />
   ) : (
     <div className="w-full h-full rounded-full bg-muted flex items-center justify-center text-muted-foreground text-lg font-medium">
       {displayName.charAt(0).toUpperCase()}
@@ -151,7 +164,7 @@ const StoryAvatar = ({ group, onClick, isOwn }: StoryAvatarProps) => {
   );
 
   // Get the ring gradient from the latest story's ring_id
-  const latestRingId = group.stories[group.stories.length - 1]?.ring_id || 'default';
+  const latestRingId = group.stories[group.stories.length - 1]?.ring_id || "default";
   const ringGradient = getStoryRingGradient(latestRingId);
 
   return (

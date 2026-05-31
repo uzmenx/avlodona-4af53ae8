@@ -52,6 +52,7 @@ import { Input } from '@/components/ui/input';
 const UserProfileMasonryItem = ({ post }: {post: Post;}) => {
   const mediaUrl = ((post.media_urls && post.media_urls.length > 0 ? post.media_urls[0] : post.image_url || '') || '') as string;
   const isVideo = !!mediaUrl && (mediaUrl.includes('.mp4') || mediaUrl.includes('.mov') || mediaUrl.includes('.webm'));
+  const thumbnailUrl = (post as any).thumbnail_url || (post as any).thumbnail || mediaUrl;
   const videoRef = useRef<HTMLVideoElement>(null);
   useAutoPreviewVideo(videoRef, { enabled: isVideo, delayMs: 3000, threshold: 0.6 });
 
@@ -72,7 +73,13 @@ const UserProfileMasonryItem = ({ post }: {post: Post;}) => {
         preload="metadata" /> :
 
 
-      <img src={mediaUrl} alt="" className="w-full h-full object-cover" /> :
+      <img
+        src={thumbnailUrl}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="w-full h-full object-cover"
+      /> :
 
 
       <div className="w-full h-full bg-muted" />
@@ -1604,7 +1611,7 @@ export const UserProfilePage = () => {
                                 {isVid ?
                             <video src={mediaUrl} className="w-full h-full object-cover pointer-events-none" muted playsInline preload="metadata" /> :
 
-                            <img src={mediaUrl} alt="" className="w-full h-full object-cover pointer-events-none" loading="lazy" />
+                            <img src={mediaUrl} alt="" className="w-full h-full object-cover pointer-events-none" loading="lazy" decoding="async" />
                             }
                                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
                                   <div className="text-white text-[11px] leading-tight">
@@ -1638,7 +1645,7 @@ export const UserProfilePage = () => {
                                 {isVid ?
                             <video src={mediaUrl} className="w-full h-full object-cover pointer-events-none" muted playsInline preload="metadata" /> :
 
-                            <img src={mediaUrl} alt="" className="w-full h-full object-cover pointer-events-none" loading="lazy" />
+                            <img src={mediaUrl} alt="" className="w-full h-full object-cover pointer-events-none" loading="lazy" decoding="async" />
                             }
                                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 via-black/20 to-transparent">
                                   <div className="text-white text-[11px] leading-tight">

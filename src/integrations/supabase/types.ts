@@ -1447,6 +1447,7 @@ export type Database = {
           media_metadata: Json | null
           media_urls: string[] | null
           target_member_id: string | null
+          thumbnail_url: string | null
           updated_at: string
           user_id: string
           views_count: number | null
@@ -1464,6 +1465,7 @@ export type Database = {
           media_metadata?: Json | null
           media_urls?: string[] | null
           target_member_id?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
           user_id: string
           views_count?: number | null
@@ -1481,6 +1483,7 @@ export type Database = {
           media_metadata?: Json | null
           media_urls?: string[] | null
           target_member_id?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
           user_id?: string
           views_count?: number | null

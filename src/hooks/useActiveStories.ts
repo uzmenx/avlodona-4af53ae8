@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { getCacheWithTTL, setCache } from '@/lib/localCache';
 
 export interface ActiveStoryUser {
   user_id: string;
@@ -14,10 +16,12 @@ export interface ActiveStoryUser {
  */
 export const useActiveStories = () => {
   const { user } = useAuth();
-  const [storyUsers, setStoryUsers] = useState<Map<string, ActiveStoryUser>>(new Map());
+  const DISK_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-  const fetch = useCallback(async () => {
-    if (!user) return;
+  const CACHE_KEY = useMemo(() => (user?.id ? `active_stories_cache_v1_${user.id}` : 'active_stories_cache_v1'), [user?.id]);
+
+  const fetch = useCallback(async (): Promise<ActiveStoryUser[]> => {
+    if (!user?.id) return [];
 
     try {
       // Get all active stories
@@ -27,10 +31,7 @@ export const useActiveStories = () => {
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
 
-      if (!stories || stories.length === 0) {
-        setStoryUsers(new Map());
-        return;
-      }
+      if (!stories || stories.length === 0) return [];
 
       // Get viewed stories for current user
       const storyIds = stories.map(s => s.id);
@@ -57,16 +58,43 @@ export const useActiveStories = () => {
           }
         }
       }
-      setStoryUsers(map);
+      return Array.from(map.values());
     } catch (err) {
       console.error('useActiveStories error:', err);
+      return [];
     }
   }, [user?.id]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  const initialData = useMemo(() => {
+    if (!user?.id) return undefined;
+    return getCacheWithTTL<ActiveStoryUser[]>(CACHE_KEY, DISK_TTL_MS) ?? undefined;
+  }, [CACHE_KEY, user?.id]);
+
+  const query = useQuery({
+    queryKey: ['active-stories', user?.id],
+    enabled: !!user?.id,
+    queryFn: fetch,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    initialData,
+    placeholderData: (prev) => prev,
+  });
+
+  useEffect(() => {
+    if (!user?.id) return;
+    if (!query.data) return;
+    setCache(CACHE_KEY, query.data);
+  }, [CACHE_KEY, query.data, user?.id]);
+
+  const storyUsers = useMemo(() => {
+    const map = new Map<string, ActiveStoryUser>();
+    for (const s of query.data || []) map.set(s.user_id, s);
+    return map;
+  }, [query.data]);
 
   const hasStory = (userId: string) => storyUsers.has(userId);
   const getStoryInfo = (userId: string) => storyUsers.get(userId);
 
-  return { storyUsers, hasStory, getStoryInfo, refetch: fetch };
+  return { storyUsers, hasStory, getStoryInfo, refetch: () => query.refetch() };
 };
