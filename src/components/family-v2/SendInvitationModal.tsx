@@ -342,7 +342,7 @@ export const SendInvitationModal = ({
     }
 
     return (
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {filteredUsers.map((profileListMember) => {
           const isGenderMatch = !requiredGender || profileListMember.gender === requiredGender;
           const genderMismatch = requiredGender && profileListMember.gender && profileListMember.gender !== requiredGender;
@@ -351,30 +351,30 @@ export const SendInvitationModal = ({
             <div
               key={profileListMember.id}
               className={cn(
-                "flex items-center justify-between p-3 rounded-2xl border transition-colors bg-background/40 backdrop-blur-sm",
+                "flex items-center justify-between p-2.5 rounded-xl border transition-colors bg-background/40 backdrop-blur-sm gap-2",
                 genderMismatch 
                   ? "border-border/50 opacity-50" 
                   : "border-border/50 hover:bg-muted/30"
               )}
             >
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
+              <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                <Avatar className="h-9 w-9 flex-shrink-0">
                   <AvatarImage src={profileListMember.avatar_url || undefined} />
                   <AvatarFallback className={cn(
                     profileListMember.gender === 'male' ? "bg-sky-500" : "bg-pink-500",
-                    "text-primary-foreground"
+                    "text-primary-foreground text-xs"
                   )}>
-                    {profileListMember.name?.[0]?.toUpperCase() || <User className="w-4 h-4" />}
+                    {profileListMember.name?.[0]?.toUpperCase() || <User className="w-3.5 h-3.5" />}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium truncate">{profileListMember.name || "Noma'lum"}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-medium text-[13px] truncate">{profileListMember.name || "Noma'lum"}</p>
                     {profileListMember.gender && (
                       <Badge 
                         variant="outline" 
                         className={cn(
-                          "text-xs",
+                          "text-[9px] px-1.5 py-0 h-4 flex-shrink-0",
                           profileListMember.gender === 'male' 
                             ? "border-sky-500/50 text-sky-600 dark:text-sky-400" 
                             : "border-pink-500/50 text-pink-600 dark:text-pink-400"
@@ -386,7 +386,7 @@ export const SendInvitationModal = ({
                   </div>
                   {profileListMember.username && (
                     <div className="truncate">
-                      <StarUsername username={profileListMember.username} textClassName="text-sm" />
+                      <StarUsername username={profileListMember.username} textClassName="text-[11px]" />
                     </div>
                   )}
                 </div>
@@ -396,13 +396,14 @@ export const SendInvitationModal = ({
                 onClick={() => handleSendInvitation(profileListMember.id)}
                 disabled={isSending || genderMismatch}
                 className={cn(
+                  "flex-shrink-0 h-8 px-2.5 text-xs rounded-lg",
                   genderMismatch 
                     ? "bg-muted text-muted-foreground" 
-                    : "text-white bg-gradient-to-b from-emerald-400 to-emerald-600 shadow-md shadow-emerald-500/20 hover:from-emerald-300 hover:to-emerald-600"
+                    : "text-white bg-emerald-500 hover:bg-emerald-600 shadow-none"
                 )}
               >
-                <Send className="w-4 h-4 mr-1" />
-                Yuborish
+                <Send className="w-3.5 h-3.5 mr-1" />
+                <span className="hidden sm:inline">Yuborish</span>
               </Button>
             </div>
           );
@@ -445,67 +446,7 @@ export const SendInvitationModal = ({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-3 px-4 py-3">
-          {!isSearchFocused && (
-            <>
-              <div className="px-0.5">
-                <Input
-                  value={roleInput}
-                  onChange={(e) => setRoleInput(e.target.value)}
-                  placeholder="Qarindoshlik (Masalan: Ota, Ona, Aka...)"
-                  className="h-9 rounded-xl bg-muted/30 border-border/50 text-center font-medium text-xs"
-                />
-              </div>
-
-              {/* New prominent action buttons */}
-              <div className="grid grid-cols-2 gap-2.5">
-                <Button 
-                  variant="outline" 
-                  onClick={handlePickContactAndSend}
-                  disabled={isGeneratingLink}
-                  className="h-[74px] flex flex-col gap-1 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 dark:bg-white/5 dark:hover:bg-white/10 shadow-sm"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                    <Phone className="h-3.5 w-3.5 text-emerald-500" />
-                  </div>
-                  <div className="text-center leading-tight">
-                    <div className="text-[12px] font-semibold">Kontaktlar</div>
-                    <div className="text-[10px] text-muted-foreground">SMS orqali yuborish</div>
-                  </div>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleCopyLink}
-                  disabled={isGeneratingLink}
-                  className="h-[74px] flex flex-col gap-1 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 dark:bg-white/5 dark:hover:bg-white/10 shadow-sm"
-                >
-                  <div className={cn(
-                    "w-8 h-8 rounded-xl flex items-center justify-center transition-colors border",
-                    copiedLink ? "bg-emerald-500/10 border-emerald-500/20" : "bg-primary/10 border-primary/20"
-                  )}>
-                    {copiedLink ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                    ) : (
-                      <LinkIcon className="h-3.5 w-3.5 text-primary" />
-                    )}
-                  </div>
-                  <div className="text-center leading-tight">
-                    <div className="text-[12px] font-semibold">Havola</div>
-                    <div className="text-[10px] text-muted-foreground">Nusxalash</div>
-                  </div>
-                </Button>
-              </div>
-
-              <div className="relative flex items-center py-0.5">
-                <div className="flex-grow border-t border-border"></div>
-                <span className="flex-shrink-0 mx-3 text-[9px] text-muted-foreground uppercase tracking-widest font-semibold flex items-center gap-1 opacity-70">
-                  <UserPlus className="w-2.5 h-2.5" /> Yoki tizim ichidan
-                </span>
-                <div className="flex-grow border-t border-border"></div>
-              </div>
-            </>
-          )}
-
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-3 px-4 pt-4 pb-2">
           {/* Search Input Layout */}
           <div className="flex gap-2 items-center">
             <div className="relative flex-1">
@@ -516,10 +457,10 @@ export const SendInvitationModal = ({
                 onFocus={() => setIsSearchFocused(true)}
                 onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Ism yoki username bo'yicha qidirish..."
-                className="pl-9 h-9 rounded-xl bg-muted/30 border-border/50 focus-visible:ring-1 focus-visible:border-primary/40 text-xs"
+                className="pl-9 h-10 rounded-2xl bg-muted/40 border-border/50 focus-visible:ring-1 focus-visible:border-primary/40 text-xs"
               />
             </div>
-            {isSearchFocused && (
+            {isSearchFocused && searchQuery.length > 0 && (
               <Button
                 type="button"
                 variant="ghost"
@@ -529,7 +470,7 @@ export const SendInvitationModal = ({
                   setSearchQuery('');
                   setSearchResults([]);
                 }}
-                className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/20 rounded-xl"
+                className="h-10 px-3 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/20 rounded-2xl"
               >
                 Orqaga
               </Button>
@@ -553,20 +494,20 @@ export const SendInvitationModal = ({
               </ScrollArea>
             ) : (
               <Tabs defaultValue="followers" className="flex-1 flex flex-col overflow-hidden">
-                <TabsList className="w-full rounded-xl bg-muted/30 p-0.5 border border-border/50 h-8">
-                  <TabsTrigger value="followers" className="flex-1 rounded-lg text-xs py-1 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <TabsList className="w-full rounded-2xl bg-muted/30 p-1 border border-border/50 h-10">
+                  <TabsTrigger value="followers" className="flex-1 rounded-xl text-xs py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                     <Users className="h-3.5 w-3.5 mr-1.5" />
                     Kuzatuvchilar
                   </TabsTrigger>
-                  <TabsTrigger value="following" className="flex-1 rounded-lg text-xs py-1 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <TabsTrigger value="following" className="flex-1 rounded-xl text-xs py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                     <UserPlus className="h-3.5 w-3.5 mr-1.5" />
                     Kuzatilmoqda
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="followers" className="mt-2.5 flex-1 overflow-hidden focus-visible:ring-0 focus-visible:outline-none">
+                <TabsContent value="followers" className="mt-3 flex-1 overflow-hidden focus-visible:ring-0 focus-visible:outline-none">
                   <ScrollArea className="h-full">
-                    <div className="pr-3 pb-3">
+                    <div className="pr-1 pb-3">
                       {isLoadingFollows ? (
                         <div className="text-center py-6 text-muted-foreground text-xs">
                           Yuklanmoqda...
@@ -578,9 +519,9 @@ export const SendInvitationModal = ({
                   </ScrollArea>
                 </TabsContent>
 
-                <TabsContent value="following" className="mt-2.5 flex-1 overflow-hidden focus-visible:ring-0 focus-visible:outline-none">
+                <TabsContent value="following" className="mt-3 flex-1 overflow-hidden focus-visible:ring-0 focus-visible:outline-none">
                   <ScrollArea className="h-full">
-                    <div className="pr-3 pb-3">
+                    <div className="pr-1 pb-3">
                       {isLoadingFollows ? (
                         <div className="text-center py-6 text-muted-foreground text-xs">
                           Yuklanmoqda...
@@ -593,6 +534,13 @@ export const SendInvitationModal = ({
                 </TabsContent>
               </Tabs>
             )}
+          </div>
+
+          {/* Footer Promo Message */}
+          <div className="mt-auto py-2 flex justify-center">
+            <div className="px-4 py-1.5 rounded-full bg-muted/40 border border-border/40 text-[10px] text-muted-foreground/80 font-medium backdrop-blur-sm">
+              tez kunda kontakt orqali taklif qilish qo'shiladi
+            </div>
           </div>
         </div>
       </DialogContent>

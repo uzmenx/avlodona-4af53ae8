@@ -814,7 +814,7 @@ export const UnifiedFullScreenViewer = ({
 
         const { StatusBar, Style } = await import('@capacitor/status-bar');
 
-        await StatusBar.setStyle({ style: Style.Dark });
+        await StatusBar.setStyle({ style: Style.Light });
 
         await StatusBar.setBackgroundColor({ color: '#000000' });
 
@@ -852,7 +852,7 @@ export const UnifiedFullScreenViewer = ({
 
       import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
 
-        void StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
+        void StatusBar.setStyle({ style: isDark ? Style.Light : Style.Dark });
 
         void StatusBar.setBackgroundColor({ color: restoreColor });
 

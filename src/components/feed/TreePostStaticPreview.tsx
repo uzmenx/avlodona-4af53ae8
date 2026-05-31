@@ -9,6 +9,7 @@ interface TreePostStaticPreviewProps {
   positions: Record<string, { x: number; y: number }>;
   overlays?: TreeOverlay[];
   className?: string;
+  interactive?: boolean;
 }
 
 const NOOP_FN = () => {};
@@ -21,6 +22,7 @@ export const TreePostStaticPreview = ({
   positions,
   overlays = [],
   className,
+  interactive = false,
 }: TreePostStaticPreviewProps) => {
   const initialViewport = useMemo(() => {
     // Check if we have a saved viewport in positions
@@ -32,7 +34,11 @@ export const TreePostStaticPreview = ({
 
   return (
     <div
-      className={cn('relative w-full overflow-hidden bg-card/50 pointer-events-none', className)}
+      className={cn(
+        'relative w-full overflow-hidden bg-card/50',
+        interactive ? 'pointer-events-auto' : 'pointer-events-none',
+        className
+      )}
       style={{ height: '220px', maxHeight: '220px' }}
     >
       <div className="absolute inset-0">
@@ -43,6 +49,8 @@ export const TreePostStaticPreview = ({
           onPositionChange={NOOP_FN}
           readOnly={true}
           initialViewport={initialViewport}
+          panEnabled={interactive}
+          zoomEnabled={interactive}
         />
       </div>
 

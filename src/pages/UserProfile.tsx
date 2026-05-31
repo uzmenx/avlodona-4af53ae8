@@ -37,6 +37,7 @@ import { formatCount } from '@/lib/formatCount';
 import { RelativeConnectionSheet } from '@/components/family/RelativeConnectionSheet';
 import { useFamilyInvitations } from '@/hooks/useFamilyInvitations';
 import { UnifiedMergeDialog } from '@/components/family-v2/UnifiedMergeDialog';
+import { YearScrollPicker } from '@/components/family-v2/YearScrollPicker';
 import { useToast } from '@/hooks/use-toast';
 import { useBlockedUsers } from '@/hooks/useBlockedUsers';
 import { useActiveStories } from '@/hooks/useActiveStories';
@@ -1805,26 +1806,24 @@ export const UserProfilePage = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <span className="text-[11px] text-muted-foreground font-medium text-center">Tug'ilgan</span>
-                    <Input
-                      type="number"
+                    <YearScrollPicker
                       value={editBirthYear}
-                      onChange={(e) => setEditBirthYear(e.target.value)}
+                      onChange={setEditBirthYear}
                       placeholder="1980"
-                      min="1800"
-                      max={new Date().getFullYear()}
-                      className="rounded-2xl h-11 bg-muted/30 border-muted/50 focus:border-primary/50 text-center text-base font-semibold"
+                      minYear={1800}
+                      commitDefaultOnOpen
+                      triggerClassName="rounded-2xl h-11 bg-muted/30 border-muted/50 hover:bg-muted/40 focus:border-primary/50 text-center text-base font-semibold"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-[11px] text-muted-foreground font-medium text-center">Vafot etgan</span>
-                    <Input
-                      type="number"
+                    <YearScrollPicker
                       value={editDeathYear}
-                      onChange={(e) => setEditDeathYear(e.target.value)}
+                      onChange={setEditDeathYear}
                       placeholder="2020"
-                      min="1800"
-                      max={new Date().getFullYear()}
-                      className="rounded-2xl h-11 bg-muted/30 border-muted/50 focus:border-primary/50 text-center text-base font-semibold"
+                      minYear={1800}
+                      commitDefaultOnOpen
+                      triggerClassName="rounded-2xl h-11 bg-muted/30 border-muted/50 hover:bg-muted/40 focus:border-primary/50 text-center text-base font-semibold"
                     />
                   </div>
                 </div>

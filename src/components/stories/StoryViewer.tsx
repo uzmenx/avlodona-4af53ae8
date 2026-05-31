@@ -621,7 +621,7 @@ export const StoryViewer = ({
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/50 pointer-events-none" />
 
         {/* Progress bars — safe-area ichida */}
-        <div className="absolute top-0 left-0 right-0 flex gap-1 pt-[max(8px,env(safe-area-inset-top))] px-2">
+        <div className="absolute top-0 left-0 right-0 flex gap-1 pt-2 px-2">
           {currentGroup.stories.map((_, index) => (
             <div
               key={index}
@@ -643,7 +643,7 @@ export const StoryViewer = ({
         </div>
 
         {/* Header — safe-area */}
-        <div className="absolute top-[max(24px,calc(8px+env(safe-area-inset-top)))] left-0 right-0 px-4 flex items-center justify-between">
+        <div className="absolute top-6 left-0 right-0 px-4 flex items-center justify-between">
           <div 
             className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={() => {
@@ -784,7 +784,7 @@ export const StoryViewer = ({
 
         {/* Caption */}
         {currentStory.caption && (
-          <div className="absolute bottom-[max(80px,calc(64px+env(safe-area-inset-bottom)))] left-4 right-4">
+          <div className="absolute bottom-20 left-4 right-4">
             <button
               type="button"
               onClick={(e) => {
@@ -802,7 +802,7 @@ export const StoryViewer = ({
         )}
 
         {/* Footer actions — safe-area */}
-        <div className="absolute bottom-[max(16px,env(safe-area-inset-bottom))] left-4 right-4">
+        <div className="absolute bottom-4 left-4 right-4">
           {isOwnStory ? (
             // Own story: show viewers
             <div className="flex items-center gap-2">

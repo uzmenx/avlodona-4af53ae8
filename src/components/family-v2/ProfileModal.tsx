@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { MergedProfilesManager } from './MergedProfilesManager';
+import { YearScrollPicker } from './YearScrollPicker';
 import { ImageCropper } from '@/components/profile';
 import { compressImage, uploadToR2 } from '@/lib/r2Upload';
 import {
@@ -458,23 +459,21 @@ export const ProfileModal = ({
               </div>
 
               <div className="flex gap-2">
-                <Input
-                  type="number"
+                <YearScrollPicker
                   value={birthYear}
-                  onChange={(e) => setBirthYear(e.target.value)}
+                  onChange={setBirthYear}
                   placeholder="Tug'ilgan yil"
-                  min="1800"
-                  max={new Date().getFullYear()}
-                  className="rounded-2xl bg-muted/40 border-muted/60 focus:border-primary/40 h-11 text-sm"
+                  minYear={1800}
+                  commitDefaultOnOpen
+                  triggerClassName="rounded-2xl bg-muted/40 border-muted/60 hover:bg-muted/50 h-11 text-sm"
                 />
-                <Input
-                  type="number"
+                <YearScrollPicker
                   value={deathYear}
-                  onChange={(e) => setDeathYear(e.target.value)}
+                  onChange={setDeathYear}
                   placeholder="Vafot yili"
-                  min="1800"
-                  max={new Date().getFullYear()}
-                  className="rounded-2xl bg-muted/40 border-muted/60 focus:border-primary/40 h-11 text-sm"
+                  minYear={1800}
+                  commitDefaultOnOpen
+                  triggerClassName="rounded-2xl bg-muted/40 border-muted/60 hover:bg-muted/50 h-11 text-sm"
                 />
               </div>
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, Minimize2, Users, MessageCircle, Share2, Eye } from 'lucide-react';
+import { Heart, Minimize2, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,6 +42,7 @@ export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => 
   const navigate = useNavigate();
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
+  const [previewInteractive, setPreviewInteractive] = useState(false);
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
 
@@ -103,7 +104,15 @@ export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => 
           {/* Tree content — static or interactive */}
           <div
             className="relative cursor-pointer"
-            onClick={() => !expanded && setExpanded(true)}
+            onClick={() => {
+              if (!expanded && !previewInteractive) {
+                setPreviewInteractive(true);
+                return;
+              }
+              if (!expanded) {
+                setExpanded(true);
+              }
+            }}
           >
             <AnimatePresence mode="wait">
               {expanded ? (
@@ -114,7 +123,7 @@ export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => 
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.25 }}
                   className="relative w-full overflow-hidden bg-card/50"
-                  style={{ height: '420px', maxHeight: '420px' }}
+                  style={{ height: '280px', maxHeight: '280px' }}
                 >
                   {/* Interactive tree canvas with zoom/pan */}
                   <div className="absolute inset-0">
@@ -138,7 +147,7 @@ export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => 
                     variant="ghost"
                     size="icon"
                     className="absolute top-2 right-2 h-8 w-8 bg-black/40 backdrop-blur-sm rounded-full text-white hover:bg-black/60 z-30"
-                    onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+                    onClick={(e) => { e.stopPropagation(); setExpanded(false); setPreviewInteractive(false); }}
                   >
                     <Minimize2 className="h-4 w-4" />
                   </Button>
@@ -156,23 +165,11 @@ export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => 
                     positions={post.positions_data || {}}
                     overlays={post.overlays}
                     className="rounded-none"
+                    interactive={previewInteractive}
                   />
                 </motion.div>
               )}
             </AnimatePresence>
-
-            {/* Title overlay */}
-            {post.title && (
-              <div className="absolute top-3 left-3 right-12 z-20">
-                <p className="text-sm font-bold text-white drop-shadow-lg">{post.title}</p>
-              </div>
-            )}
-
-            {/* Member count badge */}
-            <div className="absolute bottom-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm z-20">
-              <Users className="h-3 w-3 text-white" />
-              <span className="text-xs font-medium text-white">{memberCount}</span>
-            </div>
           </div>
 
           {/* Actions */}
@@ -183,11 +180,7 @@ export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => 
                 <span className="text-sm font-medium">{formatCount(likesCount)}</span>
               </button>
               <div className="flex items-center gap-1.5 text-muted-foreground">
-                <MessageCircle className="h-5 w-5" />
-                <span className="text-sm">0</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Eye className="h-5 w-5" />
+                <Users className="h-5 w-5" />
                 <span className="text-sm">{memberCount}</span>
               </div>
             </div>

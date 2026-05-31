@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Icon } from '@iconify/react';
 import { Capacitor } from '@capacitor/core';
 import { useGallery, type GalleryAsset } from '@/hooks/useGallery';
+import { STORY_RINGS, type StoryRingId } from '@/components/stories/storyRings';
 import { EMOJIS, MEDIA_FILTERS } from './filters';
 import FilterStrip from './FilterStrip';
 import { MusicPicker, type SelectedMusic } from './MusicPicker';
@@ -118,9 +119,22 @@ interface InstagramMediaCaptureProps {
   ) => void;
   maxItems?: number;
   memoryMemberId?: string | null;
+  nextLabel?: string;
+  isSubmitting?: boolean;
+  storyRingId?: StoryRingId;
+  onStoryRingIdChange?: (id: StoryRingId) => void;
 }
 
-export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, memoryMemberId }: InstagramMediaCaptureProps) {
+export default function InstagramMediaCapture({
+  onClose,
+  onNext,
+  maxItems = 5,
+  memoryMemberId,
+  nextLabel,
+  isSubmitting,
+  storyRingId,
+  onStoryRingIdChange,
+}: InstagramMediaCaptureProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
@@ -191,6 +205,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   const [showDrawing, setShowDrawing] = useState(false);
   const [showGiphyPicker, setShowGiphyPicker] = useState(false);
   const [showCreativeMenu, setShowCreativeMenu] = useState(false);
+  const [showStoryRingPicker, setShowStoryRingPicker] = useState(false);
   const drawingCanvasRef = useRef<DrawingCanvasHandle>(null);
   const [isDraggingOverlay, setIsDraggingOverlay] = useState(false);
   const [isOverTrashId, setIsOverTrashId] = useState<string | null>(null);
@@ -227,6 +242,10 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
   const [isExporting, setIsExporting] = useState(false);
 
   const active = items[activeIndex];
+  const selectedRing = useMemo(() => {
+    const id = storyRingId ?? 'default';
+    return STORY_RINGS.find(r => r.id === id) ?? STORY_RINGS[0];
+  }, [storyRingId]);
   const currentFilter = useMemo(() => {
     const name = active?.filter ?? 'original';
     return MEDIA_FILTERS.find(f => f.name === name) || MEDIA_FILTERS[0];
@@ -1766,73 +1785,75 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
       {/* Unified Top Dock (Header + Strip) */}
       <div className="absolute top-0 left-0 right-0 z-50 px-2 pt-[calc(env(safe-area-inset-top,0px)+4px)]">
         {items.length > 0 ? (
-          <div className="flex items-center gap-2 p-1 rounded-2xl bg-black/55 backdrop-blur-xl border border-white/10 shadow-2xl">
-            <button
-              onClick={onClose}
-              className="w-12 h-12 flex-shrink-0 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center active:scale-90 transition-all border border-white/5"
-            >
-              <X className="w-5 h-5 text-white" />
-            </button>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 p-1 rounded-2xl bg-black/55 backdrop-blur-xl border border-white/10 shadow-2xl">
+              <button
+                onClick={onClose}
+                className="w-12 h-12 flex-shrink-0 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center active:scale-90 transition-all border border-white/5"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
 
-            <div className="flex-1 flex gap-2 overflow-x-auto items-center mx-0.5" style={{ scrollbarWidth: 'none' }}>
-              {items.map((it, idx) => (
-                <div
-                  key={it.media.id}
-                  draggable
-                  onDragStart={(e) => e.dataTransfer.setData('idx', idx.toString())}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => { e.preventDefault(); moveMedia(parseInt(e.dataTransfer.getData('idx')), idx); }}
-                  className={cn(
-                    'relative flex-shrink-0 transition-all duration-300',
-                    idx === activeIndex ? 'opacity-100 scale-100' : 'opacity-60 scale-95 hover:opacity-80'
-                  )}
-                  onClick={() => handleSelectFromStrip(idx)}
-                >
-                  <div className={cn(
-                    "w-12 h-12 rounded-xl overflow-hidden border transition-colors duration-200",
-                    idx === activeIndex ? "border-primary/80 ring-2 ring-primary/40" : "border-white/10"
-                  )}>
-                    {it.media.type === 'photo' ? (
-                      <img src={it.media.url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="relative w-full h-full">
-                        <img src={it.media.thumbnail || it.media.url} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                          <Play className="w-4 h-4 text-white fill-white" />
+              <div className="flex-1 flex gap-2 overflow-x-auto items-center mx-0.5" style={{ scrollbarWidth: 'none' }}>
+                {items.map((it, idx) => (
+                  <div
+                    key={it.media.id}
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData('idx', idx.toString())}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => { e.preventDefault(); moveMedia(parseInt(e.dataTransfer.getData('idx')), idx); }}
+                    className={cn(
+                      'relative flex-shrink-0 transition-all duration-300',
+                      idx === activeIndex ? 'opacity-100 scale-100' : 'opacity-60 scale-95 hover:opacity-80'
+                    )}
+                    onClick={() => handleSelectFromStrip(idx)}
+                  >
+                    <div className={cn(
+                      "w-12 h-12 rounded-xl overflow-hidden border transition-colors duration-200",
+                      idx === activeIndex ? "border-primary/80 ring-2 ring-primary/40" : "border-white/10"
+                    )}>
+                      {it.media.type === 'photo' ? (
+                        <img src={it.media.url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="relative w-full h-full">
+                          <img src={it.media.thumbnail || it.media.url} alt="" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <Play className="w-4 h-4 text-white fill-white" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {focusedMediaId === it.media.id && (
+                      <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                        <div className="w-7 h-7 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
+                          <Camera className="w-3.5 h-3.5 text-white" />
                         </div>
                       </div>
                     )}
+
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeMedia(it.media.id); }}
+                      className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center shadow hover:bg-red-500 transition-colors z-30"
+                    >
+                      <X className="w-2.5 h-2.5 text-white" />
+                    </button>
                   </div>
+                ))}
+              </div>
 
-                  {focusedMediaId === it.media.id && (
-                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                      <div className="w-7 h-7 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
-                        <Camera className="w-3.5 h-3.5 text-white" />
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={(e) => { e.stopPropagation(); removeMedia(it.media.id); }}
-                    className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center shadow hover:bg-red-500 transition-colors z-30"
-                  >
-                    <X className="w-2.5 h-2.5 text-white" />
-                  </button>
-                </div>
-              ))}
+              <button
+                onClick={handleNext}
+                disabled={isExporting || !!isSubmitting}
+                className={cn(
+                  "h-12 px-4 flex-shrink-0 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold flex items-center gap-1 shadow-lg hover:shadow-primary/25 active:scale-95 transition-all text-shadow-sm",
+                  (isExporting || isSubmitting) && 'opacity-60 pointer-events-none'
+                )}
+              >
+                {isExporting || isSubmitting ? '...' : (nextLabel ?? (memoryMemberId ? 'Ulashish' : 'Keyingi'))}
+                {!nextLabel && !memoryMemberId && !isExporting && !isSubmitting && <ChevronRight className="w-4 h-4" />}
+              </button>
             </div>
-
-            <button
-              onClick={handleNext}
-              disabled={isExporting}
-              className={cn(
-                "h-12 px-4 flex-shrink-0 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold flex items-center gap-1 shadow-lg hover:shadow-primary/25 active:scale-95 transition-all text-shadow-sm",
-                isExporting && 'opacity-60 pointer-events-none'
-              )}
-            >
-              {isExporting ? '...' : (memoryMemberId ? 'Ulashish' : 'Keyingi')}
-              {!memoryMemberId && !isExporting && <ChevronRight className="w-4 h-4" />}
-            </button>
           </div>
         ) : (
           <div className="flex items-center justify-between px-1">
@@ -2131,7 +2152,7 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
 
         {/* Focused preview layer (edit mode) */}
         {isFocused && active && (
-          <div className="absolute inset-0 z-10 bg-gradient-to-br from-slate-900/70 via-purple-900/55 to-slate-900/70 flex flex-col">
+          <div className="absolute inset-0 z-30 bg-gradient-to-br from-slate-900/70 via-purple-900/55 to-slate-900/70 flex flex-col">
             <div className="flex-1 relative overflow-hidden flex items-center justify-center px-1 pt-24 pb-10">
               <div
                 ref={containerRef}
@@ -2289,6 +2310,67 @@ export default function InstagramMediaCapture({ onClose, onNext, maxItems = 5, m
 
               {/* Edit tools */}
               <div className="absolute right-2 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-3">
+                {onStoryRingIdChange && (
+                  <div className="relative flex flex-col items-center gap-0.5 group">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowStoryRingPicker((v) => !v);
+                        setShowEmojiPicker(false);
+                        setShowTextInput(false);
+                        setShowDrawing(false);
+                        setShowGiphyPicker(false);
+                        setShowCreativeMenu(false);
+                      }}
+                      className={cn(
+                        "w-11 h-11 rounded-xl backdrop-blur-xl border flex items-center justify-center shadow-lg overflow-hidden transition-all duration-300",
+                        showStoryRingPicker ? "bg-white/15 border-white/30" : "bg-black/40 border-white/20 group-active:scale-90"
+                      )}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-full p-[2px]"
+                        style={{ background: `linear-gradient(135deg, ${selectedRing.colors[0]}, ${selectedRing.colors[selectedRing.colors.length - 1]})` }}
+                      >
+                        <div className="w-full h-full rounded-full bg-black/50 p-[2px]">
+                          <div className="w-full h-full rounded-full bg-white/10" />
+                        </div>
+                      </div>
+                    </button>
+                    <span className="text-[9px] text-white/70 font-medium">Halqa</span>
+
+                    {showStoryRingPicker && (
+                      <div className="absolute right-12 top-0 flex flex-col gap-2 z-50">
+                        <div className="px-2 py-1 rounded-lg bg-black/50 backdrop-blur-md border border-white/15 text-[11px] text-white/80 font-medium whitespace-nowrap">
+                          Halqa rangi
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {STORY_RINGS.map((ring) => (
+                            <button
+                              key={ring.id}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onStoryRingIdChange(ring.id);
+                                setShowStoryRingPicker(false);
+                              }}
+                              className={cn(
+                                "w-11 h-11 rounded-xl bg-black/55 backdrop-blur-xl border flex items-center justify-center shadow-lg transition-all",
+                                (storyRingId ?? 'default') === ring.id ? "border-primary/60 shadow-[0_0_18px_rgba(var(--primary),0.25)]" : "border-white/25"
+                              )}
+                            >
+                              <div className="w-8 h-8 rounded-full p-[2px]" style={{ background: `linear-gradient(135deg, ${ring.colors[0]}, ${ring.colors[ring.colors.length - 1]})` }}>
+                                <div className="w-full h-full rounded-full bg-black/40 p-[2px]">
+                                  <div className="w-full h-full rounded-full bg-white/15" />
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* ─── Creative Menu trigger (Drawing / GIF / Sticker / Image) ─── */}
                 <div className="relative flex flex-col items-center gap-0.5">
                   <button

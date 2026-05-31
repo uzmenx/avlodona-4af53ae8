@@ -26,6 +26,12 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
   const threshold = 110;
   const maxPull = 160;
 
+  const getPageScrollTop = () => {
+    const se = document.scrollingElement;
+    if (se) return se.scrollTop || 0;
+    return window.scrollY || document.documentElement.scrollTop || (document.body as any)?.scrollTop || 0;
+  };
+
   const handleTouchStart = useCallback((e: TouchEvent) => {
     if (isRefreshing) return;
 
@@ -39,7 +45,7 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
     }
 
     const isAtTop = useWindowScroll 
-      ? window.scrollY <= 0
+      ? getPageScrollTop() <= 0
       : el.scrollTop <= 0;
 
     if (isAtTop) {
@@ -134,7 +140,7 @@ export const PullToRefresh = ({ onRefresh, children, useWindowScroll = false }: 
         "relative py-0",
         !useWindowScroll && "h-full overflow-y-auto smooth-scroll-momentum"
       )}
-      style={{ WebkitOverflowScrolling: 'touch', touchAction: useWindowScroll ? 'auto' : 'pan-y' }}
+      style={{ WebkitOverflowScrolling: 'touch', touchAction: useWindowScroll ? 'auto' : 'pan-y', overscrollBehaviorY: 'contain' }}
     >
 
       {/* Pull indicator */}

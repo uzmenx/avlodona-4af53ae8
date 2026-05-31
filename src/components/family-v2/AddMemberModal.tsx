@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ImagePlus, Calendar } from 'lucide-react';
+import { ImagePlus } from 'lucide-react';
 import { AddMemberData, AddMemberType } from '@/types/family';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { ImageCropper } from '@/components/profile/ImageCropper';
 import { compressImage, uploadToR2 } from '@/lib/r2Upload';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { YearScrollPicker } from './YearScrollPicker';
 
 interface AddMemberModalProps {
   isOpen: boolean;
@@ -19,116 +19,6 @@ interface AddMemberModalProps {
   showNextPrompt?: boolean;
   nextPromptText?: string;
 }
-
-const YearScrollPicker = ({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (val: string) => void;
-  placeholder: string;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: currentYear - 1850 + 1 }, (_, i) => currentYear - i);
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const activeRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (isOpen && activeRef.current && containerRef.current) {
-      setTimeout(() => {
-        activeRef.current?.scrollIntoView({
-          behavior: 'instant' as any,
-          block: 'center',
-        });
-      }, 50);
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
-
-  const handleSelect = (year: number) => {
-    onChange(year.toString());
-    setIsOpen(false);
-  };
-
-  return (
-    <div className="relative flex-1" ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="h-10 w-full rounded-xl border border-white/10 bg-background/30 backdrop-blur-xl px-3 flex items-center justify-between text-left text-xs hover:bg-white/5 transition-colors focus:outline-none text-muted-foreground"
-      >
-        <span className={cn(value && "text-foreground font-medium")}>
-          {value ? `${value}-yil` : placeholder}
-        </span>
-        <Calendar className="h-3.5 w-3.5 opacity-55" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute bottom-full left-0 mb-1 w-full min-w-[110px] p-1 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl z-[999]">
-          <div 
-            ref={containerRef}
-            className="h-40 overflow-y-auto relative py-16 scrollbar-none flex flex-col items-center"
-          >
-            {/* Overlay fade effect */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-[#1a1a1a] via-[#1a1a1a]/65 to-transparent z-10 border-t rounded-t-2xl border-transparent" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-[#1a1a1a] via-[#1a1a1a]/65 to-transparent z-10 border-b rounded-b-2xl border-transparent" />
-            
-            {/* Active selection center line */}
-            <div className="absolute top-[64px] left-0 right-0 h-8 border-y border-white/10 pointer-events-none bg-white/5" />
-
-            {years.map((year) => {
-              const isSelected = value === year.toString();
-              return (
-                <button
-                  key={year}
-                  ref={isSelected ? activeRef : null}
-                  type="button"
-                  onClick={() => handleSelect(year)}
-                  className={cn(
-                    "w-full h-8 text-center text-xs transition-all focus:outline-none flex items-center justify-center font-medium",
-                    isSelected 
-                      ? "text-foreground text-sm font-bold scale-110 z-20" 
-                      : "text-muted-foreground/50 hover:text-foreground/80 scale-95"
-                  )}
-                >
-                  {year}
-                </button>
-              );
-            })}
-          </div>
-          {value && (
-            <div className="border-t border-white/5 p-1 flex justify-center">
-              <button 
-                type="button" 
-                onClick={() => { onChange(''); setIsOpen(false); }}
-                className="text-[9px] text-red-400 hover:text-red-300 font-semibold py-1 px-2 w-full text-center"
-              >
-                Tozalash
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
 
 export const AddMemberModal = ({
   isOpen,
@@ -341,11 +231,13 @@ export const AddMemberModal = ({
               value={birthYear}
               onChange={setBirthYear}
               placeholder="Tug'ilgan yil"
+              commitDefaultOnOpen
             />
             <YearScrollPicker
               value={deathYear}
               onChange={setDeathYear}
               placeholder="Vafot yil"
+              commitDefaultOnOpen
             />
           </div>
 

@@ -29,6 +29,8 @@ interface FamilyTreeCanvasProps {
   onDragStart?: () => void;
   onDragEnd?: () => void;
   readOnly?: boolean;
+  zoomEnabled?: boolean;
+  panEnabled?: boolean;
    // Merge mode props
    isMergeMode?: boolean;
    mergeSelectedIds?: string[];
@@ -61,6 +63,8 @@ export const FamilyTreeCanvas = ({
   onDragStart,
   onDragEnd,
   readOnly = false,
+  zoomEnabled = true,
+  panEnabled = true,
    isMergeMode = false,
    mergeSelectedIds = EMPTY_ARRAY,
    mergedProfiles = EMPTY_MAP,
@@ -330,6 +334,10 @@ export const FamilyTreeCanvas = ({
         nodesDraggable={!readOnly}
         nodesConnectable={!readOnly}
         elementsSelectable={!readOnly}
+        panOnDrag={panEnabled}
+        zoomOnScroll={zoomEnabled}
+        zoomOnPinch={zoomEnabled}
+        zoomOnDoubleClick={zoomEnabled}
         onNodeClick={(_, node) => {
           const data = node.data as unknown as FamilyMemberNodeData;
           if (readOnly && data.onOpenProfile) {
@@ -339,7 +347,7 @@ export const FamilyTreeCanvas = ({
         fitView={!initialViewport}
         defaultViewport={initialViewport}
         fitViewOptions={{ padding: 0.4, duration: 600 }}
-        style={{ touchAction: 'none' }}
+        style={{ touchAction: panEnabled || zoomEnabled ? 'none' : 'auto' }}
         onMove={(_, viewport) => onViewportChange?.(viewport)}
         onInit={(instance) => {
           flowInstanceRef.current = instance;
