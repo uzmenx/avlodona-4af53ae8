@@ -8,6 +8,8 @@ interface IncomingMessage {
   sender_id: string;
   conversation_id: string;
   content: string | null;
+  created_at?: string;
+  status?: 'sent' | 'delivered' | 'seen' | string;
   media_type?: 'image' | 'video' | 'audio' | null;
   media_url?: string | null;
 }
@@ -41,11 +43,6 @@ export const useGlobalMessageListener = () => {
     };
 
     loadConversationIds();
-
-    // Refresh conversation IDs when new conversations are created
-    const handler = () => { loadConversationIds(); };
-    window.addEventListener('avlodona:new-message', handler);
-    return () => window.removeEventListener('avlodona:new-message', handler);
   }, [user?.id]);
 
   useEffect(() => {
@@ -94,9 +91,23 @@ export const useGlobalMessageListener = () => {
           // If user is already in this specific chat, don't show banner
           const currentPath = locationRef.current;
           if (currentPath === `/chat/${msg.sender_id}`) {
-            // Still refresh conversation list
+            // Still update conversation list, but don't increment unread.
             window.dispatchEvent(new CustomEvent('avlodona:new-message', {
-              detail: { conversationId: msg.conversation_id, senderId: msg.sender_id },
+              detail: {
+                conversationId: msg.conversation_id,
+                senderId: msg.sender_id,
+                isActiveChat: true,
+                message: {
+                  id: msg.id,
+                  conversation_id: msg.conversation_id,
+                  sender_id: msg.sender_id,
+                  content: msg.content,
+                  created_at: msg.created_at,
+                  status: msg.status,
+                  media_type: msg.media_type,
+                  media_url: msg.media_url,
+                }
+              },
             }));
             return;
           }
@@ -141,9 +152,24 @@ export const useGlobalMessageListener = () => {
             },
           }));
 
-          // Refresh conversation list
+          // Update conversation list (diff-only)
           window.dispatchEvent(new CustomEvent('avlodona:new-message', {
-            detail: { conversationId: msg.conversation_id, senderId: msg.sender_id },
+            detail: {
+              conversationId: msg.conversation_id,
+              senderId: msg.sender_id,
+              isActiveChat: false,
+              sender,
+              message: {
+                id: msg.id,
+                conversation_id: msg.conversation_id,
+                sender_id: msg.sender_id,
+                content: msg.content,
+                created_at: msg.created_at,
+                status: msg.status,
+                media_type: msg.media_type,
+                media_url: msg.media_url,
+              }
+            },
           }));
         }
       )

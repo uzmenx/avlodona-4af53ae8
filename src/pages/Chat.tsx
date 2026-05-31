@@ -543,8 +543,22 @@ const Chat = () => {
       setReplyTo(null);
     }
 
-    await sendMessage(finalContent, mediaUrl, mediaType);
+    const sent = await sendMessage(finalContent, mediaUrl, mediaType);
     setTyping(false);
+
+    // Diff-only update for conversation list (avoid refetching everything)
+    if (sent && conversationId && user?.id) {
+      window.dispatchEvent(new CustomEvent('avlodona:new-message', {
+        detail: {
+          conversationId,
+          senderId: user.id,
+          otherUserId: userId,
+          isActiveChat: true,
+          isSelf: true,
+          message: sent,
+        }
+      }));
+    }
   };
 
   const handleReply = (messageId: string, content: string) => {

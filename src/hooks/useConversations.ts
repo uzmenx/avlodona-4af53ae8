@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCache, setCache } from '@/lib/localCache';
@@ -26,26 +26,65 @@ export interface Conversation {
 
 const CACHE_KEY = 'conversations_cache';
 
+// Fast in-memory cache (avoids localStorage parse on repeated navigations)
+const memoryCache = new Map<string, Conversation[]>(); // key: userId
+
 export const useConversations = () => {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [totalUnread, setTotalUnread] = useState(0);
+  const persistTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
+    };
+  }, []);
+
+  const persist = useCallback((next: Conversation[]) => {
+    if (!user?.id) return;
+    memoryCache.set(user.id, next);
+    if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
+    // Batch writes a little to avoid JSON.stringify on every realtime tick
+    persistTimerRef.current = window.setTimeout(() => {
+      setCache(CACHE_KEY, next);
+    }, 250);
+  }, [user?.id]);
+
+  const totalUnread = useMemo(() => {
+    return conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+  }, [conversations]);
 
   // Load from cache first
   useEffect(() => {
+    if (!user?.id) {
+      setConversations([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const mem = memoryCache.get(user.id);
+    if (mem && mem.length > 0) {
+      setConversations(mem);
+      setIsLoading(false);
+      return;
+    }
+
     const cached = getCache<Conversation[]>(CACHE_KEY);
     if (cached && cached.length > 0) {
       setConversations(cached);
-      setTotalUnread(cached.reduce((acc, c) => acc + c.unreadCount, 0));
+      memoryCache.set(user.id, cached);
       setIsLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   const fetchConversations = useCallback(async () => {
     if (!user?.id) return;
 
     try {
+      // Only show skeleton if we truly have nothing to render yet
+      setIsLoading(prev => (conversations.length === 0 ? true : prev));
+
       const { data: convData, error: convError } = await supabase
         .from('conversations')
         .select('*')
@@ -72,22 +111,26 @@ export const useConversations = () => {
 
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      // Batch-fetch last messages for all conversations at once (instead of N+1)
       const convIds = convData.map(c => c.id);
-      
-      // Fetch the most recent message per conversation in one query
-      const { data: allMessages } = await supabase
-        .from('messages')
-        .select('conversation_id, content, sender_id, created_at, status')
-        .in('conversation_id', convIds)
-        .order('created_at', { ascending: false });
 
-      // Build a map of conversation_id -> last message
-      const lastMessageMap = new Map<string, typeof allMessages extends (infer T)[] | null ? T : never>();
-      if (allMessages) {
-        for (const msg of allMessages) {
-          if (!lastMessageMap.has(msg.conversation_id)) {
-            lastMessageMap.set(msg.conversation_id, msg);
+      // Prefer denormalized last message fields (fastest).
+      // Backward-compatible fallback: if DB isn't migrated yet, do a capped fetch.
+      const hasDenorm = convData.some((c: any) => c?.last_message_content != null || c?.last_message_sender_id != null);
+      const lastMessageMap = new Map<string, { conversation_id: string; content: string; sender_id: string; created_at: string; status: string }>();
+      if (!hasDenorm) {
+        const cap = Math.min(500, Math.max(50, convIds.length * 5));
+        const { data: allMessages } = await supabase
+          .from('messages')
+          .select('conversation_id, content, sender_id, created_at, status')
+          .in('conversation_id', convIds)
+          .order('created_at', { ascending: false })
+          .limit(cap);
+
+        if (allMessages) {
+          for (const msg of allMessages as any[]) {
+            if (!lastMessageMap.has(msg.conversation_id)) {
+              lastMessageMap.set(msg.conversation_id, msg);
+            }
           }
         }
       }
@@ -114,6 +157,9 @@ export const useConversations = () => {
           : conv.participant1_id;
 
         const lastMsg = lastMessageMap.get(conv.id);
+        const denormContent = (conv as any).last_message_content as string | null | undefined;
+        const denormSender = (conv as any).last_message_sender_id as string | null | undefined;
+        const denormStatus = (conv as any).last_message_status as string | null | undefined;
 
         return {
           ...conv,
@@ -123,40 +169,111 @@ export const useConversations = () => {
             username: null,
             avatar_url: null
           },
-          lastMessage: lastMsg ? {
-            content: lastMsg.content,
-            sender_id: lastMsg.sender_id,
-            created_at: lastMsg.created_at,
-            status: lastMsg.status,
+          lastMessage: (denormContent || lastMsg) ? {
+            content: denormContent ?? (lastMsg?.content ?? ''),
+            sender_id: denormSender ?? (lastMsg?.sender_id ?? ''),
+            created_at: (conv as any).last_message_at ?? lastMsg?.created_at ?? conv.created_at,
+            status: denormStatus ?? (lastMsg?.status ?? 'sent'),
           } : undefined,
           unreadCount: unreadCountMap.get(conv.id) || 0
         };
       });
 
       setConversations(conversationsWithDetails);
-      setTotalUnread(conversationsWithDetails.reduce((acc, c) => acc + c.unreadCount, 0));
-      setCache(CACHE_KEY, conversationsWithDetails);
+      persist(conversationsWithDetails);
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, conversations.length, persist]);
 
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
 
-  // Re-fetch conversations whenever a new message arrives (signalled by
-  // GlobalMessageListener) — much cheaper than a blanket realtime subscription
-  // that fires for every row change in the messages table.
+  // Diff-only updates from realtime / sendMessage (avoid refetching whole list).
   useEffect(() => {
-    const handler = () => {
-      void fetchConversations();
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<any>;
+      const detail = ce.detail || {};
+      const conversationId: string | undefined = detail.conversationId;
+      const message = detail.message as any | undefined;
+      const isActiveChat: boolean = !!detail.isActiveChat;
+
+      if (!conversationId || !message) {
+        // Backward compatible: older events without payload
+        void fetchConversations();
+        return;
+      }
+
+      setConversations((prev) => {
+        const idx = prev.findIndex(c => c.id === conversationId);
+        if (idx === -1) {
+          // Could be a new conversation — safest to refetch once
+          void fetchConversations();
+          return prev;
+        }
+
+        const current = prev[idx];
+        const createdAt = message.created_at || new Date().toISOString();
+        const senderId = message.sender_id;
+        const isSelf = senderId === user?.id || !!detail.isSelf;
+
+        const nextUnread =
+          isSelf ? 0 :
+          isActiveChat ? 0 :
+          (current.unreadCount || 0) + 1;
+
+        const updatedConv: Conversation = {
+          ...current,
+          last_message_at: createdAt,
+          lastMessage: {
+            content: (message.content ?? '').toString(),
+            sender_id: senderId,
+            created_at: createdAt,
+            status: (message.status ?? 'sent').toString(),
+          },
+          unreadCount: nextUnread,
+          otherUser: detail.sender?.id === current.otherUser?.id ? detail.sender : current.otherUser,
+        };
+
+        const next = prev.slice();
+        next.splice(idx, 1);
+        // Move to top (Telegram style)
+        next.unshift(updatedConv);
+
+        persist(next);
+        return next;
+      });
     };
-    window.addEventListener('avlodona:new-message', handler);
-    return () => window.removeEventListener('avlodona:new-message', handler);
-  }, [fetchConversations]);
+
+    window.addEventListener('avlodona:new-message', handler as EventListener);
+    return () => window.removeEventListener('avlodona:new-message', handler as EventListener);
+  }, [fetchConversations, persist, user?.id]);
+
+  // When a chat is opened and messages are marked "seen", reset unread quickly.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ conversationId?: string }>;
+      const conversationId = ce.detail?.conversationId;
+      if (!conversationId) return;
+
+      setConversations((prev) => {
+        const idx = prev.findIndex(c => c.id === conversationId);
+        if (idx === -1) return prev;
+        if ((prev[idx].unreadCount || 0) === 0) return prev;
+
+        const next = prev.slice();
+        next[idx] = { ...next[idx], unreadCount: 0 };
+        persist(next);
+        return next;
+      });
+    };
+
+    window.addEventListener('avlodona:conversation-read', handler as EventListener);
+    return () => window.removeEventListener('avlodona:conversation-read', handler as EventListener);
+  }, [persist]);
 
 
   const getOrCreateConversation = async (otherUserId: string): Promise<string | null> => {

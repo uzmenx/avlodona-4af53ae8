@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, forwardRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useConversations } from "@/hooks/useConversations";
@@ -30,6 +30,7 @@ import { getStoryRingGradient as getStoryRingGradientFn } from "@/components/sto
 import { StoryViewer } from "@/components/stories/StoryViewer";
 import type { StoryGroup, Story } from "@/hooks/useStories";
 import { addSwipeGestures } from "@/utils/scrollBehavior";
+import { Virtuoso } from "react-virtuoso";
 
 // Group components
 import { CreateGroupDialog } from "@/components/groups/CreateGroupDialog";
@@ -759,7 +760,7 @@ const Messages = () => {
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors">
                     
                               <Avatar className="h-10 w-10">
-                                <AvatarImage src={u.avatar_url || undefined} />
+                                <AvatarImage src={u.avatar_url || undefined} loading="lazy" decoding="async" />
                                 <AvatarFallback>{getInitials(u.name)}</AvatarFallback>
                               </Avatar>
                               <div className="flex-1 min-w-0 text-left">
@@ -785,7 +786,7 @@ const Messages = () => {
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors">
                     
                               <Avatar className="h-10 w-10">
-                                <AvatarImage src={g.avatar_url || undefined} />
+                                <AvatarImage src={g.avatar_url || undefined} loading="lazy" decoding="async" />
                                 <AvatarFallback className="bg-primary/10">
                                   {g.type === 'group' ?
                         <Users className="h-5 w-5 text-primary" /> :
@@ -845,18 +846,35 @@ const Messages = () => {
 
                   <div className="divide-y divide-border">
                     {activeTab === 'all' && (
-                      <>
-                        {allChats.map((item) => {
+                      <Virtuoso
+                        useWindowScroll
+                        data={allChats}
+                        computeItemKey={(_, item) => item.id}
+                        increaseViewportBy={{ top: 600, bottom: 900 }}
+                        components={{
+                          List: forwardRef<HTMLDivElement, any>((props, ref) => (
+                            <div
+                              {...props}
+                              ref={ref}
+                              className={cn("divide-y divide-border", props.className)}
+                            />
+                          )),
+                          EmptyPlaceholder: () => (
+                            <div className="text-center py-12 px-4">
+                              <MessageCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                              <p className="text-sm text-muted-foreground mt-1">{t('createGroupOrChannel')}</p>
+                            </div>
+                          )
+                        }}
+                        itemContent={(_, item) => {
                           if (item.chatType === 'direct') {
                             return (
                               <div
-                                key={item.id}
                                 onClick={() => {
                                   if (isEditMode) {
                                     setSelectedConvIds((prev) => {
                                       const next = new Set(prev);
-                                      if (next.has(item.id)) next.delete(item.id); else
-                                      next.add(item.id);
+                                      if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
                                       return next;
                                     });
                                   } else {
@@ -867,20 +885,22 @@ const Messages = () => {
                                   'flex items-center gap-3 px-4 py-3 cursor-pointer transition-all duration-300 relative overflow-hidden',
                                   isEditMode ? 'translate-x-0' : '',
                                   isEditMode && selectedConvIds.has(item.id) ? 'bg-primary/5' : 'hover:bg-white/5 active:bg-white/10'
-                                )}>
+                                )}
+                              >
                                 {/* Telegram-style selection circle */}
                                 {isEditMode && (
                                   <div className="flex-shrink-0 flex items-center justify-center w-6 transition-all duration-300 animate-in fade-in slide-in-from-left-2">
                                     <div className={cn(
                                       "h-5 w-5 rounded-full border-2 transition-all duration-200 flex items-center justify-center",
-                                      selectedConvIds.has(item.id) 
-                                        ? "bg-primary border-primary scale-110 shadow-lg shadow-primary/20" 
+                                      selectedConvIds.has(item.id)
+                                        ? "bg-primary border-primary scale-110 shadow-lg shadow-primary/20"
                                         : "border-muted-foreground/30 bg-transparent"
                                     )}>
                                       {selectedConvIds.has(item.id) && <Icon icon="lucide:check" className="h-3 w-3 text-primary-foreground" />}
                                     </div>
                                   </div>
                                 )}
+
                                 <div className="relative">
                                   {(() => {
                                     const storyInfo = getStoryInfo(item.otherUser.id);
@@ -894,29 +914,38 @@ const Messages = () => {
                                           }}
                                           className="h-12 w-12 rounded-full p-[2px] flex items-center justify-center"
                                           style={{
-                                            background: storyInfo.has_unviewed ?
-                                            getStoryRingGradientFn(storyInfo.ring_id) :
-                                            undefined
+                                            background: storyInfo.has_unviewed ? getStoryRingGradientFn(storyInfo.ring_id) : undefined
                                           }}
-                                          aria-label="View story">
+                                          aria-label="View story"
+                                        >
                                           {!storyInfo.has_unviewed && <div className="absolute inset-0 rounded-full bg-muted-foreground/30 p-[2px]" />}
                                           <div className="w-full h-full rounded-full bg-background p-[1.5px]">
                                             <Avatar className="h-full w-full">
-                                              <AvatarImage src={item.otherUser.avatar_url || undefined} />
+                                              <AvatarImage
+                                                src={item.otherUser.avatar_url || undefined}
+                                                loading="lazy"
+                                                decoding="async"
+                                              />
                                               <AvatarFallback>{getInitials(item.otherUser.name)}</AvatarFallback>
                                             </Avatar>
                                           </div>
                                         </button>
                                       );
                                     }
+
                                     return (
                                       <Avatar className="h-12 w-12">
-                                        <AvatarImage src={item.otherUser.avatar_url || undefined} />
+                                        <AvatarImage
+                                          src={item.otherUser.avatar_url || undefined}
+                                          loading="lazy"
+                                          decoding="async"
+                                        />
                                         <AvatarFallback>{getInitials(item.otherUser.name)}</AvatarFallback>
                                       </Avatar>
                                     );
                                   })()}
                                 </div>
+
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-2">
                                     <StarUsername username={item.otherUser.username || item.otherUser.name || 'Foydalanuvchi'} />
@@ -942,41 +971,28 @@ const Messages = () => {
                               </div>
                             );
                           }
-                           
+
                           return (
-                            <GroupChatItem 
-                              key={item.id} 
-                              chat={item as any} 
+                            <GroupChatItem
+                              chat={item as any}
                               isEditMode={isEditMode}
                               isSelected={isEditMode && selectedConvIds.has(item.id)}
                               onClick={() => {
                                 if (isEditMode) {
                                   setSelectedConvIds((prev) => {
                                     const next = new Set(prev);
-                                    if (next.has(item.id)) next.delete(item.id); else
-                                    next.add(item.id);
+                                    if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
                                     return next;
                                   });
                                 } else {
                                   handleGroupClick(item.id);
                                 }
-                              }} 
+                              }}
                             />
                           );
-                        })}
-
-                        {allChats.length === 0 && (
-                          <div className="text-center py-12 px-4">
-                            <MessageCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                            <p className="text-sm text-muted-foreground mt-1">{t('createGroupOrChannel')}</p>
-                          </div>
-                        )}
-                      </>
+                        }}
+                      />
                     )}
-
-
-                    {/* Empty search results handled above */}
-
                   </div>
             </>
             }
@@ -1074,7 +1090,7 @@ const Messages = () => {
               className="flex items-center gap-3 p-4 hover:bg-muted/50 cursor-pointer active:bg-muted transition-colors">
 
                     <Avatar className="h-12 w-12">
-                      <AvatarImage src={follower.avatar_url || undefined} />
+                      <AvatarImage src={follower.avatar_url || undefined} loading="lazy" decoding="async" />
                       <AvatarFallback>{getInitials(follower.name)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
@@ -1108,7 +1124,7 @@ const Messages = () => {
               className="flex items-center gap-3 p-4 hover:bg-muted/50 cursor-pointer active:bg-muted transition-colors">
 
                     <Avatar className="h-12 w-12">
-                      <AvatarImage src={followingUser.avatar_url || undefined} />
+                      <AvatarImage src={followingUser.avatar_url || undefined} loading="lazy" decoding="async" />
                       <AvatarFallback>{getInitials(followingUser.name)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">

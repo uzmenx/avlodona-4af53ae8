@@ -122,6 +122,11 @@ export const useMessages = (conversationId: string | null) => {
           .eq('conversation_id', conversationId)
           .neq('sender_id', user.id)
           .neq('status', 'seen');
+
+        // Let conversation list reset unread count immediately
+        window.dispatchEvent(new CustomEvent('avlodona:conversation-read', {
+          detail: { conversationId }
+        }));
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -203,6 +208,11 @@ export const useMessages = (conversationId: string | null) => {
               .update({ status: 'seen' })
               .eq('id', newMessage.id)
               .then();
+
+            // Immediately reflect "read" in conversation list UI
+            window.dispatchEvent(new CustomEvent('avlodona:conversation-read', {
+              detail: { conversationId }
+            }));
           }
         }
       )
