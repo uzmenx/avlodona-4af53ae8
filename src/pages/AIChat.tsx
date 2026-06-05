@@ -32,8 +32,15 @@ interface ChatSession {
 const DEFAULT_SESSION_STORAGE_KEY = 'avlodona:ai_default_session_id';
 
 const newId = () => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Standard UUID v4 generator fallback
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 };
 
 const AIChat = () => {
@@ -122,7 +129,8 @@ const AIChat = () => {
       console.error('LocalStorage access error:', idErr);
     }
 
-    if (!id) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!id || !uuidRegex.test(id)) {
       id = newId();
       try {
         localStorage.setItem(DEFAULT_SESSION_STORAGE_KEY, id);

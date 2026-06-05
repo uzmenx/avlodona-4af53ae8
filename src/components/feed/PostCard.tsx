@@ -299,7 +299,11 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
       ? [post.image_url]
       : [];
 
-  const isVideo = (url: string) => url?.includes('.mp4') || url?.includes('.mov') || url?.includes('.webm');
+  const isVideo = (url: string) => {
+    if (!url) return false;
+    const lower = url.toLowerCase();
+    return lower.includes('.mp4') || lower.includes('.mov') || lower.includes('.webm') || lower.includes('.m4v') || lower.includes('.3gp') || lower.includes('.avi') || lower.includes('video');
+  };
   const firstVideoUrl = mediaUrls.find((url) => isVideo(url));
 
   const card = (

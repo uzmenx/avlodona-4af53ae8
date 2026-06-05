@@ -368,7 +368,7 @@ export function YouTubeShortsSection({ onShortClick, onSearchClick, onSearchSubm
                   fetchShorts();
                 }
               }}
-              className="h-7 rounded-full pl-8 pr-3 bg-background/30 border-white/10 backdrop-blur-xl text-xs focus-visible:ring-1 focus-visible:ring-primary/40"
+              className="h-7 rounded-full pl-8 pr-3 bg-background/85 border-white/10 text-xs focus-visible:ring-1 focus-visible:ring-primary/40"
             />
           </div>
         </div>

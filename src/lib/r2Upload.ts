@@ -1,5 +1,56 @@
 import { supabase } from '@/integrations/supabase/client';
 
+// ─── SHA-256 Hesh Hisoblash ────────────────────────────────────────────────
+/**
+ * Fayl yoki Blob uchun SHA-256 hesh hisoblab, hex string qaytaradi.
+ * Web Crypto API (SubtleCrypto) ishlatiladi — tez va natijali.
+ */
+export async function getFileHash(file: File | Blob): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ─── Deduplication: Media Registry Tekshirish ─────────────────────────────
+/**
+ * media_registry jadvalida hash bo'yicha qidiradi.
+ * Topilsa — URL qaytaradi, topilmasa — null.
+ */
+async function lookupRegistry(hash: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('media_registry')
+      .select('url')
+      .eq('hash', hash)
+      .maybeSingle();
+    if (error) return null;
+    return data?.url ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Muvaffaqiyatli yuklangan faylning hash va URL'ini media_registry'ga yozadi.
+ * Xato bo'lsa — jimgina o'tib ketadi (non-fatal).
+ */
+async function saveToRegistry(
+  hash: string,
+  url: string,
+  fileSize: number,
+  mimeType: string
+): Promise<void> {
+  try {
+    await supabase.from('media_registry').upsert(
+      { hash, url, file_size: fileSize, mime_type: mimeType },
+      { onConflict: 'hash' }
+    );
+  } catch {
+    // non-fatal
+  }
+}
+
 /**
  * Compress an image file using Canvas API
  */
@@ -104,13 +155,16 @@ export async function createSquareThumbnailWebp(
 }
 
 /**
- * Upload a file to Cloudflare R2 via edge function (with 1 retry)
+ * Upload a file to Cloudflare R2 via edge function (with 1 retry).
+ * Deduplication: faylni yuklashdan oldin SHA-256 hash orqali media_registry'da tekshiradi.
+ * Agar topilsa — yuklamasdan tayyor URL'ni qaytaradi (internet va vaqt tejash).
  */
 export async function uploadToR2(
   file: File | Blob,
   folder: string,
   fileName?: string,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  skipDedup = false
 ): Promise<string> {
   const ext = file instanceof File
     ? file.name.split('.').pop() || 'bin'
@@ -119,71 +173,100 @@ export async function uploadToR2(
   const name = fileName || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   const path = `${folder}/${name}.${ext}`;
 
-  const formData = new FormData();
-  formData.append('file', file instanceof Blob && !(file instanceof File)
-    ? new File([file], `${name}.${ext}`, { type: file.type })
-    : file
-  );
-  formData.append('path', path);
+  // ─── Deduplication tekshiruvi ───────────────────────────────────────────
+  // Thumbnaillar uchun dedup o'tkazib yuboriladiganligini belgilash mumkin
+  if (!skipDedup) {
+    try {
+      const hash = await getFileHash(file);
+      const existingUrl = await lookupRegistry(hash);
+      if (existingUrl) {
+        // Bir xil fayl allaqachon yuklanган — qayta yuklamasdan tayyor URL qaytaramiz
+        console.info('[r2Upload] Dedup hit — faylni qayta yuklamasdan keshdan oldik:', existingUrl);
+        // 100% progress simulatsiya qilamiz (UI uchun)
+        onProgress?.(100);
+        return existingUrl;
+      }
+      // Yuklangandan keyin registry'ga yozamiz (quyida)
+      const url = await doUploadWithRetry();
+      void saveToRegistry(hash, url, file.size, file.type);
+      return url;
+    } catch (hashError) {
+      // Hash hisoblash xato bo'lsa — odatdagi upload davom etadi
+      console.warn('[r2Upload] Hash error, uploading without dedup:', hashError);
+    }
+  }
 
-  const { data: { session } } = await supabase.auth.getSession();
+  return doUploadWithRetry();
 
-  const doUpload = async (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/r2-upload?action=upload`);
-      
-      xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`);
-      xhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+  // ─── Ichki upload funksiyasi ────────────────────────────────────────────
+  async function doUploadWithRetry(): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', file instanceof Blob && !(file instanceof File)
+      ? new File([file], `${name}.${ext}`, { type: file.type })
+      : file
+    );
+    formData.append('path', path);
 
-      if (onProgress) {
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percentComplete = (event.loaded / event.total) * 100;
-            onProgress(percentComplete);
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const doUpload = async (): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/r2-upload?action=upload`);
+
+        xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`);
+        xhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+
+        if (onProgress) {
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const percentComplete = (event.loaded / event.total) * 100;
+              onProgress(percentComplete);
+            }
+          };
+        }
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              resolve(data.url);
+            } catch (e) {
+              reject(new Error('Failed to parse upload response'));
+            }
+          } else {
+            try {
+              const err = JSON.parse(xhr.responseText);
+              if (xhr.status === 403 && err.limit_reached) {
+                window.dispatchEvent(new Event('show-plan-overlay'));
+                reject(new Error(err.error || 'Xotira limiti tugadi. Pro rejaga o\'ting!'));
+              } else {
+                reject(new Error(err.error || `Upload failed: ${xhr.status}`));
+              }
+            } catch (e) {
+              reject(new Error(`Upload failed: ${xhr.status}`));
+            }
           }
         };
-      }
 
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const data = JSON.parse(xhr.responseText);
-            resolve(data.url);
-          } catch (e) {
-            reject(new Error('Failed to parse upload response'));
-          }
-        } else {
-          try {
-            const err = JSON.parse(xhr.responseText);
-            if (xhr.status === 403 && err.limit_reached) {
-              window.dispatchEvent(new Event('show-plan-overlay'));
-              reject(new Error(err.error || 'Xotira limiti tugadi. Pro rejaga o\'ting!'));
-            } else {
-              reject(new Error(err.error || `Upload failed: ${xhr.status}`));
-            }
-          } catch (e) {
-            reject(new Error(`Upload failed: ${xhr.status}`));
-          }
-        }
-      };
+        xhr.onerror = () => reject(new Error('Network error during upload'));
+        xhr.send(formData);
+      });
+    };
 
-      xhr.onerror = () => reject(new Error('Network error during upload'));
-      xhr.send(formData);
-    });
-  };
-
-  // Try once, retry on failure
-  try {
-    return await doUpload();
-  } catch (firstError) {
-    console.warn('R2 upload first attempt failed, retrying...', firstError);
-    return await doUpload();
+    // Try once, retry on failure
+    try {
+      return await doUpload();
+    } catch (firstError) {
+      console.warn('R2 upload first attempt failed, retrying...', firstError);
+      return await doUpload();
+    }
   }
 }
 
 /**
- * Upload media: compresses images, uploads videos/audio raw
+ * Upload media: compresses images, uploads videos/audio raw.
+ * Deduplication yoqiq: bir xil fayl ikki marta yuborilsa, ikkinchi safar upload qilinmaydi.
  */
 export async function uploadMedia(
   file: File,
@@ -200,6 +283,7 @@ export async function uploadMedia(
       return uploadToR2(file, userFolder, undefined, onProgress);
     }
     const compressed = await compressImage(file);
+    // Compressed blob uchun dedup ham ishlaydi
     return uploadToR2(compressed, userFolder, undefined, onProgress);
   }
 

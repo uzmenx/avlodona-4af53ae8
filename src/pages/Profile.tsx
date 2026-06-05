@@ -77,7 +77,10 @@ const PremiumStarsIcon = ({ className, active, size = 'default' }: { className?:
 
 const ProfileMasonryItem = ({ post }: {post: Post;}) => {
   const mediaUrl = ((post.media_urls && post.media_urls.length > 0 ? post.media_urls[0] : post.image_url || '') || '') as string;
-  const isVideo = !!mediaUrl && (mediaUrl.includes('.mp4') || mediaUrl.includes('.mov') || mediaUrl.includes('.webm'));
+  const isVideo = !!mediaUrl && (() => {
+    const lower = mediaUrl.toLowerCase();
+    return lower.includes('.mp4') || lower.includes('.mov') || lower.includes('.webm') || lower.includes('.m4v') || lower.includes('.3gp') || lower.includes('.avi') || lower.includes('video');
+  })();
   const thumbnailUrl = (post as any).thumbnail_url || (post as any).thumbnail || mediaUrl;
   const videoRef = useRef<HTMLVideoElement>(null);
   useAutoPreviewVideo(videoRef, { enabled: isVideo, delayMs: 3000, threshold: 0.6 });
@@ -406,7 +409,7 @@ const Profile = () => {
         <div className="max-w-md mx-auto relative">
           {/* Floating Action Buttons Container — top right */}
           <div 
-            className="absolute top-[env(safe-area-inset-top,0px)] left-0 right-0 z-40 px-3 py-1 flex items-center justify-end rounded-2xl mx-3 mt-0.5 -mb-11 pointer-events-none"
+            className="absolute top-1.5 left-0 right-0 z-40 px-3 py-1 flex items-center justify-end rounded-2xl mx-3 mt-0.5 -mb-11 pointer-events-none"
           >
             {/* Right Side: Action buttons */}
             <div className="flex items-center gap-1.5 pointer-events-auto">

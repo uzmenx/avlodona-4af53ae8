@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
 
 const NUM_BARS = 36;
 
@@ -35,6 +36,7 @@ export const useVoiceRecorder = () => {
 
   const accumulatedBarsRef = useRef<number[]>(Array(NUM_BARS).fill(0));
   const frameCountRef      = useRef<number>(0);
+  const mimeTypeRef        = useRef<string>('');
 
   // ─── RAF waveform loop ───────────────────────────────────────────────────
   const startWaveformLoop = useCallback(() => {
@@ -120,11 +122,29 @@ export const useVoiceRecorder = () => {
       accumulatedBarsRef.current = Array(NUM_BARS).fill(0);
       frameCountRef.current = 0;
 
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : 'audio/webm';
+      // Robustly probe supported mimeTypes to avoid NotSupportedError in WebView/Safari
+      const candidateTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4',
+        'audio/aac',
+      ];
+      let selectedType = '';
+      for (const type of candidateTypes) {
+        if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
+          selectedType = type;
+          break;
+        }
+      }
+      mimeTypeRef.current = selectedType;
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const options: MediaRecorderOptions = {};
+      if (selectedType) {
+        options.mimeType = selectedType;
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -142,8 +162,9 @@ export const useVoiceRecorder = () => {
 
       startWaveformLoop();
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('useVoiceRecorder: startRecording error', err);
+      toast.error(`Mikrofon xatoligi: ${err?.message || err}`);
       isInitializingRef.current = false;
     }
   }, [startWaveformLoop]);
@@ -161,7 +182,7 @@ export const useVoiceRecorder = () => {
       const mr = mediaRecorderRef.current;
       if (mr && mr.state !== 'inactive') {
         mr.onstop = () => {
-          const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const blob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current || 'audio/webm' });
           setAudioBlob(blob);
           streamRef.current?.getTracks().forEach(t => t.stop());
           resolve({ blob, snapshot });

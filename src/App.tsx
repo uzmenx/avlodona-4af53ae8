@@ -41,6 +41,7 @@ import Terms from "./pages/Terms";
 import InviteAccept from "./pages/InviteAccept";
 import Support from "./pages/Support";
 import About from "./pages/About";
+import StorageSettings from "./pages/StorageSettings";
 
 import { AudioProvider } from "@/contexts/AudioContext";
 
@@ -135,6 +136,7 @@ const App = () => (
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                <Route path="/settings/storage" element={<ProtectedRoute><StorageSettings /></ProtectedRoute>} />
                 <Route path="/relatives" element={<ProtectedRoute><Relatives /></ProtectedRoute>} />
                 <Route path="/create" element={<ProtectedRoute><CreateContent /></ProtectedRoute>} />
                 <Route path="/create-post" element={<Navigate to="/create" replace />} />

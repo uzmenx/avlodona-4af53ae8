@@ -3,6 +3,7 @@ import { Play, Pause, Check, CheckCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { MediaUploadProgress } from './MediaUploadProgress';
+import { useCachedMedia } from '@/hooks/useCachedMedia';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,9 +37,9 @@ const i18n: Record<Lang, { voiceMessage: string; tapToExpand: string }> = {
 
 // ─── Waveform bar heights ─────────────────────────────────────────────────────
 
-const NUM_BARS = 36;
-const MIN_H    = 4;
-const MAX_H    = 26;
+const NUM_BARS = 28;
+const MIN_H    = 3;
+const MAX_H    = 18;
 
 /** Deterministic heights seeded from the URL so the same message always looks the same */
 function seedFromUrl(url: string): number[] {
@@ -95,6 +96,19 @@ export const VoiceMessage = ({
   const [progress, setProgress]             = useState(0);   // 0–100
   const [currentTime, setCurrentTime]       = useState(0);
   const [duration, setDuration]             = useState(propDuration ?? 0);
+
+  // Kesh: Audio fayl bir marta yuklab olinsa, keyingi safar tarmoqsiz ham ishlaydi
+  const { cachedUrl: cachedAudioUrl } = useCachedMedia(
+    uploadProgress === undefined ? audioUrl : null
+  );
+  const effectiveAudioUrl = uploadProgress !== undefined
+    ? audioUrl
+    : (cachedAudioUrl || audioUrl);
+
+  // Sync when propDuration is passed from parent (e.g., stored metadata)
+  useEffect(() => {
+    if (propDuration && propDuration > 0) setDuration(propDuration);
+  }, [propDuration]);
   const [speed, setSpeed]                   = useState<PlaybackSpeed>(1);
   const [showTranscript, setShowTranscript] = useState(false);
   const [btnPressed, setBtnPressed]         = useState(false);
@@ -206,7 +220,7 @@ export const VoiceMessage = ({
         marginBottom: 2,
       }}
     >
-      <audio ref={audioRef} src={audioUrl} preload="metadata" />
+      <audio ref={audioRef} src={effectiveAudioUrl} preload="metadata" />
 
       {/* ── Main row ── */}
       <div className="flex items-center gap-3">
@@ -253,11 +267,10 @@ export const VoiceMessage = ({
         {/* Waveform + meta */}
         <div className="flex-1 flex flex-col justify-center min-w-0" style={{ gap: 2 }}>
 
-          {/* Waveform bars */}
           <div
             ref={waveformRef}
             className="flex items-center cursor-pointer select-none"
-            style={{ gap: 2.5, height: MAX_H, position: 'relative' }}
+            style={{ gap: 2, height: MAX_H, position: 'relative' }}
             onClick={handleWaveformClick}
           >
             {barHeights.map((h, i) => {
@@ -267,9 +280,9 @@ export const VoiceMessage = ({
                 <div
                   key={i}
                   style={{
-                    width: 3.5,
+                    width: 2.5,
                     height: h,
-                    borderRadius: 3,
+                    borderRadius: 2,
                     background: played ? barPlayed : barUnplayed,
                     transition: `background 100ms ease`,
                     flexShrink: 0,

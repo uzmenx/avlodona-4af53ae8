@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MediaUploadProgress } from './MediaUploadProgress';
+import { useCachedMedia } from '@/hooks/useCachedMedia';
 
 interface MediaMessageProps {
   mediaUrl: string;
@@ -22,6 +23,13 @@ export const MediaMessage = ({
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Keshdan yuklash: Telegram kabi bir marta yuklab olingan media qayta tarmoqdan olinmaydi
+  // uploadProgress bo'lsa — hali yuklanyapti, kesh shart emas
+  const { cachedUrl } = useCachedMedia(
+    uploadProgress === undefined ? mediaUrl : null
+  );
+  const effectiveUrl = uploadProgress !== undefined ? mediaUrl : (cachedUrl || mediaUrl);
 
   const instanceIdRef = useRef(
     typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `vid_${Date.now()}_${Math.random()}`
@@ -65,7 +73,7 @@ export const MediaMessage = ({
     return (
       <div className="relative group rounded-2xl overflow-hidden -mx-1 -mt-0.5">
         <img
-          src={mediaUrl}
+          src={effectiveUrl}
           alt=""
           className="max-w-full max-h-[300px] rounded-2xl object-cover cursor-pointer"
           onClick={onFullscreen}
@@ -93,7 +101,7 @@ export const MediaMessage = ({
     <div className="relative group max-w-[280px] rounded-2xl overflow-hidden -mx-1 -mt-0.5">
       <video
         ref={videoRef}
-        src={mediaUrl}
+        src={effectiveUrl}
         className="w-full max-h-[300px] rounded-2xl object-cover"
         onTimeUpdate={() => {
           const v = videoRef.current;

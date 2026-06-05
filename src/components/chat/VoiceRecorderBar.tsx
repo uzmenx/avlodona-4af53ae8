@@ -248,7 +248,7 @@ export const VoiceRecorderBar = ({
                 WebkitBackdropFilter: 'blur(20px)',
               }}
             />
-            <div className="contents" style={{ position: 'relative', zIndex: 2 }}>
+            <div className="flex items-center justify-between w-full h-full relative z-[2] gap-2">
 
               {/* Trash / cancel button */}
               <motion.button
@@ -264,7 +264,7 @@ export const VoiceRecorderBar = ({
                   border: `1px solid rgba(226,75,74,${0.15 + cancelProgress * 0.4})`,
                 }}
               >
-                <Trash2 size={16} color={`rgba(${Math.round(180 + cancelProgress * 46)},${Math.round(75 - cancelProgress * 0)},${Math.round(74 - cancelProgress * 0)},1)`} />
+                <Trash2 size={16} className="text-[#f87171]" style={{ color: cancelProgress > 0.5 ? '#ef4444' : '#f87171', stroke: 'currentColor' }} />
               </motion.button>
 
               {/* Pulse dot */}
@@ -273,11 +273,10 @@ export const VoiceRecorderBar = ({
               {/* Live waveform */}
               <LiveWaveform data={waveformData} cancelProgress={cancelProgress} />
 
-              {/* Timer */}
               <motion.span
                 animate={{ opacity: 1 - cancelProgress * 0.5 }}
-                className="tabular-nums flex-shrink-0 dark:text-white"
-                style={{ fontSize: 13, fontWeight: 700, color: cancelProgress > 0.5 ? CANCEL_RED : '#1a1a2e', letterSpacing: 0.2 }}
+                className="tabular-nums flex-shrink-0 text-[#1a1a2e] dark:text-white"
+                style={{ fontSize: 13, fontWeight: 700, color: cancelProgress > 0.5 ? CANCEL_RED : undefined, letterSpacing: 0.2 }}
               >
                 {formatDuration(duration)}
               </motion.span>
@@ -432,7 +431,7 @@ export const VoiceRecorderBar = ({
             style={{ background: 'rgba(20,18,35,0.88)', backdropFilter: 'blur(20px)' }}
           />
 
-          <div className="contents" style={{ position: 'relative', zIndex: 2 }}>
+          <div className="flex items-center justify-between w-full h-full relative z-[2] gap-3">
             {/* Delete */}
             <motion.button
               onClick={onCancel}
@@ -440,17 +439,16 @@ export const VoiceRecorderBar = ({
               className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
               style={{ background: 'rgba(226,75,74,0.12)', border: '1px solid rgba(226,75,74,0.2)' }}
             >
-              <Trash2 size={16} color={CANCEL_RED} />
+              <Trash2 size={16} className="text-[#f87171]" style={{ color: '#f87171', stroke: 'currentColor' }} />
             </motion.button>
 
             {/* Pulse dot + waveform */}
             <RecordDot />
             <LiveWaveform data={waveformData} locked />
 
-            {/* Timer */}
             <span
-              className="tabular-nums flex-shrink-0"
-              style={{ fontSize: 14, fontWeight: 700, color: BRAND, letterSpacing: 0.3 }}
+              className="tabular-nums flex-shrink-0 text-[#534AB7] dark:text-white"
+              style={{ fontSize: 14, fontWeight: 700, letterSpacing: 0.3 }}
             >
               {formatDuration(duration)}
             </span>

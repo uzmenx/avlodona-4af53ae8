@@ -142,7 +142,9 @@ export const FullScreenViewer = ({ posts, initialIndex, onClose }: FullScreenVie
   }, [audioKey, isAudioPlaying, playAudio, stopAudio]);
 
   const isVideo = (url: string) => {
-    return url?.includes('.mp4') || url?.includes('.mov') || url?.includes('.webm');
+    if (!url) return false;
+    const lower = url.toLowerCase();
+    return lower.includes('.mp4') || lower.includes('.mov') || lower.includes('.webm') || lower.includes('.m4v') || lower.includes('.3gp') || lower.includes('.avi') || lower.includes('video');
   };
 
   // Extract dominant colors from current media

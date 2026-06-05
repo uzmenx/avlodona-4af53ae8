@@ -52,7 +52,10 @@ import { Input } from '@/components/ui/input';
 
 const UserProfileMasonryItem = ({ post }: {post: Post;}) => {
   const mediaUrl = ((post.media_urls && post.media_urls.length > 0 ? post.media_urls[0] : post.image_url || '') || '') as string;
-  const isVideo = !!mediaUrl && (mediaUrl.includes('.mp4') || mediaUrl.includes('.mov') || mediaUrl.includes('.webm'));
+  const isVideo = !!mediaUrl && (() => {
+    const lower = mediaUrl.toLowerCase();
+    return lower.includes('.mp4') || lower.includes('.mov') || lower.includes('.webm') || lower.includes('.m4v') || lower.includes('.3gp') || lower.includes('.avi') || lower.includes('video');
+  })();
   const thumbnailUrl = (post as any).thumbnail_url || (post as any).thumbnail || mediaUrl;
   const videoRef = useRef<HTMLVideoElement>(null);
   useAutoPreviewVideo(videoRef, { enabled: isVideo, delayMs: 3000, threshold: 0.6 });
@@ -1014,13 +1017,19 @@ export const UserProfilePage = () => {
             </div>
 
             {/* RIGHT: Oila a'zolari yoki Yili */}
-            {profile.birth_year ? (
+            {profile.birth_year || isMemorial ? (
               <div
                 className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0 relative">
                 <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
                   Yili
                 </span>
-                {profile.death_year ? (
+                {isMemorial ? (
+                  <div className="flex items-center gap-1 leading-none">
+                    <span className="text-sm font-extrabold text-foreground">{profile.birth_year || '...'}</span>
+                    <span className="text-muted-foreground text-xs font-medium">—</span>
+                    <span className="text-sm font-extrabold text-foreground">{profile.death_year || '...'}</span>
+                  </div>
+                ) : profile.death_year ? (
                   <div className="flex items-center gap-1 leading-none">
                     <span className="text-sm font-extrabold text-foreground">{profile.birth_year}</span>
                     <span className="text-muted-foreground text-xs font-medium">—</span>
@@ -1030,8 +1039,6 @@ export const UserProfilePage = () => {
                   <span className="text-lg font-extrabold text-foreground leading-none">{profile.birth_year}</span>
                 )}
               </div>
-            ) : isMemorial ? (
-              <div className="flex-1" />
             ) : (
               <button
                 type="button"

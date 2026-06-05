@@ -411,6 +411,8 @@ const GroupChat = () => {
         <VoiceMessage
           audioUrl={message.media_url}
           isMine={isOwn}
+          duration={(message as any).metadata?.duration}
+          waveformData={(message as any).metadata?.waveformData}
           senderAvatarUrl={!isOwn ? message.sender?.avatar_url || undefined : undefined}
         />
       );

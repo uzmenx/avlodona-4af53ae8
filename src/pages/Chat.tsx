@@ -720,7 +720,10 @@ const Chat = () => {
     if (shared) {
       const previewPost = sharedPosts.find((p) => p.id === shared.postId);
       const mediaUrl = previewPost?.media_urls?.[0] || previewPost?.image_url;
-      const isVideo = !!mediaUrl && (mediaUrl.includes('.mp4') || mediaUrl.includes('.mov') || mediaUrl.includes('.webm'));
+      const isVideo = !!mediaUrl && (() => {
+        const lower = mediaUrl.toLowerCase();
+        return lower.includes('.mp4') || lower.includes('.mov') || lower.includes('.webm') || lower.includes('.m4v') || lower.includes('.3gp') || lower.includes('.avi') || lower.includes('video');
+      })();
 
       return (
         <div className="space-y-2">
@@ -811,6 +814,8 @@ const Chat = () => {
         <VoiceMessage
           audioUrl={msg.media_url || ''}
           isMine={isMine}
+          duration={msg.metadata?.duration}
+          waveformData={msg.metadata?.waveformData}
           uploadProgress={uploadProgress}
           deliveryStatus={msg.status === 'seen' ? 'read' : msg.status}
           senderAvatarUrl={!isMine ? otherUser?.avatar_url || undefined : undefined}

@@ -14,7 +14,6 @@ interface AIChatMessage {
   attachments?: {type: string;data: string;name: string;}[];
 }
 
-const GROQ_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat-groq`;
 const GEMINI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
 interface AIChatViewProps {
@@ -80,7 +79,7 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
     setIsLoading(true);
 
     let assistantContent = '';
-    const usedModel = hasAttachments ? 'avlodona gemini (Vision)' : 'avlodona grok';
+    const usedModel = 'avlodona gemini 1.5 flash';
 
     const upsertAssistant = (chunk: string) => {
       assistantContent += chunk;
@@ -97,11 +96,25 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-      // Use Gemini for attachments, Groq for text-only
-      const url = hasAttachments ? GEMINI_URL : GROQ_URL;
-      const allMessages = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+      const allMessages = [...messages, userMsg].map((m) => {
+        if (m.attachments && m.attachments.length > 0) {
+          const contentParts: any[] = [
+            { type: 'text', text: m.content || "Faylni tahlil qiling." }
+          ];
+          m.attachments.forEach(att => {
+            if (att.type === 'image') {
+              contentParts.push({
+                type: 'image_url',
+                image_url: { url: `data:${att.mimeType || 'image/png'};base64,${att.data}` }
+              });
+            }
+          });
+          return { role: m.role, content: contentParts };
+        }
+        return { role: m.role, content: m.content };
+      });
 
-      const resp = await fetch(url, {
+      const resp = await fetch(GEMINI_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,23 +131,7 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
       }
       if (resp.status === 402) {toast.error("Kredit yetarli emas");setIsLoading(false);return;}
       if (!resp.ok || !resp.body) {
-        // Fallback: Groq failed, try Gemini
-        if (!hasAttachments) {
-          const fallbackResp = await fetch(GEMINI_URL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({ messages: allMessages })
-          });
-          if (fallbackResp.ok && fallbackResp.body) {
-            await processStream(fallbackResp.body, (chunk) => upsertAssistant(chunk));
-            setIsLoading(false);
-            return;
-          }
-        }
-        throw new Error('Stream boshlanmadi');
+        throw new Error('Stream boshlanmadi yoki xatolik yuz berdi');
       }
 
       await processStream(resp.body, (chunk) => upsertAssistant(chunk));

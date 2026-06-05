@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, LogOut, Moon, Sun, Monitor, Shield, Globe, Palette, EyeOff, Lock, WifiOff, BookOpen, FolderLock, AtSign, Bookmark, Star, Zap, Info, ChevronRight } from 'lucide-react';
+import { ArrowLeft, LogOut, Moon, Sun, Monitor, Shield, Globe, Palette, EyeOff, Lock, WifiOff, BookOpen, FolderLock, AtSign, Bookmark, Star, Zap, Info, ChevronRight, HardDrive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
@@ -309,6 +309,31 @@ const Settings = () => {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* 3.5. Ma'lumotlar va xotira (Telegram kabi kesh boshqaruvi) */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <HardDrive className="h-4 w-4" />
+                Ma'lumotlar va xotira
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="outline"
+                className="w-full justify-between min-h-[56px] h-auto py-3 px-4 hover:bg-primary/5 hover:text-primary transition-all font-medium border-border/60 rounded-xl"
+                onClick={() => navigate('/settings/storage')}
+              >
+                <div className="flex flex-col items-start text-left mr-3">
+                  <span className="font-medium">Kesh va media xotira</span>
+                  <span className="text-xs text-muted-foreground font-normal mt-0.5">
+                    Yuklab olingan fayllarni boshqarish, tozalash
+                  </span>
+                </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+              </Button>
             </CardContent>
           </Card>
 

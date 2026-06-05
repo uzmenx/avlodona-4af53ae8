@@ -106,7 +106,7 @@ export const useLocalFamilyTree = () => {
               updated_by: CLIENT_ID,
               network_id: userNetworkId,
             }));
-            return supabase.from('node_positions').upsert(batch, { onConflict: 'member_id,owner_id' });
+            return supabase.from('node_positions').upsert(batch, { onConflict: 'member_id,network_id' });
           })
         ).catch(err => console.error("Auto-correction save failed:", err));
       }
@@ -233,7 +233,7 @@ export const useLocalFamilyTree = () => {
         y: position.y,
         updated_by: CLIENT_ID,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'member_id,owner_id' });
+      }, { onConflict: 'member_id,network_id' });
       
     // Invalidate query to ensure cache stays synced with local state
     queryClient.invalidateQueries({ queryKey: ['familyTree', user.id] });

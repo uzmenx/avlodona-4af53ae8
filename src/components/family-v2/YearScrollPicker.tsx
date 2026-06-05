@@ -200,6 +200,15 @@ export const YearScrollPicker = ({
 
   return (
     <div className={cn("relative flex-1", className)}>
+      <style>{`
+        .scrollbar-none::-webkit-scrollbar {
+          display: none !important;
+        }
+        .scrollbar-none {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+        }
+      `}</style>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
@@ -223,16 +232,9 @@ export const YearScrollPicker = ({
           className="z-[9999] w-[var(--radix-popover-trigger-width)] p-0 bg-background/85 border-white/10 rounded-2xl shadow-2xl backdrop-blur-2xl overflow-hidden"
         >
           <div className="relative" style={{ height: ITEM_HEIGHT * VISIBLE_COUNT }}>
+            {/* Highlight box behind the scroll container to avoid blocking interactions */}
             <div
-              className="pointer-events-none absolute inset-x-0 top-0 z-10"
-              style={{ height: ITEM_HEIGHT * 2, background: 'linear-gradient(to bottom, var(--background) 0%, transparent 100%)' }}
-            />
-            <div
-              className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
-              style={{ height: ITEM_HEIGHT * 2, background: 'linear-gradient(to top, var(--background) 0%, transparent 100%)' }}
-            />
-            <div
-              className="pointer-events-none absolute left-2 right-2 z-20 rounded-xl border border-white/10 bg-white/[0.07]"
+              className="pointer-events-none absolute left-2 right-2 z-0 rounded-xl border border-white/10 bg-white/[0.07]"
               style={{ top: ITEM_HEIGHT * 2, height: ITEM_HEIGHT }}
             />
 
@@ -246,8 +248,17 @@ export const YearScrollPicker = ({
                   syncFromScroll();
                 });
               }}
-              className="absolute inset-0 overflow-y-auto scrollbar-none overscroll-contain snap-y snap-mandatory"
-              style={{ paddingTop: PADDING, paddingBottom: PADDING }}
+              onWheel={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+              className="absolute inset-0 overflow-y-auto scrollbar-none overscroll-none snap-y snap-mandatory z-10"
+              style={{
+                paddingTop: PADDING,
+                paddingBottom: PADDING,
+                touchAction: 'pan-y',
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 40%, black 60%, transparent 100%)',
+                maskImage: 'linear-gradient(to bottom, transparent 0%, black 40%, black 60%, transparent 100%)',
+              }}
             >
               {years.map((year, idx) => {
                 const dist = Math.abs(idx - activeIndex);

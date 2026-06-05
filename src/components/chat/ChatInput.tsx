@@ -176,7 +176,7 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
     holdTimerRef.current = setTimeout(async () => {
       if (gestureState.current.isHolding) {
         gestureState.current.recordingStarted = true;
-        setRecorderState('recording');
+        setRecorderState(gestureState.current.locked ? 'locked' : 'recording');
         
         await startRecording();
         
@@ -218,10 +218,14 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
     const wasRecordingStarted = gestureState.current.recordingStarted;
     const isLocked = gestureState.current.locked;
 
+    const wasHolding = gestureState.current.isHolding;
     gestureState.current.isHolding = false;
     setDragDelta({ x: 0, y: 0 });
 
     if (!wasRecordingStarted) {
+      if (wasHolding) {
+        toast.info('Ovozli xabar yozish uchun bosib turing', { id: 'voice-hint' });
+      }
       cancelRecording();
       setRecorderState('idle');
       return;
@@ -229,16 +233,12 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInput
 
     if (isLocked) return;
 
-    if (gestureState.current.isRecording) {
-      if (getDurationMs() < 300) {
-        toast.error('Ovozli xabar juda qisqa');
-        handleCancelVoice();
-      } else {
-        const result = await stopRecording();
-        await handleUploadAndSendAudio(result.blob, result.snapshot);
-      }
-    } else {
+    if (getDurationMs() < 300) {
+      toast.error('Ovozli xabar juda qisqa');
       handleCancelVoice();
+    } else {
+      const result = await stopRecording();
+      await handleUploadAndSendAudio(result.blob, result.snapshot);
     }
   }, [cancelRecording, stopRecording, handleUploadAndSendAudio, handleCancelVoice, getDurationMs]);
 

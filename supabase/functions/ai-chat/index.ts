@@ -8,27 +8,36 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function searchTavily(query: string, apiKey: string) {
-  try {
-    const response = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        api_key: apiKey,
-        query: query,
-        search_depth: "basic",
-        max_results: 3,
-      }),
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.results.map((r: any) => `${r.title}: ${r.content} (${r.url})`).join("\n\n");
-  } catch (e) {
-    console.error("Tavily search error:", e);
-    return null;
-  }
+// Convert OpenAI-style messages to Gemini API format
+function toGeminiContents(messages: any[]) {
+  return messages.map((m: any) => {
+    const role = m.role === "assistant" ? "model" : "user";
+
+    // If content is already an array (multimodal with images)
+    if (Array.isArray(m.content)) {
+      const parts: any[] = [];
+      for (const part of m.content) {
+        if (part.type === "text") {
+          parts.push({ text: part.text || "" });
+        } else if (part.type === "image_url" && part.image_url?.url) {
+          const dataUrl: string = part.image_url.url;
+          const matches = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+          if (matches) {
+            parts.push({
+              inlineData: {
+                mimeType: matches[1],
+                data: matches[2],
+              },
+            });
+          }
+        }
+      }
+      return { role, parts };
+    }
+
+    // Plain text content
+    return { role, parts: [{ text: m.content || "" }] };
+  });
 }
 
 serve(async (req) => {
@@ -61,94 +70,108 @@ serve(async (req) => {
 
     if (limitError) {
       console.error("RPC Error:", limitError);
-      return new Response(JSON.stringify({ error: "Limitlarni tekshirishda xatolik" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (!limitCheck || !limitCheck.allowed) {
+      // Don't block if RPC fails - just log it and continue
+      console.warn("Continuing despite RPC error...");
+    } else if (!limitCheck || !limitCheck.allowed) {
       return new Response(JSON.stringify({ error: "Kundalik/oylik limit tugadi" }), {
         status: 429,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { messages, audio, mimeType } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const TAVILY_API_KEY = Deno.env.get("TAVILY_API_KEY");
-    
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const { messages } = await req.json();
+
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("VITE_GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const currentDateStr = "Bugungi sana: " + new Date().toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' }) + ", Hozirgi vaqt: " + new Date().toLocaleTimeString('uz-UZ', { timeZone: 'Asia/Tashkent' });
 
-    const userQuery = messages[messages.length - 1]?.content || "";
-    let searchContext = "";
-
-    if (TAVILY_API_KEY && userQuery && !audio) {
-      searchContext = await searchTavily(userQuery, TAVILY_API_KEY) || "";
-    }
-
-    const systemPrompt = `Sen "AI Do'stim" nomli do'stona va aqlli sun'iy intellekt yordamchisisan. 
-Sening vazifang foydalanuvchiga do'st sifatida yordam berish. 
+    const systemInstruction = {
+      parts: [{
+        text: `Sen "AI Do'stim" nomli do'stona va aqlli sun'iy intellekt yordamchisisan.
+Sening vazifang foydalanuvchiga do'st sifatida yordam berish.
 O'zbek tilida javob ber (agar foydalanuvchi boshqa tilda yozsa, o'sha tilda javob ber).
 Javoblaringni qisqa, aniq va foydali qilib yoz.
 Emoji ishlatishni unutma, lekin haddan tashqari ko'p ishlatma.
 Agar foydalanuvchi salomlashsa, iliq va samimiy javob ber.
-${currentDateStr}
-${searchContext ? `Internet qidiruv natijalari:\n${searchContext}\n\nYuqoridagi ma'lumotlardan foydalanib javob ber.` : ""}`;
-
-    const payload: any = {
-      model: "google/gemini-1.5-flash",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages.map((m: any) => ({
-          role: m.role,
-          content: m.content
-        }))
-      ],
-      stream: true,
-      // Add Google Search Grounding tool
-      tools: [{
-        google_search: {}
+Agar rasm yuborilsa, rasmni tahlil qil va foydalanuvchiga tushuntir.
+${currentDateStr}`
       }]
     };
 
-    if (audio && mimeType) {
-      const lastMsgIdx = payload.messages.length - 1;
-      const lastMsg = payload.messages[lastMsgIdx];
-      
-      if (lastMsg.role === 'user') {
-        lastMsg.content = [
-          { type: 'text', text: lastMsg.content || "Ovozli xabarni tahlil qil." },
-          {
-            type: 'image_url',
-            image_url: { url: `data:${mimeType};base64,${audio}` }
-          }
-        ];
-      }
-    }
+    // Convert messages to Gemini format
+    const geminiContents = toGeminiContents(messages);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const geminiPayload = {
+      system_instruction: systemInstruction,
+      contents: geminiContents,
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+      },
+    };
+
+    // Use gemini-1.5-flash model with streaming
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${GEMINI_API_KEY}&alt=sse`;
+
+    const response = await fetch(geminiUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(geminiPayload),
     });
 
     if (!response.ok) {
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "AI xizmati xatosi" }), {
+      console.error("Gemini API error:", response.status, t);
+      return new Response(JSON.stringify({ error: "Gemini xizmati xatosi: " + response.status }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(response.body, {
+    // Transform Gemini SSE stream to OpenAI-compatible SSE stream
+    const transformStream = new TransformStream({
+      transform(chunk, controller) {
+        const text = new TextDecoder().decode(chunk);
+        const lines = text.split("\n");
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr || jsonStr === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (content) {
+              const openaiChunk = {
+                choices: [{ delta: { content } }]
+              };
+              controller.enqueue(
+                new TextEncoder().encode(`data: ${JSON.stringify(openaiChunk)}\n\n`)
+              );
+            }
+
+            // Check for finish reason
+            const finishReason = parsed?.candidates?.[0]?.finishReason;
+            if (finishReason && finishReason !== "STOP" && finishReason !== "MAX_TOKENS") {
+              console.warn("Gemini finish reason:", finishReason);
+            }
+          } catch (_) {
+            // Skip malformed JSON lines
+          }
+        }
+      },
+      flush(controller) {
+        controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+      }
+    });
+
+    return new Response(response.body!.pipeThrough(transformStream), {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
+
   } catch (e) {
     console.error("ai_chat error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Noma'lum xato" }), {

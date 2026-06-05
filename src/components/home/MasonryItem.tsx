@@ -12,7 +12,10 @@ interface MasonryItemProps {
 
 export const MasonryItem = ({ post, index = 0, onClick }: MasonryItemProps) => {
   const mediaUrl = post.media_urls?.[0] || post.image_url;
-  const isVideo = mediaUrl && (mediaUrl.includes(".mp4") || mediaUrl.includes(".mov") || mediaUrl.includes(".webm"));
+  const isVideo = mediaUrl && (() => {
+    const lower = mediaUrl.toLowerCase();
+    return lower.includes('.mp4') || lower.includes('.mov') || lower.includes('.webm') || lower.includes('.m4v') || lower.includes('.3gp') || lower.includes('.avi') || lower.includes('video');
+  })();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const isAboveFold = index < 6;
