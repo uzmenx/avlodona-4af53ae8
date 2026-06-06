@@ -1354,7 +1354,7 @@ export const UserProfilePage = () => {
         {/* Posts Grid / List */}
         {activeTab === 'posts' && (() => {
             return (
-              <PullToRefresh onRefresh={refetch} useWindowScroll={true}>
+              <PullToRefresh onRefresh={async () => { await refetch(); }} useWindowScroll={true}>
             {postsLoading ?
                 <div className="text-center py-12">
                 <p className="text-muted-foreground">Yuklanmoqda...</p>
