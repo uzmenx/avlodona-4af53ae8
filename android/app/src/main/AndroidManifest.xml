@@ -43,6 +43,11 @@
         <service 
             android:name="io.capawesome.capacitorjs.plugins.foregroundservice.AndroidForegroundService" 
             android:foregroundServiceType="microphone|camera" />
+
+        <!-- Firebase Push Notifications -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="avlodona_channel" />
     </application>
 
     <!-- Internet & Core -->
@@ -67,4 +72,7 @@
 
     <!-- Bildirishnomalar (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Vibration -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

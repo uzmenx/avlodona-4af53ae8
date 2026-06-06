@@ -307,7 +307,10 @@ const BannerCard = ({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+
 export const PushNotification = () => {
+  usePushNotifications();
   const { user } = useAuth();
   const location = useLocation();
   const locationRef = useRef(location.pathname);
@@ -414,7 +417,7 @@ export const PushNotification = () => {
   if (alerts.length === 0) return null;
 
   return (
-    <div className="fixed top-3 left-0 right-0 z-[200] flex justify-center px-4 pointer-events-none">
+    <div className="fixed left-0 right-0 z-[200] flex justify-center px-4 pointer-events-none" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}>
       <div className="w-full max-w-[390px] flex flex-col gap-2 pointer-events-auto">
         <AnimatePresence mode="popLayout">
           {alerts.map((alert) => (

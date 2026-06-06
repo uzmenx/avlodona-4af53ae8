@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "426521408882",
+    "project_id": "uzmenx-cc9ca",
+    "storage_bucket": "uzmenx-cc9ca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:426521408882:android:d645b318a7d61899b659eb",
+        "android_client_info": {
+          "package_name": "com.avlodona.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEBXaLgJmGkIUu4JsLMRQDJYRLT4yt9hg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:426521408882:android:61882bd793219a52b659eb",
+        "android_client_info": {
+          "package_name": "com.example.uzmenx"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEBXaLgJmGkIUu4JsLMRQDJYRLT4yt9hg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

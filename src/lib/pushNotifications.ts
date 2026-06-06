@@ -58,7 +58,7 @@ export async function showLocalCallNotification(callerName: string, callerId: st
           body: `${callerName} sizga qo'ng'iroq qilmoqda...`,
           actionTypeId: 'INCOMING_CALL',
           extra: { callerId },
-          smallIcon: 'ic_stat_icon_config_sample' // Placeholder for standard icon
+          smallIcon: 'ic_stat_notification', // Avlodona status bar icon
         }
       ]
     });

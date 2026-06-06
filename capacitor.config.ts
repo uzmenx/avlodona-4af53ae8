@@ -19,9 +19,18 @@ const config: CapacitorConfig = {
       iosContentMode: "scaleAspectFit",
     },
     StatusBar: {
-      overlaysWebView: true,
-      style: 'LIGHT'
-    }
+      overlaysWebView: false,
+      style: 'DARK',
+      backgroundColor: '#000000',
+    },
+    LocalNotifications: {
+      smallIcon: 'ic_stat_notification',
+      iconColor: '#4ade80',
+      sound: 'default',
+    },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
   }
 };
 
