@@ -105,7 +105,7 @@ const AIChatView = ({ messages, setMessages }: AIChatViewProps) => {
             if (att.type === 'image') {
               contentParts.push({
                 type: 'image_url',
-                image_url: { url: `data:${att.mimeType || 'image/png'};base64,${att.data}` }
+                image_url: { url: `data:${(att as any).mimeType || 'image/png'};base64,${att.data}` }
               });
             }
           });

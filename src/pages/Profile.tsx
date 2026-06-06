@@ -886,7 +886,7 @@ const Profile = () => {
                                                                        POSTS TAB
                                                                     ═══════════════════════════════════════ */}
         {activeTab === 'posts' &&
-          <PullToRefresh onRefresh={refetch} useWindowScroll={true}>
+          <PullToRefresh onRefresh={async () => { await refetch(); }} useWindowScroll={true}>
             {isLoading ?
             <div className="text-center py-12">
                 <p className="text-muted-foreground">{t('loading')}</p>

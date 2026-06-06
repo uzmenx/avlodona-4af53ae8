@@ -212,6 +212,9 @@ export type Database = {
           created_at: string
           id: string
           last_message_at: string | null
+          last_message_content: string | null
+          last_message_sender_id: string | null
+          last_message_status: string | null
           participant1_id: string
           participant2_id: string
         }
@@ -219,6 +222,9 @@ export type Database = {
           created_at?: string
           id?: string
           last_message_at?: string | null
+          last_message_content?: string | null
+          last_message_sender_id?: string | null
+          last_message_status?: string | null
           participant1_id: string
           participant2_id: string
         }
@@ -226,6 +232,9 @@ export type Database = {
           created_at?: string
           id?: string
           last_message_at?: string | null
+          last_message_content?: string | null
+          last_message_sender_id?: string | null
+          last_message_status?: string | null
           participant1_id?: string
           participant2_id?: string
         }
@@ -460,6 +469,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      fcm_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          platform: string | null
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform?: string | null
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform?: string | null
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       follows: {
         Row: {
@@ -783,6 +819,30 @@ export type Database = {
           file_url?: string
           id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      media_registry: {
+        Row: {
+          created_at: string
+          file_size: number
+          hash: string
+          mime_type: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          file_size?: number
+          hash: string
+          mime_type?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          file_size?: number
+          hash?: string
+          mime_type?: string
+          url?: string
         }
         Relationships: []
       }
