@@ -2147,6 +2147,10 @@ export type Database = {
           visibility: Database["public"]["Enums"]["chat_visibility"]
         }[]
       }
+      is_conversation_participant: {
+        Args: { _conversation_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_group_admin: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
