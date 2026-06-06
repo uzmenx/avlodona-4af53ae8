@@ -151,8 +151,15 @@ const AIImageView = () => {
       if (!resp.ok) {
         console.error('Image gen error:', data);
         const detail = data.snapshot || data.details || data.error || 'Unknown error';
-        setErrorDetail(typeof detail === 'string' ? detail.slice(0, 200) : JSON.stringify(detail).slice(0, 200));
-        toast.error(data.error || 'Rasm yaratishda xatolik');
+        const detailStr = typeof detail === 'string' ? detail : JSON.stringify(detail);
+        
+        if (detailStr.toLowerCase().includes('safety system') || detailStr.toLowerCase().includes('help.openai.com')) {
+          setErrorDetail("Kiritilgan matn xavfsizlik qoidalariga to'g'ri kelmadi. Bunday turdagi rasm yaratib bo'lmaydi, iltimos boshqa so'zlardan foydalanib ko'ring.");
+          toast.error("Xavfsizlik cheklovi: boshqa so'zlardan foydalaning");
+        } else {
+          setErrorDetail(detailStr.slice(0, 200));
+          toast.error(data.error || 'Rasm yaratishda xatolik');
+        }
         return;
       }
 

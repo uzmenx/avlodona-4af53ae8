@@ -39,15 +39,19 @@
         </provider>
 
         <!-- Foreground Service -->
-        <receiver android:name="io.capawesome.capacitorjs.plugins.foregroundservice.NotificationActionBroadcastReceiver" />
-        <service 
-            android:name="io.capawesome.capacitorjs.plugins.foregroundservice.AndroidForegroundService" 
-            android:foregroundServiceType="microphone|camera" />
+        <receiver
+            android:name="io.capawesome.capacitorjs.plugins.foregroundservice.NotificationActionBroadcastReceiver"
+        />
+        <service
+            android:name="io.capawesome.capacitorjs.plugins.foregroundservice.AndroidForegroundService"
+            android:foregroundServiceType="microphone|camera"
+        />
 
         <!-- Firebase Push Notifications -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="avlodona_channel" />
+            android:value="avlodona_channel"
+        />
     </application>
 
     <!-- Internet & Core -->
@@ -62,8 +66,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
 
     <!-- Media: Android 12 va undan past (API 32-) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
     <!-- Kamera va Mikrofon -->
     <uses-permission android:name="android.permission.CAMERA" />

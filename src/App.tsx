@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +15,7 @@ import { ErrorBoundary } from "react-error-boundary";
 import { ErrorFallback } from "@/components/ui/ErrorFallback";
 import { StatusBarHandler } from "@/components/layout/StatusBarHandler";
 import { useDeepLinks } from "@/hooks/useDeepLinks";
+import { SplashScreen } from "@/components/ui/SplashScreen";
 
 
 import Home from "./pages/Home";
@@ -102,65 +104,71 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <ThemeProvider>
-        <LanguageProvider>
-        <AudioProvider>
-        <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <PlanOverlay />
-          <StatusBarHandler />
-          <BrowserRouter>
-            <DeepLinkListener />
-            <PushNotification />
-            <GlobalMessageListener />
-            <GlobalCallListener />
-            <ErrorBoundary 
-              FallbackComponent={ErrorFallback}
-              onReset={() => {
-                window.location.reload();
-              }}
-            >
-              <Routes>
-                <Route path="/auth" element={<PublicRoute><AuthLogin /></PublicRoute>} />
-                <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
-                <Route path="/verify-otp" element={<PublicRoute><VerifyOtp /></PublicRoute>} />
-                <Route path="/phone-auth" element={<PublicRoute><PhoneAuth /></PublicRoute>} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                <Route path="/settings/storage" element={<ProtectedRoute><StorageSettings /></ProtectedRoute>} />
-                <Route path="/relatives" element={<ProtectedRoute><Relatives /></ProtectedRoute>} />
-                <Route path="/create" element={<ProtectedRoute><CreateContent /></ProtectedRoute>} />
-                <Route path="/create-post" element={<Navigate to="/create" replace />} />
-                <Route path="/create-story" element={<ProtectedRoute><CreateStory /></ProtectedRoute>} />
-                <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-                <Route path="/user/:userId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-                <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-                <Route path="/chat/:userId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-                <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />
-                <Route path="/group-chat/:groupId" element={<ProtectedRoute><GroupChat /></ProtectedRoute>} />
-                <Route path="/join/:inviteLink" element={<ProtectedRoute><JoinGroup /></ProtectedRoute>} />
-                <Route path="/invite/:token" element={<InviteAccept />} />
-                <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
-                <Route path="/about" element={<About />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </ErrorBoundary>
-          </BrowserRouter>
-        </AuthProvider>
-        </AudioProvider>
-        </LanguageProvider>
-      </ThemeProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [splashDone, setSplashDone] = useState(false);
+  const handleSplashFinish = useCallback(() => setSplashDone(true), []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+          <AudioProvider>
+          <AuthProvider>
+            {!splashDone && <SplashScreen onFinish={handleSplashFinish} minDuration={1500} />}
+            <Toaster />
+            <Sonner />
+            <PlanOverlay />
+            <StatusBarHandler />
+            <BrowserRouter>
+              <DeepLinkListener />
+              <PushNotification />
+              <GlobalMessageListener />
+              <GlobalCallListener />
+              <ErrorBoundary 
+                FallbackComponent={ErrorFallback}
+                onReset={() => {
+                  window.location.reload();
+                }}
+              >
+                <Routes>
+                  <Route path="/auth" element={<PublicRoute><AuthLogin /></PublicRoute>} />
+                  <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+                  <Route path="/verify-otp" element={<PublicRoute><VerifyOtp /></PublicRoute>} />
+                  <Route path="/phone-auth" element={<PublicRoute><PhoneAuth /></PublicRoute>} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                  <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+                  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                  <Route path="/settings/storage" element={<ProtectedRoute><StorageSettings /></ProtectedRoute>} />
+                  <Route path="/relatives" element={<ProtectedRoute><Relatives /></ProtectedRoute>} />
+                  <Route path="/create" element={<ProtectedRoute><CreateContent /></ProtectedRoute>} />
+                  <Route path="/create-post" element={<Navigate to="/create" replace />} />
+                  <Route path="/create-story" element={<ProtectedRoute><CreateStory /></ProtectedRoute>} />
+                  <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+                  <Route path="/user/:userId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+                  <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+                  <Route path="/chat/:userId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+                  <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />
+                  <Route path="/group-chat/:groupId" element={<ProtectedRoute><GroupChat /></ProtectedRoute>} />
+                  <Route path="/join/:inviteLink" element={<ProtectedRoute><JoinGroup /></ProtectedRoute>} />
+                  <Route path="/invite/:token" element={<InviteAccept />} />
+                  <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </ErrorBoundary>
+            </BrowserRouter>
+          </AuthProvider>
+          </AudioProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
