@@ -14,7 +14,7 @@ interface AIChatMessage {
   attachments?: {type: string;data: string;name: string;}[];
 }
 
-const GEMINI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
+const GEMINI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat-groq`;
 
 interface AIChatViewProps {
   messages: AIChatMessage[];
