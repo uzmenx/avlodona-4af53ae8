@@ -814,8 +814,8 @@ const Chat = () => {
         <VoiceMessage
           audioUrl={msg.media_url || ''}
           isMine={isMine}
-          duration={msg.metadata?.duration}
-          waveformData={msg.metadata?.waveformData}
+          duration={(msg as any).metadata?.duration}
+          waveformData={(msg as any).metadata?.waveformData}
           uploadProgress={uploadProgress}
           deliveryStatus={msg.status === 'seen' ? 'read' : msg.status}
           senderAvatarUrl={!isMine ? otherUser?.avatar_url || undefined : undefined}
