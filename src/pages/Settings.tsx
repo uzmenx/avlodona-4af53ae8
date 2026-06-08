@@ -329,7 +329,7 @@ const Settings = () => {
                 <div className="flex flex-col items-start text-left mr-3">
                   <span className="font-medium">Kesh va media xotira</span>
                   <span className="text-xs text-muted-foreground font-normal mt-0.5">
-                    Yuklab olingan fayllarni boshqarish, tozalash
+                    Yuklab olingan fayllarni boshqarish.
                   </span>
                 </div>
                 <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -393,6 +393,15 @@ const Settings = () => {
           >
             <LogOut className="mr-2 h-5 w-5" />
             {t('logout')}
+          </Button>
+
+          {/* 7. Delete Account */}
+          <Button
+            variant="ghost"
+            className="w-full h-12 rounded-xl text-sm text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all border border-border/40"
+            onClick={() => navigate('/delete-account')}
+          >
+            Akkauntni o'chirish / Удалить аккаунт
           </Button>
         </div>
       </div>

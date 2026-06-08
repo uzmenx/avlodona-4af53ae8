@@ -825,14 +825,20 @@ const Chat = () => {
 
     // Image or video message
     if (msg.media_type === 'image' || msg.media_type === 'video') {
+      const mediaCaption = msg.content && msg.content !== '📎 Media' ? msg.content : null;
       return (
-        <MediaMessage
-          mediaUrl={msg.media_url || ''}
-          mediaType={msg.media_type}
-          isMine={isMine}
-          onFullscreen={() => setFullscreenMedia({ url: msg.media_url!, type: msg.media_type as 'image' | 'video' })}
-          uploadProgress={uploadProgress}
-        />
+        <div className="space-y-1">
+          <MediaMessage
+            mediaUrl={msg.media_url || ''}
+            mediaType={msg.media_type}
+            isMine={isMine}
+            onFullscreen={() => setFullscreenMedia({ url: msg.media_url!, type: msg.media_type as 'image' | 'video' })}
+            uploadProgress={uploadProgress}
+          />
+          {mediaCaption && (
+            <p className="text-sm whitespace-pre-wrap break-words select-text px-1">{mediaCaption}</p>
+          )}
+        </div>
       );
     }
 

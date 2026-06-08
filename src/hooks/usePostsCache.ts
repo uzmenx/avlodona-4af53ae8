@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Post } from '@/types';
 
@@ -207,6 +207,18 @@ export const usePostsCache = (options?: UsePostsCacheOptions) => {
     delete globalCacheByKey[cacheKey];
     await fetchPosts(true);
   }, [cacheKey, fetchPosts]);
+
+  // Auto-refresh when a new post is published
+  useEffect(() => {
+    const handlePublishSuccess = (e: Event) => {
+      const ce = e as CustomEvent;
+      if (ce.detail?.sharePost) {
+        void forceRefresh();
+      }
+    };
+    window.addEventListener('avlodona:publish:success', handlePublishSuccess);
+    return () => window.removeEventListener('avlodona:publish:success', handlePublishSuccess);
+  }, [forceRefresh]);
 
   return {
     posts,

@@ -511,6 +511,13 @@ const runPublish = async (task: PublishTask) => {
     }
 
     emit({ taskId: task.id, progress: 100, status: 'success' });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('avlodona:publish:success', {
+          detail: { sharePost: task.sharePost, shareStory: task.shareStory }
+        })
+      );
+    }
   } catch (err: any) {
     emit({ taskId: task.id, progress: 0, status: 'error', message: err?.message || 'Yuklashda xatolik yuz berdi' });
   }

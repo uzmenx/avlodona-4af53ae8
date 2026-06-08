@@ -168,6 +168,18 @@ export const useStories = () => {
     setCache(CACHE_KEY, query.data);
   }, [CACHE_KEY, query.data, user?.id]);
 
+  // Auto-refresh when a new story is published
+  useEffect(() => {
+    const handlePublishSuccess = (e: Event) => {
+      const ce = e as CustomEvent;
+      if (ce.detail?.shareStory) {
+        void query.refetch();
+      }
+    };
+    window.addEventListener('avlodona:publish:success', handlePublishSuccess);
+    return () => window.removeEventListener('avlodona:publish:success', handlePublishSuccess);
+  }, [query]);
+
   const recordView = async (storyId: string) => {
     if (!user) return;
 

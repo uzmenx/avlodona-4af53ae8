@@ -215,11 +215,14 @@ const GroupChat = () => {
   const markAsRead = useCallback(async () => {
     if (!groupId || !user?.id) return;
     try {
-      await supabase
+      const { error } = await supabase
         .from('group_members')
         .update({ last_read_at: new Date().toISOString() })
         .eq('group_id', groupId)
         .eq('user_id', user.id);
+      if (!error) {
+        window.dispatchEvent(new CustomEvent('avlodona:group-read', { detail: { groupId } }));
+      }
     } catch (error) {
       console.error('Error marking group as read:', error);
     }
@@ -418,13 +421,21 @@ const GroupChat = () => {
       );
     }
     if ((message.media_type === 'image' || message.media_type === 'video') && message.media_url) {
+      const mediaCaption = message.content && message.content !== '📷 Rasm' && message.content !== '🎬 Video' && message.content !== '📎 Media'
+        ? message.content
+        : null;
       return (
-        <MediaMessage
-          mediaUrl={message.media_url}
-          mediaType={message.media_type as 'image' | 'video'}
-          isMine={isOwn}
-          onFullscreen={() => setFullscreenMedia({ url: message.media_url!, type: message.media_type as 'image' | 'video' })}
-        />
+        <div className="space-y-1">
+          <MediaMessage
+            mediaUrl={message.media_url}
+            mediaType={message.media_type as 'image' | 'video'}
+            isMine={isOwn}
+            onFullscreen={() => setFullscreenMedia({ url: message.media_url!, type: message.media_type as 'image' | 'video' })}
+          />
+          {mediaCaption && (
+            <p className="break-words whitespace-pre-wrap select-text px-1 text-sm">{mediaCaption}</p>
+          )}
+        </div>
       );
     }
 

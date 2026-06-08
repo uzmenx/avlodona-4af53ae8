@@ -151,6 +151,42 @@ export const useGroupChats = () => {
     fetchGroupChats();
   }, [fetchGroupChats]);
 
+  // When a group is opened and messages are read, immediately clear its badge
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ groupId?: string }>;
+      const readGroupId = ce.detail?.groupId;
+      if (!readGroupId) return;
+
+      setGroups(prev => {
+        const idx = prev.findIndex(g => g.id === readGroupId);
+        if (idx === -1 || (prev[idx].unreadCount || 0) === 0) return prev;
+        const next = prev.slice();
+        next[idx] = { ...next[idx], unreadCount: 0 };
+        return next;
+      });
+      setChannels(prev => {
+        const idx = prev.findIndex(c => c.id === readGroupId);
+        if (idx === -1 || (prev[idx].unreadCount || 0) === 0) return prev;
+        const next = prev.slice();
+        next[idx] = { ...next[idx], unreadCount: 0 };
+        return next;
+      });
+    };
+
+    window.addEventListener('avlodona:group-read', handler as EventListener);
+    return () => window.removeEventListener('avlodona:group-read', handler as EventListener);
+  }, []);
+
+  // When a new message arrives (any group message), refetch to update last message & unread counts
+  useEffect(() => {
+    const handler = () => {
+      void fetchGroupChats();
+    };
+    window.addEventListener('avlodona:new-message', handler);
+    return () => window.removeEventListener('avlodona:new-message', handler);
+  }, [fetchGroupChats]);
+
   const createGroupChat = async (
     name: string,
     type: 'group' | 'channel',

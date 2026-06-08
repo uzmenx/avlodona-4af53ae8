@@ -134,8 +134,8 @@ const About = () => {
           <div ref={heroRef} className="fade-up text-center space-y-4">
             <div className="relative inline-flex items-center justify-center">
               <div className="absolute inset-0 rounded-full bg-primary/20 blur-2xl scale-150 animate-pulse" />
-              <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/30 to-purple-600/30 border border-primary/20 flex items-center justify-center backdrop-blur-sm">
-                <TreePine className="h-9 w-9 text-primary" />
+              <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/30 to-purple-600/30 border border-primary/20 flex items-center justify-center backdrop-blur-sm overflow-hidden">
+                <img src="/app-logo.png" className="w-12 h-12 object-contain" alt="Avlodona Logo" />
               </div>
             </div>
 

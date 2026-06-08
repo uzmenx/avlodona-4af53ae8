@@ -213,6 +213,8 @@ export const SamsungUltraVideoPlayer = ({
 
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const pinchDistance = useRef<number>(0);
 
   const instanceIdRef = useRef(
@@ -666,19 +668,19 @@ export const SamsungUltraVideoPlayer = ({
 
     controlsTimer.current = setTimeout(() => {
 
-      if (videoRef.current && !videoRef.current.paused && !showSettings && !showChapters) {
+      if (videoRef.current && !videoRef.current.paused) {
 
         setShowControls(false);
 
       }
 
-    }, 3000);
+    }, 1500);
 
-  }, [showSettings, showChapters]);
+  }, []);
 
   useEffect(() => {
 
-    if (isPlaying && !showSettings && !showChapters) {
+    if (isPlaying) {
 
       resetControlsTimer();
 
@@ -690,7 +692,7 @@ export const SamsungUltraVideoPlayer = ({
 
     };
 
-  }, [isPlaying, showSettings, showChapters, resetControlsTimer]);
+  }, [isPlaying, resetControlsTimer]);
 
   // ═══════════════════════════════════════════════════════════════
 
@@ -1047,11 +1049,35 @@ export const SamsungUltraVideoPlayer = ({
 
 
 
+        // Multi-tap: pending single-tap timer ni bekor qil
+
+        if (singleTapTimerRef.current) {
+
+          clearTimeout(singleTapTimerRef.current);
+
+          singleTapTimerRef.current = null;
+
+        }
+
         setTouchState((prev) => ({ ...prev, tapCount: newTapCount, lastTap: now, side }));
 
       } else {
 
-        // First tap
+        // First tap — 350ms delay bilan double-tap bilan aralashmaslik uchun
+
+        const tapSide = side;
+
+        if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+
+        singleTapTimerRef.current = setTimeout(() => {
+
+          singleTapTimerRef.current = null;
+
+          // Istalgan bo'sh joy — controls toggle
+
+          setShowControls((prev) => !prev);
+
+        }, 200);
 
         setTouchState((prev) => ({ ...prev, tapCount: 1, lastTap: now, side }));
 
@@ -1207,13 +1233,25 @@ export const SamsungUltraVideoPlayer = ({
 
       const deltaX = touch.clientX - gesture.startX;
 
-      // Any intentional swipe should cancel long-press speed boost
+      // Any intentional swipe should cancel long-press speed boost and single-tap toggle
 
-      if (longPressTimerRef.current && (Math.abs(deltaY) > 8 || Math.abs(deltaX) > 8)) {
+      if (Math.abs(deltaY) > 8 || Math.abs(deltaX) > 8) {
 
-        clearTimeout(longPressTimerRef.current);
+        if (longPressTimerRef.current) {
 
-        longPressTimerRef.current = null;
+          clearTimeout(longPressTimerRef.current);
+
+          longPressTimerRef.current = null;
+
+        }
+
+        if (singleTapTimerRef.current) {
+
+          clearTimeout(singleTapTimerRef.current);
+
+          singleTapTimerRef.current = null;
+
+        }
 
       }
 

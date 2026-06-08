@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TreeDeciduous, X, GitMerge, Search, Plus, Users, UserPlus, User } from 'lucide-react';
+import { X, GitMerge, Search, Plus, Users, UserPlus, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { FamilyTreeCanvas } from './FamilyTreeCanvas';
@@ -556,7 +556,7 @@ export const FamilyTreeV2 = () => {
         {isLoading && Object.keys(members).length === 0 && (
           <div className="absolute inset-0 z-[100] flex items-center justify-center bg-card/60 backdrop-blur-sm">
             <div className="text-center bg-card/90 p-6 rounded-2xl shadow-xl border border-white/10 dark:border-slate-800 backdrop-blur-md">
-              <TreeDeciduous className="w-12 h-12 mx-auto text-primary animate-pulse" />
+              <img src="/app-logo.png" className="w-16 h-16 mx-auto animate-pulse object-contain" alt="Avlodona Logo" />
               <p className="mt-4 text-sm font-medium text-foreground">Shajara yuklanmoqda...</p>
             </div>
           </div>

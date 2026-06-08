@@ -254,6 +254,18 @@ export const useUserPosts = (userId: string | undefined, isMemorial: boolean = f
     });
   };
 
+  // Auto-refresh when a new post is published
+  useEffect(() => {
+    const handlePublishSuccess = (e: Event) => {
+      const ce = e as CustomEvent;
+      if (ce.detail?.sharePost) {
+        void query.refetch();
+      }
+    };
+    window.addEventListener('avlodona:publish:success', handlePublishSuccess);
+    return () => window.removeEventListener('avlodona:publish:success', handlePublishSuccess);
+  }, [query]);
+
   const posts = (query.data?.pages || []).flatMap((p) => p.items || []);
   const postsCount =
     (query.data?.pages?.[0]?.totalCount ?? posts.length) as number;

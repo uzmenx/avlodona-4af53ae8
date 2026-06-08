@@ -44,6 +44,7 @@ import InviteAccept from "./pages/InviteAccept";
 import Support from "./pages/Support";
 import About from "./pages/About";
 import StorageSettings from "./pages/StorageSettings";
+import DeleteAccount from "./pages/DeleteAccount";
 
 import { AudioProvider } from "@/contexts/AudioContext";
 
@@ -158,6 +159,7 @@ const App = () => {
                   <Route path="/invite/:token" element={<InviteAccept />} />
                   <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
                   <Route path="/about" element={<About />} />
+                  <Route path="/delete-account" element={<DeleteAccount />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </ErrorBoundary>

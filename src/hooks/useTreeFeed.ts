@@ -85,5 +85,17 @@ export const useTreeFeed = () => {
 
   useEffect(() => { fetchTreePosts(); }, [fetchTreePosts]);
 
+  // Auto-refresh when a new post is published
+  useEffect(() => {
+    const handlePublishSuccess = (e: Event) => {
+      const ce = e as CustomEvent;
+      if (ce.detail?.sharePost) {
+        void fetchTreePosts();
+      }
+    };
+    window.addEventListener('avlodona:publish:success', handlePublishSuccess);
+    return () => window.removeEventListener('avlodona:publish:success', handlePublishSuccess);
+  }, [fetchTreePosts]);
+
   return { treePosts, isLoading, refetch: fetchTreePosts };
 };
