@@ -1177,142 +1177,175 @@ export const UnifiedFullScreenViewer = ({
   ).filter((i) => i >= 0 && i < shorts.length);
 
   const renderShort = () => {
-
     if (!currentShort) {
-
       return (
-
         <div className="flex-1 flex items-center justify-center text-white/50 text-sm">
-
           Shorts topilmadi
-
-        </div>);
-
+        </div>
+      );
     }
 
+    const isMobile = window.innerWidth <= 768;
+
     return (
-
       <div className={cn(
-
-        "flex-1 flex flex-col relative overflow-visible z-[1] w-full",
-        "pt-[calc(env(safe-area-inset-top,10px)+44px)] bg-black"
-
+        "flex-1 flex flex-col relative overflow-hidden z-[1] w-full bg-black",
+        isMobile ? "p-0 h-full justify-between" : "pt-[calc(env(safe-area-inset-top,10px)+44px)]"
       )}
+      key={currentShort.id}>
 
-      key={currentShort.id}
-
-      onClick={(e) => {
-
-       
-
-        if (Date.now() - lastShortsTouchTapTs.current < 450) return;
-
-        const t = e.target as HTMLElement | null;
-
-        if (t?.closest('button') || t?.closest('a') || t?.tagName.toLowerCase() === 'iframe') return;
-
-        handleShortsTap();
-
-      }}>
-
-        <div className="relative w-full flex-1 min-h-0 z-[9999]" style={{ maxHeight: 'calc(100% - 120px)' }}>
+        <div className={cn(
+          "relative w-full flex-1 min-h-0",
+          isMobile ? "h-full max-h-full absolute inset-0 z-0" : "z-[9999]"
+        )} style={isMobile ? undefined : { maxHeight: 'calc(100% - 120px)' }}>
 
           {!isShortIframeReady &&
-
-          <div className="absolute inset-0 flex items-center justify-center bg-black">
-
+          <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
             <Loader2 className="h-7 w-7 text-white animate-spin" />
-
           </div>
-
           }
 
-
+          {/* Invisible click overlay for play/pause on mobile */}
+          {isMobile && (
+            <div 
+              className="absolute inset-0 z-[5] select-none"
+              style={{ touchAction: 'pan-y' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShortsTap();
+              }}
+            />
+          )}
 
           {/* Render current + adjacent iframes for instant switching */}
-
           {preloadRange.map((idx) => {
-
             const s = shorts[idx];
-
             if (!s) return null;
-
             const isCurrent = idx === shortIndex;
-
             return (
-
               <iframe
-
                 key={s.id}
-
                 ref={isCurrent ? shortsIframeRef : undefined}
-
-                src={`https://www.youtube.com/embed/${s.id}?rel=0&autoplay=${isCurrent ? '1' : '0'}&controls=1&modestbranding=1&playsinline=1&loop=1&playlist=${s.id}&iv_load_policy=3&fs=0&enablejsapi=1&origin=${encodeURIComponent(ytOrigin)}`}
-
+                src={`https://www.youtube.com/embed/${s.id}?rel=0&autoplay=${isCurrent ? '1' : '0'}&controls=${isMobile ? '0' : '1'}&modestbranding=1&playsinline=1&loop=1&playlist=${s.id}&iv_load_policy=3&fs=0&enablejsapi=1&origin=${encodeURIComponent(ytOrigin)}`}
                 className={cn(
-
-                  "absolute inset-0 w-full h-full transition-opacity duration-150",
-
+                  "absolute inset-0 w-full h-full transition-opacity duration-150 border-0",
+                  isMobile ? "object-cover scale-[1.02]" : "",
                   isCurrent ? "opacity-100 z-[2]" : "opacity-0 z-[1]"
-
                 )}
-
                 onLoad={isCurrent ? () => setIsShortIframeReady(true) : undefined}
-
                 allow="autoplay; encrypted-media"
-
                 allowFullScreen
-
-                title={s.title} />);
-
+                title={s.title} />
+            );
           })}
-
         </div>
 
-        <div className="w-full shrink-0 flex flex-col gap-3 px-4 pt-3 pb-[env(safe-area-inset-bottom,16px)] z-10">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-white leading-snug line-clamp-2">
+        {/* Play/Pause indicator overlay */}
+        {showPlayIndicator && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+            <div className="p-5 rounded-full bg-black/50 backdrop-blur-sm animate-ping duration-300">
+              {shortsPlaying ? (
+                <Play className="h-10 w-10 text-white fill-white" />
+              ) : (
+                <Pause className="h-10 w-10 text-white fill-white" />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Minimalist Overlay Content (YouTube style) - strictly overlay on top of video on mobile */}
+        <div className={cn(
+          "w-full flex flex-col gap-3 z-10 pointer-events-none",
+          isMobile 
+            ? "absolute bottom-[80px] left-0 right-0 px-4 pb-4 pt-16 bg-gradient-to-t from-black/90 via-black/40 to-transparent" 
+            : "shrink-0 px-4 pt-3 pb-[env(safe-area-inset-bottom,16px)]"
+        )}>
+          <div className="flex items-end justify-between gap-3 pointer-events-auto">
+            <div className="flex-1 min-w-0 text-shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-7 w-7 rounded-full bg-red-600 flex items-center justify-center text-[10px] font-bold text-white uppercase shrink-0">
+                  {currentShort.channelTitle?.charAt(0) || 'Y'}
+                </div>
+                <p className="text-[12px] font-semibold text-white truncate max-w-[150px]">
+                  @{currentShort.channelTitle || 'youtube'}
+                </p>
+              </div>
+              <p className="text-[13px] font-medium text-white leading-snug line-clamp-2 pr-4">
                 {currentShort.title}
               </p>
-              <p className="text-[11px] text-white/50 mt-1">{currentShort.channelTitle}</p>
             </div>
-            <div className="shrink-0 flex items-center gap-2">
-              <a
-                href={`https://www.youtube.com/shorts/${currentShort.id}`}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="p-2.5 rounded-full bg-white/10 hover:bg-white/15 transition-colors flex items-center justify-center"
-                title="YouTube da ochish">
-                <svg viewBox="0 0 24 24" className="w-5 h-5 text-red-500 fill-current">
-                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z" />
-                  <path d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z" className="fill-white" />
-                </svg>
-              </a>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowShortShare(true);
-                }}
-                className="p-2.5 rounded-full bg-white/10 hover:bg-white/15 transition-colors">
-                <Send className="h-5 w-5 text-white" />
-              </button>
+            
+            <div className={cn(
+              "shrink-0 flex items-center gap-2",
+              isMobile ? "flex-col mb-2 gap-4" : ""
+            )}>
+              {isMobile ? (
+                <>
+                  <div className="flex flex-col items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowShortShare(true);
+                      }}
+                      className="p-3 rounded-full bg-black/40 border border-white/10 active:scale-90 transition-transform flex items-center justify-center text-white"
+                    >
+                      <Send className="h-5 w-5" />
+                    </button>
+                    <span className="text-[10px] font-bold text-white">Ulashish</span>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-1">
+                    <a
+                      href={`https://www.youtube.com/shorts/${currentShort.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-3 rounded-full bg-black/40 border border-white/10 active:scale-90 transition-transform flex items-center justify-center text-white"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-5 h-5 text-red-500 fill-current">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z" />
+                        <path d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z" className="fill-white" />
+                      </svg>
+                    </a>
+                    <span className="text-[10px] font-bold text-white">YouTube</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <a
+                    href={`https://www.youtube.com/shorts/${currentShort.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-2.5 rounded-full bg-white/10 hover:bg-white/15 transition-colors flex items-center justify-center"
+                    title="YouTube da ochish">
+                    <svg viewBox="0 0 24 24" className="w-5 h-5 text-red-500 fill-current">
+                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z" />
+                      <path d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z" className="fill-white" />
+                    </svg>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowShortShare(true);
+                    }}
+                    className="p-2.5 rounded-full bg-white/10 hover:bg-white/15 transition-colors">
+                    <Send className="h-5 w-5 text-white" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
 
         <ShareDialog
-
           open={showShortShare}
-
           onOpenChange={setShowShortShare}
-
           shortId={currentShort.id} />
-
-      </div>);
-
+      </div>
+    );
   };
 
 
@@ -1906,7 +1939,7 @@ export const UnifiedFullScreenViewer = ({
         }
 
         {/* Top bar with tabs */}
-        <div className="fixed top-0 left-0 right-0 z-[70] flex items-center justify-between px-3 pt-[env(safe-area-inset-top,10px)] pb-2 bg-gradient-to-b from-black/50 to-transparent">
+        <div className="fixed top-0 left-0 right-0 z-[70] flex items-center justify-between px-3 pt-[calc(env(safe-area-inset-top,10px)+12px)] pb-2 bg-gradient-to-b from-black/50 to-transparent">
           <button onClick={handleClose} className="p-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 my-0">
             <X className="w-4 h-4 text-white" />
           </button>
@@ -1954,7 +1987,7 @@ export const UnifiedFullScreenViewer = ({
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="h-full w-full overflow-y-scroll snap-y snap-mandatory hide-scrollbar z-50 pt-[env(safe-area-inset-top,44px)]"
+          className="h-full w-full overflow-y-scroll snap-y snap-mandatory hide-scrollbar z-50 pt-[calc(env(safe-area-inset-top,44px)+20px)]"
           style={{
             overscrollBehaviorY: 'none',
             touchAction: 'pan-y',

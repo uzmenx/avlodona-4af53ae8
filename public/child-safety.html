@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Child Safety Standards – Avlodona</title>
+  <meta name="description" content="Avlodona ilovasining bolalar xavfsizligi standartlari va siyosati." />
+  <meta name="robots" content="index, follow" />
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --primary: #7c3aed;
+      --primary-light: #a78bfa;
+      --bg: #0a0a0f;
+      --surface: #13131f;
+      --surface-2: #1c1c2e;
+      --border: rgba(124, 58, 237, 0.2);
+      --text: #f1f0ff;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.08);
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.08);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.08);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.7;
+    }
+
+    /* ───── Header ───── */
+    header {
+      background: linear-gradient(135deg, #0d0d1a 0%, #1a0a2e 50%, #0d0d1a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 48px 24px 56px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124, 58, 237, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .logo-wrap img {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      object-fit: cover;
+    }
+
+    .logo-name {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #c4b5fd, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #6ee7b7;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 100px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .badge::before {
+      content: '●';
+      font-size: 0.5rem;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 520px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    /* ───── Main container ───── */
+    main {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    /* ───── Section card ───── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      margin-bottom: 24px;
+      transition: border-color 0.2s;
+    }
+
+    .card:hover {
+      border-color: rgba(124, 58, 237, 0.45);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .icon-box.danger  { background: var(--danger-bg);  }
+    .icon-box.success { background: var(--success-bg); }
+    .icon-box.warning { background: var(--warning-bg); }
+    .icon-box.purple  { background: rgba(124,58,237,0.12); }
+
+    .card-header h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    /* ───── Zero tolerance banner ───── */
+    .zero-tolerance {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+    }
+
+    .zt-icon {
+      font-size: 2rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .zero-tolerance h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fca5a5;
+      margin-bottom: 6px;
+    }
+
+    .zero-tolerance p {
+      color: #e5e7eb;
+      font-size: 0.95rem;
+    }
+
+    /* ───── List styles ───── */
+    ul.policy-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    ul.policy-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.95rem;
+      color: #d1d5db;
+    }
+
+    ul.policy-list li::before {
+      content: '✕';
+      color: var(--danger);
+      font-weight: 700;
+      font-size: 0.8rem;
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+
+    ul.check-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    ul.check-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.95rem;
+      color: #d1d5db;
+    }
+
+    ul.check-list li::before {
+      content: '✓';
+      color: var(--success);
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    /* ───── Steps ───── */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .step-text strong {
+      display: block;
+      font-size: 0.95rem;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .step-text span {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    /* ───── Contact ───── */
+    .contact-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(124, 58, 237, 0.12);
+      border: 1px solid rgba(124, 58, 237, 0.35);
+      color: var(--primary-light);
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-top: 16px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .contact-link:hover {
+      background: rgba(124, 58, 237, 0.22);
+      border-color: rgba(124, 58, 237, 0.6);
+    }
+
+    /* ───── Footer ───── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 24px;
+      text-align: center;
+    }
+
+    footer p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    footer strong {
+      color: var(--text);
+    }
+
+    /* ───── Responsive ───── */
+    @media (max-width: 600px) {
+      .card { padding: 24px 20px; }
+      .zero-tolerance { padding: 22px 20px; flex-direction: column; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-wrap">
+      <img src="/app-logo.png" alt="Avlodona logo" onerror="this.style.display='none'" />
+      <span class="logo-name">Avlodona</span>
+    </div>
+    <div class="badge">Active Policy</div>
+    <h1>Child Safety Standards</h1>
+    <p>Avlodona is committed to the safety of every child. This page outlines our policies and enforcement procedures.</p>
+  </header>
+
+  <main>
+
+    <!-- Zero tolerance -->
+    <div class="zero-tolerance">
+      <div class="zt-icon">🛡️</div>
+      <div>
+        <h2>Zero Tolerance Policy</h2>
+        <p>
+          Avlodona strictly prohibits any content that sexually exploits or abuses minors.
+          We have absolute zero tolerance for child sexual abuse material (CSAM) in any form.
+          Violations result in immediate account termination and reporting to authorities.
+        </p>
+      </div>
+    </div>
+
+    <!-- Prohibited content -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box danger">🚫</div>
+        <h2>Prohibited Content</h2>
+      </div>
+      <ul class="policy-list">
+        <li>Any sexual or sexualised content involving minors</li>
+        <li>Grooming, exploitation, or manipulation of minors</li>
+        <li>Any content, media, or communication that endangers child safety</li>
+        <li>Solicitation of personal information from minors for harmful purposes</li>
+        <li>Sharing, distributing, or promoting child sexual abuse material (CSAM)</li>
+        <li>Any activity that facilitates trafficking or abuse of minors</li>
+      </ul>
+    </div>
+
+    <!-- In-app reporting -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box warning">📣</div>
+        <h2>Reporting a Violation</h2>
+      </div>
+      <p style="color:#d1d5db; font-size:0.95rem; margin-bottom:20px;">
+        Users can report child safety violations directly within the Avlodona app without leaving the platform.
+        Report buttons are available on every profile, post, and message.
+      </p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>Tap the ⋯ menu or Report button</strong>
+            <span>Available on any profile, post, comment, or message.</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>Select "Child Safety" category</strong>
+            <span>Choose the most specific reason that describes the violation.</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <strong>Submit your report</strong>
+            <span>Your report is sent immediately to our Trust & Safety team for urgent review.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enforcement -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box success">⚖️</div>
+        <h2>Enforcement &amp; Compliance</h2>
+      </div>
+      <ul class="check-list">
+        <li>All child safety reports are reviewed immediately upon receipt</li>
+        <li>Accounts confirmed to violate these standards are permanently banned</li>
+        <li>All confirmed CSAM violations are reported to the National Center for Missing &amp; Exploited Children (NCMEC) and relevant regional authorities</li>
+        <li>Avlodona cooperates fully with law enforcement investigations</li>
+        <li>Our platform complies with applicable child safety laws and regulations</li>
+      </ul>
+    </div>
+
+    <!-- Contact -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-box purple">✉️</div>
+        <h2>Contact Our Safety Team</h2>
+      </div>
+      <p style="color:#d1d5db; font-size:0.95rem;">
+        For urgent child safety concerns, compliance inquiries, or to report a violation directly
+        to our team, please contact us at:
+      </p>
+      <a class="contact-link" href="mailto:baknistan@gmail.com">
+        ✉ baknistan@gmail.com
+      </a>
+    </div>
+
+  </main>
+
+  <footer>
+    <p><strong>Avlodona</strong> &nbsp;·&nbsp; Child Safety Standards &nbsp;·&nbsp; Last updated: <strong>June 2026</strong></p>
+    <p style="margin-top:6px;">This page is publicly accessible and will not be modified to weaken these protections.</p>
+  </footer>
+
+</body>
+</html>
