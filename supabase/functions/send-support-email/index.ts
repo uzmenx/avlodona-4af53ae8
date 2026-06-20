@@ -38,7 +38,7 @@ serve(async (req: Request) => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Avlodona <onboarding@resend.dev>", // usually onboarding@resend.dev for testing, or your verified domain
+        from: "Avlodona <noreply@avlodona.com>",
         to: "support@avlodona.com",
         reply_to: userEmail || "support@avlodona.com",
         subject: `Support: ${subject}`,
