@@ -40,52 +40,26 @@ const Signup = () => {
       const baseUser = generateBaseUsername(email);
       const uniqueUsername = await ensureUniqueUsername(supabase, baseUser);
 
-      // Direct signup without OTP (Resend temporarily disabled)
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username: uniqueUsername,
-            name: fullName.trim() || null,
-            gender: gender || null,
-          },
+      // Send OTP code to email; account is created after verification
+      const { data, error } = await supabase.functions.invoke('send-otp', {
+        body: { email },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: t("success"), description: "Tasdiqlash kodi emailingizga yuborildi" });
+      navigate("/verify-otp", {
+        state: {
+          email,
+          password,
+          username: uniqueUsername,
+          gender: gender || null,
+          name: fullName.trim() || null,
         },
       });
-
-      if (error) throw error;
-
-      if (data.user) {
-        // Create/update profile
-         
-        const sb: any = supabase;
-        const { error: profileError } = await sb.from('profiles').upsert([
-          {
-            id: data.user.id,
-            username: uniqueUsername,
-            name: fullName.trim() || null,
-            gender: gender || null,
-          },
-        ], { onConflict: 'id' });
-
-        if (profileError) {
-          if (profileError.code === '23505') {
-            throw new Error("Ushbu foydalanuvchi nomi band qilingan, sahifani yangilab qayta urinib ko'ring.");
-          }
-          throw profileError;
-        }
-
-        toast({ title: t("success"), description: "Ro'yxatdan o'tdingiz!" });
-        navigate("/");
-      }
     } catch (err: unknown) {
-       
       const error = err as any;
-      if (error?.message?.includes('duplicate key') || error?.code === '23505') {
-        toast({ title: t("error"), description: "Ushbu foydalanuvchi nomi band qilingan, iltimos boshqa email bilan qayta urinib ko'ring yoki birozdan so'ng xarakat qiling.", variant: "destructive" });
-      } else {
-        toast({ title: t("error"), description: error?.message || t("signupError"), variant: "destructive" });
-      }
+      toast({ title: t("error"), description: error?.message || t("signupError"), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
