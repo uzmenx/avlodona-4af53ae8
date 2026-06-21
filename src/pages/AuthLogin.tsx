@@ -105,14 +105,16 @@ const AuthLogin = () => {
           <form onSubmit={handleLogin} className="space-y-2.5">
             <div className="space-y-2">
               <Label htmlFor="email" className="sr-only">
-                Email
+                Email yoki username
               </Label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 z-10 pointer-events-none" />
                 <Input
                   id="email"
-                  type="email"
-                  placeholder={t('email')}
+                  type="text"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  placeholder="Email yoki username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-12 h-10 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm text-sm"
@@ -120,6 +122,7 @@ const AuthLogin = () => {
                 />
               </div>
             </div>
+
 
             <div className="space-y-2">
               <Label htmlFor="password" className="sr-only">
