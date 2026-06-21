@@ -390,7 +390,7 @@ export const ChatMediaPicker = ({
       {/* Bottom bar (Caption & Send) */}
       {mode === 'multiple' && (
         <div 
-          className="border-t px-3 py-2 flex items-end gap-2 flex-shrink-0"
+          className="border-t px-3 pt-2 pb-[calc(8px+env(safe-area-inset-bottom,0px))] flex items-end gap-2 flex-shrink-0"
           style={{ borderColor: '#253347', background: '#17212b' }}
         >
 

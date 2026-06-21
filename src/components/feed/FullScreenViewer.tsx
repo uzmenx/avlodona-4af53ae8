@@ -581,7 +581,12 @@ export const FullScreenViewer = ({ posts, initialIndex, onClose }: FullScreenVie
         </div>
 
         {/* Author info */}
-        <div className="absolute bottom-14 left-0 right-14 bg-transparent p-4 pt-14 z-[1]">
+        <div className={cn(
+          "absolute left-0 right-14 z-[1]",
+          (locationTextShort || contentWithoutLocation)
+            ? "bottom-14 p-4 pt-14 bg-gradient-to-t from-black/70 via-black/30 to-transparent"
+            : "bottom-10 px-4 pb-2 pt-2 bg-gradient-to-t from-black/40 to-transparent"
+        )}>
           {!currentPost.is_memorial && (
             <div className="flex items-center mb-2 gap-2">
               <UserAvatar userId={currentPost.user_id} avatarUrl={currentPost.author?.avatar_url} name={currentPost.author?.full_name} size="lg" className="border-2 border-white/20 ring-0" />

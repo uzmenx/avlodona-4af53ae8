@@ -1657,7 +1657,19 @@ export const UnifiedFullScreenViewer = ({
 
         {/* Author info */}
 
-        <div className="absolute bottom-14 left-0 right-14 p-4 z-[1]" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)', paddingTop: '3rem' }}>
+        <div 
+          className="absolute left-0 right-14 z-[1]" 
+          style={{ 
+            bottom: (locationTextShort || postContentWithoutLocation) ? '56px' : '44px',
+            paddingLeft: '1rem',
+            paddingRight: '1rem',
+            paddingBottom: (locationTextShort || postContentWithoutLocation) ? '1rem' : '0.5rem',
+            paddingTop: (locationTextShort || postContentWithoutLocation) ? '3rem' : '0.5rem',
+            background: (locationTextShort || postContentWithoutLocation) 
+              ? 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)'
+              : 'linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 100%)'
+          }}
+        >
 
           <div className="flex items-center mb-2 gap-2">
 

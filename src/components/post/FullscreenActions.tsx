@@ -134,7 +134,7 @@ export const FullscreenActions = ({
 
   return (
     <>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-2.5 sm:gap-4">
         {/* Share */}
         <ActionButton
           icon={Send}
@@ -165,19 +165,21 @@ export const FullscreenActions = ({
               </motion.div>
             </div>
           </button>
-          <button
-            type="button"
-            onClick={handleLikesCountClick}
-            className="text-xs text-white font-medium hover:underline outline-none transition-transform group-hover:scale-110"
-          >
-            {formatCount(displayLikesCount)}
-          </button>
+          {displayLikesCount > 0 && (
+            <button
+              type="button"
+              onClick={handleLikesCountClick}
+              className="text-xs text-white font-medium hover:underline outline-none transition-transform group-hover:scale-110"
+            >
+              {formatCount(displayLikesCount)}
+            </button>
+          )}
         </div>
 
         {/* Comments */}
         <ActionButton
           icon={MessageCircle}
-          count={initialCommentsCount}
+          count={initialCommentsCount > 0 ? initialCommentsCount : undefined}
           onClick={handleCommentsClick} />
 
         {/* View count */}
@@ -189,7 +191,9 @@ export const FullscreenActions = ({
           <div className="p-2 rounded-full bg-black/20 backdrop-blur-sm">
             <Eye className="h-6 w-6 text-white" />
           </div>
-          <span className="text-xs text-white font-medium hover:underline">{formatCount(viewsCount)}</span>
+          {viewsCount > 0 && (
+            <span className="text-xs text-white font-medium hover:underline">{formatCount(viewsCount)}</span>
+          )}
         </button>
 
         {/* Bookmark */}

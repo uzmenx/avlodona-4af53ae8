@@ -613,7 +613,7 @@ export const FamilyTreeV2 = () => {
 
       {/* Floating Action Button (FAB) for adding relatives */}
       {shouldShowFab && !isMergeMode && !showPublish && !isRelativeSearchOpen && (
-        <div className="fixed bottom-[85px] right-4 z-[55] flex flex-col items-end">
+        <div className="fixed bottom-[calc(78px+env(safe-area-inset-bottom,0px))] right-4 z-[55] flex flex-col items-end">
           {/* Default overlay for glass effect backdrop */}
           {isFabOpen && (
             <div 

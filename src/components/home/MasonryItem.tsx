@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Play } from "lucide-react";
 import { Post } from "@/types";
 import { useAutoPreviewVideo } from "@/hooks/useAutoPreviewVideo";
+import { useCachedMedia } from "@/hooks/useCachedMedia";
 
 interface MasonryItemProps {
   post: Post;
@@ -25,6 +26,9 @@ export const MasonryItem = ({ post, index = 0, onClick }: MasonryItemProps) => {
   // Extract thumbnail url if available
   const thumbnailUrl = (post as any).thumbnail_url || (post as any).thumbnail;
 
+  const { cachedUrl: cachedMediaUrl } = useCachedMedia(mediaUrl);
+  const { cachedUrl: cachedThumbnailUrl } = useCachedMedia(thumbnailUrl);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -41,7 +45,7 @@ export const MasonryItem = ({ post, index = 0, onClick }: MasonryItemProps) => {
                 {/* Thumbnail while video hasn't loaded */}
                 {thumbnailUrl && !videoLoaded && (
                   <img
-                    src={thumbnailUrl}
+                    src={cachedThumbnailUrl || thumbnailUrl}
                     alt="Video"
                     className="w-full h-auto block"
                     style={{ maxHeight: "80vh" }}
@@ -53,7 +57,7 @@ export const MasonryItem = ({ post, index = 0, onClick }: MasonryItemProps) => {
                 {/* Video element — hidden until loaded when thumbnail exists */}
                 <video
                   ref={videoRef}
-                  src={mediaUrl}
+                  src={cachedMediaUrl || mediaUrl}
                   className={`w-full h-auto block${thumbnailUrl && !videoLoaded ? ' absolute inset-0 opacity-0' : ''}`}
                   style={{ maxHeight: "80vh" }}
                   muted
@@ -71,7 +75,7 @@ export const MasonryItem = ({ post, index = 0, onClick }: MasonryItemProps) => {
                 </div>
               </div>
             ) : (
-              <img src={mediaUrl} alt="Post" className="w-full h-auto block" style={{ maxHeight: "80vh" }} />
+              <img src={cachedMediaUrl || mediaUrl} alt="Post" className="w-full h-auto block" style={{ maxHeight: "80vh" }} />
             )}
             {post.media_urls && post.media_urls.length > 1 && (
               <div className="absolute top-2 right-2 bg-background/80 rounded px-1.5 py-0.5 text-xs font-medium">

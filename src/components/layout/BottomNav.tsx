@@ -36,17 +36,23 @@ export const BottomNav = () => {
 
   // Detect keyboard visibility on Android/iOS
   useEffect(() => {
+    const initialHeight = window.innerHeight;
     const handleResize = () => {
-      // If the viewport height decreases significantly, it's likely the keyboard
-      const isVisible = window.visualViewport 
-        ? window.visualViewport.height < window.innerHeight * 0.75
-        : window.innerHeight < 500; // fallback
+      const currentHeight = window.visualViewport 
+        ? window.visualViewport.height 
+        : window.innerHeight;
+      
+      // If viewport height drops below 85% of initial height, keyboard is visible
+      const isVisible = currentHeight < initialHeight * 0.85;
       setIsKeyboardVisible(isVisible);
     };
 
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', handleResize);
       return () => window.visualViewport?.removeEventListener('resize', handleResize);
+    } else {
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
     }
   }, []);
 
@@ -114,7 +120,7 @@ export const BottomNav = () => {
       "fixed bottom-0 left-0 right-0 z-[70] transition-transform duration-300",
       isKeyboardVisible ? "translate-y-20 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
     )}>
-      <div className="h-16 px-3 pb-[env(safe-area-inset-bottom,0px)]">
+      <div className="px-3 pb-[env(safe-area-inset-bottom,8px)] pt-1">
         <div className="h-14 max-w-lg mx-auto rounded-full border border-white/20 bg-background/20 text-foreground shadow-[0_15px_45px_rgba(0,0,0,0.15)] backdrop-blur-2xl supports-[backdrop-filter]:bg-background/10 flex items-center justify-around px-2">
           {navItems.map((item) => {
             const badgeCount = item.kind === 'profile' ? 0 : getBadgeCount(item.badgeType);

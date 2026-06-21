@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Save, Search, X, Users, MessageCircle, ArrowLeft } from 'lucide-react';
 import { Icon } from '@iconify/react';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,13 @@ export const TreePostHeader = ({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<'all' | 'active'>('all');
   const [isSearchActive, setIsSearchActive] = useState(false);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('app:forceHideNav', { detail: { hide: isSearchActive } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('app:forceHideNav', { detail: { hide: false } }));
+    };
+  }, [isSearchActive]);
 
   const memberList = Object.values(members ?? {});
   const total = totalCount ?? memberList.length;

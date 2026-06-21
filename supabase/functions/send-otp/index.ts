@@ -141,7 +141,7 @@ const handler = async (req: Request): Promise<Response> => {
         subject: isReset ? "Parolni tiklash kodi" : "Sizning tasdiqlash kodingiz",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h1 style="color: #16a34a; text-align: center;">Oilaviy</h1>
+            <h1 style="color: #16a34a; text-align: center;">Avlodona</h1>
             <p style="font-size: 16px; text-align: center;">${isReset ? "Parolni tiklash kodingiz:" : "Sizning tasdiqlash kodingiz:"}</p>
             <div style="background: linear-gradient(135deg, #16a34a, #0ea5e9); padding: 20px; border-radius: 12px; text-align: center; margin: 20px 0;">
               <span style="font-size: 36px; font-weight: bold; color: white; letter-spacing: 8px;">${otp}</span>

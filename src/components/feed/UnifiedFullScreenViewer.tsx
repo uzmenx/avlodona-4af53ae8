@@ -1622,7 +1622,7 @@ export const UnifiedFullScreenViewer = ({
 
         {/* Actions */}
 
-        <div className="absolute right-3 bottom-24 z-[2]">
+        <div className="absolute right-3 bottom-[calc(108px+env(safe-area-inset-bottom,0px))] z-[2]">
 
           <FullscreenActions
 
@@ -1660,7 +1660,12 @@ export const UnifiedFullScreenViewer = ({
 
         {/* Author info */}
 
-        <div className="absolute bottom-14 left-0 right-14 p-4 pt-14 z-[1]">
+        <div className={cn(
+          "absolute left-0 right-14 z-[1]",
+          (locationTextShort || postContentWithoutLocation)
+            ? "bottom-[calc(68px+env(safe-area-inset-bottom,0px))] p-4 pt-14 bg-gradient-to-t from-black/90 via-black/40 to-transparent"
+            : "bottom-[calc(52px+env(safe-area-inset-bottom,0px))] px-4 pb-2 pt-2 bg-gradient-to-t from-black/60 to-transparent"
+        )}>
 
           <div className="flex items-center mb-2 gap-2">
 

@@ -550,7 +550,13 @@ export default function InstagramMediaCapture({
     let streamToUse = streamRef.current;
     if (selectedMusic) {
       const mixedStream = await setupAudioMixingRef.current();
-      if (mixedStream) streamToUse = mixedStream;
+      if (mixedStream) {
+        // mixedStream faqat audio treklarni o'z ichiga oladi.
+        // Unga kameradan video trekni ham qo'shish kerak.
+        const videoTracks = streamRef.current.getVideoTracks();
+        const audioTracks = mixedStream.getAudioTracks();
+        streamToUse = new MediaStream([...videoTracks, ...audioTracks]);
+      }
     }
 
     recordedChunksRef.current = [];

@@ -253,8 +253,10 @@ export const SamsungUltraVideoPlayer = ({
 
   const toggleOrientation = useCallback(async () => {
     try {
-      if (!intentLandscapeRef.current) {
-        intentLandscapeRef.current = true;
+      const goingLandscape = !isLandscape;
+      intentLandscapeRef.current = goingLandscape;
+
+      if (goingLandscape) {
         // Try HTML5 fullscreen for web compatibility
         if (containerRef.current) {
           if (containerRef.current.requestFullscreen) {
@@ -271,7 +273,6 @@ export const SamsungUltraVideoPlayer = ({
         }
         setIsLandscape(true);
       } else {
-        intentLandscapeRef.current = false;
         // Exit HTML5 fullscreen
         if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
           if (document.exitFullscreen) {
@@ -288,12 +289,13 @@ export const SamsungUltraVideoPlayer = ({
           console.warn('Orientation unlock failed:', e);
         }
         setIsLandscape(false);
+        intentLandscapeRef.current = false;
       }
     } catch (err) {
       intentLandscapeRef.current = false;
       console.error('Orientation toggle error:', err);
     }
-  }, []);
+  }, [isLandscape]);
 
   useEffect(() => {
 
@@ -333,18 +335,8 @@ export const SamsungUltraVideoPlayer = ({
     return () => window.removeEventListener('avlodona:video:request-play', onRequestPlay);
   }, []);
 
-  // Handle initial orientation (landscape) if prop set — runs ONCE on mount only.
-  const didAutoRotateRef = useRef(false);
-  useEffect(() => {
-    if (startInFullscreen && !didAutoRotateRef.current) {
-      didAutoRotateRef.current = true;
-      const timer = setTimeout(() => {
-        toggleOrientation();
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Auto-rotate disabled: always open in the same orientation as the device.
+  // User can manually toggle orientation using the button in controls.
 
   useEffect(() => {
 
@@ -660,7 +652,7 @@ export const SamsungUltraVideoPlayer = ({
 
   // ═══════════════════════════════════════════════════════════════
 
-  const resetControlsTimer = useCallback(() => {
+  const resetControlsTimer = useCallback((delay = 3000) => {
 
     setShowControls(true);
 
@@ -674,7 +666,7 @@ export const SamsungUltraVideoPlayer = ({
 
       }
 
-    }, 1500);
+    }, delay);
 
   }, []);
 
@@ -1065,17 +1057,14 @@ export const SamsungUltraVideoPlayer = ({
 
         // First tap — 350ms delay bilan double-tap bilan aralashmaslik uchun
 
-        const tapSide = side;
-
         if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
 
         singleTapTimerRef.current = setTimeout(() => {
 
           singleTapTimerRef.current = null;
 
-          // Istalgan bo'sh joy — controls toggle
-
-          setShowControls((prev) => !prev);
+          // Show controls for 3 seconds; if already visible, just reset the timer
+          resetControlsTimer(3000);
 
         }, 200);
 
@@ -2005,7 +1994,7 @@ export const SamsungUltraVideoPlayer = ({
 
         {/* ─────────────────────────────────────────────────────── */}
 
-        <div className="absolute bottom-0 left-0 right-0 bg-black/10 backdrop-blur-sm px-4 py-3 safe-bottom">
+        <div className="absolute bottom-0 left-0 right-0 bg-black/10 backdrop-blur-sm pt-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))] pl-[calc(16px+env(safe-area-inset-left,0px))] pr-[calc(16px+env(safe-area-inset-right,0px))]">
 
           {/* Progress Bar */}
 
