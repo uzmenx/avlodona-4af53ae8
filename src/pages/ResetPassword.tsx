@@ -14,6 +14,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 const ResetPassword = () => {
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
@@ -71,6 +72,10 @@ const ResetPassword = () => {
       toast({ title: t("error") || "Xato", description: "Parol kamida 6ta belgi bo'lishi kerak", variant: "destructive" });
       return;
     }
+    if (password !== confirmPassword) {
+      toast({ title: t("error") || "Xato", description: "Parollar mos kelmadi", variant: "destructive" });
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -78,16 +83,21 @@ const ResetPassword = () => {
         body: { email, otp, password, purpose: "reset" },
       });
 
+      // Try to extract a backend error message regardless of HTTP status
+      let backendError: string | null = null;
       if (response.error) {
-        let errMsg = response.error.message;
+        backendError = response.error.message;
         if (response.error.context && typeof response.error.context.json === 'function') {
           try {
             const errData = await response.error.context.json();
-            if (errData.error) errMsg = errData.error;
-          } catch (e) {}
+            if (errData?.error) backendError = errData.error;
+          } catch (_) {}
         }
-        throw new Error(errMsg);
+      } else if (response.data?.error) {
+        backendError = response.data.error;
       }
+
+      if (backendError) throw new Error(backendError);
 
       const data = response.data;
       if (data?.access_token && data?.refresh_token) {
@@ -95,14 +105,15 @@ const ResetPassword = () => {
           access_token: data.access_token,
           refresh_token: data.refresh_token,
         });
-
         if (sessionError) throw sessionError;
 
         toast({ title: "Muaffaqiyatli", description: "Parolingiz muvaffaqiyatli yangilandi!" });
         navigate("/");
+      } else if (data?.requireLogin) {
+        toast({ title: "Muaffaqiyatli", description: "Parolingiz yangilandi. Iltimos, qaytadan login qiling." });
+        navigate("/auth");
       } else {
-        if (data?.error) throw new Error(data.error);
-        throw new Error("Authentication failed");
+        throw new Error("Sessiya yaratilmadi. Iltimos, qaytadan login qiling.");
       }
     } catch (error: any) {
       toast({ 
@@ -189,10 +200,30 @@ const ResetPassword = () => {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-white/90 ml-1">Parolni tasdiqlang</Label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 pointer-events-none z-10" />
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Parolni qayta kiriting"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-12 pr-12 h-12 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm"
+                  required
+                  minLength={6}
+                />
+              </div>
+              {confirmPassword.length > 0 && password !== confirmPassword && (
+                <p className="text-xs text-red-400 ml-1">Parollar mos kelmadi</p>
+              )}
+            </div>
+
             <Button
               type="submit"
               className="w-full h-12 rounded-xl bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#16a34a] hover:to-[#15803d] text-white font-bold transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-[rgba(34,197,94,0.4)]"
-              disabled={isLoading || otp.length !== 6 || password.length < 6}
+              disabled={isLoading || otp.length !== 6 || password.length < 6 || password !== confirmPassword}
             >
               {isLoading ? (
                 <>
