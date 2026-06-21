@@ -200,10 +200,30 @@ const ResetPassword = () => {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-white/90 ml-1">Parolni tasdiqlang</Label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 pointer-events-none z-10" />
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Parolni qayta kiriting"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-12 pr-12 h-12 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm"
+                  required
+                  minLength={6}
+                />
+              </div>
+              {confirmPassword.length > 0 && password !== confirmPassword && (
+                <p className="text-xs text-red-400 ml-1">Parollar mos kelmadi</p>
+              )}
+            </div>
+
             <Button
               type="submit"
               className="w-full h-12 rounded-xl bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#16a34a] hover:to-[#15803d] text-white font-bold transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-[rgba(34,197,94,0.4)]"
-              disabled={isLoading || otp.length !== 6 || password.length < 6}
+              disabled={isLoading || otp.length !== 6 || password.length < 6 || password !== confirmPassword}
             >
               {isLoading ? (
                 <>
