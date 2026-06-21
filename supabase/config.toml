@@ -44,3 +44,7 @@ verify_jwt = false
 [functions.send-push-notification]
 verify_jwt = false
 
+[functions.resolve-identifier]
+verify_jwt = false
+
+
