@@ -72,6 +72,10 @@ const ResetPassword = () => {
       toast({ title: t("error") || "Xato", description: "Parol kamida 6ta belgi bo'lishi kerak", variant: "destructive" });
       return;
     }
+    if (password !== confirmPassword) {
+      toast({ title: t("error") || "Xato", description: "Parollar mos kelmadi", variant: "destructive" });
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -79,16 +83,21 @@ const ResetPassword = () => {
         body: { email, otp, password, purpose: "reset" },
       });
 
+      // Try to extract a backend error message regardless of HTTP status
+      let backendError: string | null = null;
       if (response.error) {
-        let errMsg = response.error.message;
+        backendError = response.error.message;
         if (response.error.context && typeof response.error.context.json === 'function') {
           try {
             const errData = await response.error.context.json();
-            if (errData.error) errMsg = errData.error;
-          } catch (e) {}
+            if (errData?.error) backendError = errData.error;
+          } catch (_) {}
         }
-        throw new Error(errMsg);
+      } else if (response.data?.error) {
+        backendError = response.data.error;
       }
+
+      if (backendError) throw new Error(backendError);
 
       const data = response.data;
       if (data?.access_token && data?.refresh_token) {
@@ -96,14 +105,15 @@ const ResetPassword = () => {
           access_token: data.access_token,
           refresh_token: data.refresh_token,
         });
-
         if (sessionError) throw sessionError;
 
         toast({ title: "Muaffaqiyatli", description: "Parolingiz muvaffaqiyatli yangilandi!" });
         navigate("/");
+      } else if (data?.requireLogin) {
+        toast({ title: "Muaffaqiyatli", description: "Parolingiz yangilandi. Iltimos, qaytadan login qiling." });
+        navigate("/auth");
       } else {
-        if (data?.error) throw new Error(data.error);
-        throw new Error("Authentication failed");
+        throw new Error("Sessiya yaratilmadi. Iltimos, qaytadan login qiling.");
       }
     } catch (error: any) {
       toast({ 
