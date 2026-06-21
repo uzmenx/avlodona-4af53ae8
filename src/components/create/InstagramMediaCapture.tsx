@@ -2159,10 +2159,10 @@ export default function InstagramMediaCapture({
         {/* Focused preview layer (edit mode) */}
         {isFocused && active && (
           <div className="absolute inset-0 z-30 bg-gradient-to-br from-slate-900/70 via-purple-900/55 to-slate-900/70 flex flex-col">
-            <div className="flex-1 relative overflow-hidden flex items-center justify-center px-1 pt-24 pb-10">
+            <div className="flex-1 relative overflow-hidden flex items-center justify-center px-1 pt-[76px] pb-2">
               <div
                 ref={containerRef}
-                className="relative w-full max-w-md aspect-[9/16] max-h-[calc(100vh-280px)] rounded-2xl overflow-hidden border border-white/20 shadow-2xl touch-none"
+                className="relative w-full max-w-md aspect-[9/16] max-h-[calc(100vh-210px)] rounded-2xl overflow-hidden border border-white/20 shadow-2xl touch-none"
                 onTouchStart={handleEditTouchStart}
                 onTouchMove={handleEditTouchMove}
                 onTouchEnd={handleEditTouchEnd}
