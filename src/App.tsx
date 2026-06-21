@@ -22,6 +22,8 @@ import Home from "./pages/Home";
 import AuthLogin from "./pages/AuthLogin";
 import Signup from "./pages/Signup";
 import VerifyOtp from "./pages/VerifyOtp";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import PhoneAuth from "./pages/PhoneAuth";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
@@ -136,6 +138,8 @@ const App = () => {
                   <Route path="/auth" element={<PublicRoute><AuthLogin /></PublicRoute>} />
                   <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
                   <Route path="/verify-otp" element={<PublicRoute><VerifyOtp /></PublicRoute>} />
+                  <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+                  <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
                   <Route path="/phone-auth" element={<PublicRoute><PhoneAuth /></PublicRoute>} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />

@@ -11,6 +11,7 @@ const corsHeaders = {
 
 interface OtpRequest {
   email: string;
+  purpose?: string;
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -33,7 +34,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email }: OtpRequest = await req.json();
+    const { email, purpose }: OtpRequest = await req.json();
 
     if (!RESEND_API_KEY) {
       return new Response(
@@ -60,6 +61,26 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const isReset = purpose === 'reset';
+
+    if (isReset) {
+      try {
+        const { data } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 } as any);
+        const existing = (data?.users || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
+        if (!existing) {
+          return new Response(
+            JSON.stringify({ success: true, message: "OTP sent successfully" }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json", ...corsHeaders },
+            }
+          );
+        }
+      } catch (e) {
+        console.error("Error checking user existence:", e);
+      }
+    }
 
     const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
     const { data: recentOtp } = await supabase
@@ -111,11 +132,11 @@ const handler = async (req: Request): Promise<Response> => {
       body: JSON.stringify({
         from: "Avlodona <otp@avlodona.com>",
         to: [normalizedEmail],
-        subject: "Sizning tasdiqlash kodingiz",
+        subject: isReset ? "Parolni tiklash kodi" : "Sizning tasdiqlash kodingiz",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h1 style="color: #16a34a; text-align: center;">Oilaviy</h1>
-            <p style="font-size: 16px; text-align: center;">Sizning tasdiqlash kodingiz:</p>
+            <p style="font-size: 16px; text-align: center;">${isReset ? "Parolni tiklash kodingiz:" : "Sizning tasdiqlash kodingiz:"}</p>
             <div style="background: linear-gradient(135deg, #16a34a, #0ea5e9); padding: 20px; border-radius: 12px; text-align: center; margin: 20px 0;">
               <span style="font-size: 36px; font-weight: bold; color: white; letter-spacing: 8px;">${otp}</span>
             </div>

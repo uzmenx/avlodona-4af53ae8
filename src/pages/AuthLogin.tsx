@@ -131,6 +131,11 @@ const AuthLogin = () => {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              <div className="flex justify-end mt-1">
+                <Link to="/forgot-password" className="text-xs text-white/70 hover:text-[#22c55e] transition-colors">
+                  Parolni unutdingizmi?
+                </Link>
+              </div>
             </div>
 
             <Button

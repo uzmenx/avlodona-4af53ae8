@@ -74,9 +74,9 @@ const translations = {
     en: "Avlodona",
   },
   landingTagline: {
-    uz: "O'zbekistonda yaratilgan 🇺🇿",
-    ru: "Семейное древо и цифровая память",
-    en: "Family tree and digital memory",
+    uz: "Dunyo bir oila va Raqamli xotira",
+    ru: "Единая семья, цифровая память",
+    en: "One family, digital memory",
   },
   createAccount: { uz: "Yangi akkaunt yarating", ru: "Создайте аккаунт", en: "Create an account" },
   username: { uz: "Ism va Familiya", ru: "Имя и Фамилия", en: "Full Name" },

@@ -13,6 +13,7 @@ interface VerifyRequest {
   password?: string;
   username?: string;
   gender?: string;
+  purpose?: string;
 }
 
 async function hashOTP(otp: string): Promise<string> {
@@ -29,9 +30,10 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, otp, password, username, gender }: VerifyRequest = await req.json();
+    const { email, otp, password, username, gender, purpose }: VerifyRequest = await req.json();
 
     const normalizedEmail = (email || "").toLowerCase().trim();
+    const isReset = purpose === 'reset';
 
     if (!normalizedEmail || !otp) {
       return new Response(
@@ -106,7 +108,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Targeted lookup by email filter (avoids loading all users)
     let existing: any = null;
     try {
-      const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 } as any);
+      const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 } as any);
       // Fallback: filter by email since SDK doesn't expose getUserByEmail
       existing = (data?.users || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail) || null;
     } catch {
@@ -126,6 +128,12 @@ const handler = async (req: Request): Promise<Response> => {
       if (updateErr) throw updateErr;
       userId = existing.id;
     } else {
+      if (isReset) {
+        return new Response(
+          JSON.stringify({ error: "Foydalanuvchi topilmadi" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
         email: normalizedEmail,
         password,
