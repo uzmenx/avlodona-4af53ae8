@@ -20,21 +20,32 @@ const ForgotPassword = () => {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      toast({ title: t("error") || "Xato", description: "Email kiriting", variant: "destructive" });
+      toast({ title: t("error") || "Xato", description: "Email yoki username kiriting", variant: "destructive" });
       return;
     }
 
     setIsLoading(true);
     try {
+      let targetEmail = email.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) {
+        const { data: resolved, error: resolveErr } = await supabase.functions.invoke("resolve-identifier", {
+          body: { identifier: targetEmail },
+        });
+        if (resolveErr || resolved?.error || !resolved?.email) {
+          throw new Error(resolved?.error || "Bunday foydalanuvchi topilmadi");
+        }
+        targetEmail = resolved.email;
+      }
+
       const { data, error } = await supabase.functions.invoke("send-otp", {
-        body: { email, purpose: "reset" },
+        body: { email: targetEmail, purpose: "reset" },
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       toast({ title: "Muaffaqiyatli", description: "Tasdiqlash kodi yuborildi" });
-      navigate("/reset-password", { state: { email } });
+      navigate("/reset-password", { state: { email: targetEmail } });
     } catch (error: any) {
       toast({ 
         title: t("error") || "Xato", 
@@ -45,6 +56,7 @@ const ForgotPassword = () => {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-[100dvh] flex flex-col justify-between items-center relative overflow-hidden bg-gradient-to-br from-[#0a0a1a] via-[#1a1a3e] to-[#0a0a1a] px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-4 sm:pb-6">
