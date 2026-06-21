@@ -30,7 +30,19 @@ const AuthLogin = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      let loginEmail = email.trim();
+      // If not email format, resolve username -> email
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginEmail)) {
+        const { data: resolved, error: resolveErr } = await supabase.functions.invoke("resolve-identifier", {
+          body: { identifier: loginEmail },
+        });
+        if (resolveErr || resolved?.error || !resolved?.email) {
+          throw new Error(resolved?.error || "Bunday foydalanuvchi topilmadi");
+        }
+        loginEmail = resolved.email;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
       if (error) throw error;
       if (data.user) {
         toast({ title: t("success"), description: t("loggedInMsg") });
@@ -42,6 +54,7 @@ const AuthLogin = () => {
       setIsLoading(false);
     }
   };
+
 
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
