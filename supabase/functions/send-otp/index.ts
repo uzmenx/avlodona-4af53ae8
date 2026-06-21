@@ -66,15 +66,21 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (isReset) {
       try {
-        const { data } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 } as any);
-        const existing = (data?.users || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
-        if (!existing) {
+        const perPage = 200;
+        let userExists = false;
+        for (let page = 1; page <= 20; page++) {
+          const { data } = await supabase.auth.admin.listUsers({ page, perPage } as any);
+          const users = data?.users || [];
+          if (users.find((u: any) => (u.email || '').toLowerCase() === normalizedEmail)) {
+            userExists = true;
+            break;
+          }
+          if (users.length < perPage) break;
+        }
+        if (!userExists) {
           return new Response(
             JSON.stringify({ success: true, message: "OTP sent successfully" }),
-            {
-              status: 200,
-              headers: { "Content-Type": "application/json", ...corsHeaders },
-            }
+            { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
           );
         }
       } catch (e) {
