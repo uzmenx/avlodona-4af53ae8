@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { showNativeNotification } from '@/hooks/useNativeNotifications';
 
 export interface Notification {
   id: string;
@@ -209,6 +210,33 @@ export const useNotifications = () => {
             return [enriched, ...prev].slice(0, 50);
           });
           if (!raw.is_read) setUnreadCount(prev => prev + 1);
+
+          // ── Native OS notification ──
+          {
+            const actorName = enriched.actor?.name || enriched.actor?.username || 'Foydalanuvchi';
+            const notifLabels: Record<string, string> = {
+              follow:                     `${actorName} sizni kuzata boshladi`,
+              follow_request:             `${actorName} kuzatish so'radi`,
+              like:                       `${actorName} postingizni yoqtirdi`,
+              story_like:                 `${actorName} hikoyangizni yoqtirdi`,
+              comment:                    `${actorName} izoh qoldirdi`,
+              story:                      `${actorName} yangi hikoya joyladi`,
+              message:                    `${actorName} xabar yubordi`,
+              calendar_event:             `${actorName} — kalendar voqeasi`,
+              mention:                    `${actorName} sizni belgiladi`,
+              collab_request:             `${actorName} hamkorlik so'radi`,
+              collab_accepted:            `${actorName} hamkorlikni qabul qildi`,
+              family_invitation:          `${actorName} oila daraxtiga taklif qildi`,
+              family_invitation_accepted: `${actorName} oila daraxtiga qo'shildi`,
+              family_connection_request:  `${actorName} daraxtingizga qo'shilmoqchi`,
+            };
+            const body = notifLabels[enriched.type] ?? `${actorName} yangi bildirishnoma yubordi`;
+            showNativeNotification('Avlodona', body, {
+              type: enriched.type,
+              actorId: enriched.actor_id,
+              postId: enriched.post_id ?? undefined,
+            });
+          }
         }
       )
       .on(

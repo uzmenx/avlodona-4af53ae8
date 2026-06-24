@@ -308,9 +308,11 @@ const BannerCard = ({
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useNativeNotifications, showNativeNotification } from '@/hooks/useNativeNotifications';
 
 export const PushNotification = () => {
   usePushNotifications();
+  const { isBackground } = useNativeNotifications();
   const { user } = useAuth();
   const location = useLocation();
   const locationRef = useRef(location.pathname);
@@ -334,7 +336,28 @@ export const PushNotification = () => {
     // Auto-dismiss after 6s
     const t = setTimeout(() => dismiss(alert.id), 6000);
     timers.current.set(alert.id, t);
-  }, [dismiss]);
+
+    // ── Native OS notification (fonda bo'lganda tizim panelida ko'rinadi) ──
+    if (isBackground.current) {
+      const actorName = alert.actor.name || alert.actor.username || 'Foydalanuvchi';
+      let title = 'Avlodona';
+      let body = '';
+
+      if (alert.kind === 'message') {
+        title = actorName;
+        body = alert.text || 'Yangi xabar';
+      } else {
+        const cfg = NOTIF_CONFIG[alert.type];
+        body = cfg ? cfg.label(actorName) : `${actorName} yangi bildirishnoma yubordi`;
+      }
+
+      showNativeNotification(title, body, {
+        type: alert.type,
+        actorId: alert.actor.id,
+        conversationId: alert.conversationId,
+      });
+    }
+  }, [dismiss, isBackground]);
 
   // Listen to incoming-message custom events
   useEffect(() => {

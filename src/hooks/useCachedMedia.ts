@@ -274,27 +274,88 @@ export interface CacheStats {
 }
 
 /**
- * Brauzer Cache Storage dagi avlodona-media-cache keshining hajmini hisoblaydi.
+ * Kesh hajmini hisoblaydi:
+ * - Native (Capacitor) platformada: Filesystem media_cache papkasini o'lchaydi
+ * - Web/PWA da: Cache Storage API ishlatadi
+ * - Ikkalasini ham qo'shib qaytaradi
  */
 export async function getMediaCacheStats(): Promise<CacheStats> {
-  try {
-    if (!('caches' in window)) return { totalBytes: 0, count: 0 };
-    const cache = await caches.open(CACHE_NAME);
-    const keys = await cache.keys();
-    let totalBytes = 0;
-    await Promise.all(
-      keys.map(async (req) => {
-        const res = await cache.match(req);
-        if (res) {
-          const blob = await res.blob();
-          totalBytes += blob.size;
-        }
-      })
-    );
-    return { totalBytes, count: keys.length };
-  } catch {
-    return { totalBytes: 0, count: 0 };
+  let totalBytes = 0;
+  let count = 0;
+
+  // 1. Capacitor Filesystem keshi (mobil qurilma)
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const { Filesystem, Directory } = await import('@capacitor/filesystem');
+      // media_cache papkasidagi fayllarni sanash
+      const dirResult = await Filesystem.readdir({
+        path: 'media_cache',
+        directory: Directory.Cache,
+      });
+      const files = dirResult.files ?? [];
+      count += files.length;
+      // Har bir faylning hajmini aniqlash
+      await Promise.allSettled(
+        files.map(async (fileEntry) => {
+          try {
+            const filePath = typeof fileEntry === 'string'
+              ? `media_cache/${fileEntry}`
+              : `media_cache/${fileEntry.name}`;
+            const statResult = await Filesystem.stat({
+              path: filePath,
+              directory: Directory.Cache,
+            });
+            // stat() size baytlarda qaytaradi
+            if (typeof statResult.size === 'number') {
+              totalBytes += statResult.size;
+            }
+          } catch {
+            // faylni o'lchab bo'lmasa — o'tkazib yuboramiz
+          }
+        })
+      );
+    } catch {
+      // media_cache papkasi mavjud emas yoki bo'sh — 0 qaytarish OK
+    }
   }
+
+  // 2. Web Cache Storage (brauzer / PWA)
+  try {
+    if ('caches' in window) {
+      const cache = await caches.open(CACHE_NAME);
+      const keys = await cache.keys();
+      count += keys.length;
+      await Promise.all(
+        keys.map(async (req) => {
+          const res = await cache.match(req);
+          if (res) {
+            const blob = await res.blob();
+            totalBytes += blob.size;
+          }
+        })
+      );
+    }
+  } catch {
+    // non-fatal
+  }
+
+  // 3. IndexedDB dagi yozuvlar soni (qo'shimcha hisoblash uchun)
+  // Agar platforma native bo'lsa va Filesystem sanovi 0 bo'lsa,
+  // IndexedDB yozuvlari asosida taxminiy kesh sonini ham ko'rsatamiz
+  if (count === 0) {
+    try {
+      const all = await dbGetAll();
+      count = all.length;
+      // Har bir yozuv uchun taxminan 100 KB hisoblaymiz (yo'q qilmaslik uchun)
+      if (count > 0 && totalBytes === 0) {
+        totalBytes = count * 100 * 1024;
+      }
+    } catch {
+      // non-fatal
+    }
+  }
+
+  return { totalBytes, count };
 }
 
 /**
@@ -329,25 +390,57 @@ export async function clearMediaCache(): Promise<void> {
 }
 
 /**
- * Muayyan turdagi kesh elementlarini tozalaydi (URL pattern bo'yicha).
+ * Muayyan turdagi kesh elementlarini tozalaydi.
+ * - Web: Content-Type header bo'yicha filtrlaydi
+ * - Native: URL nomi bo'yicha taxminiy tozalash (mime aniqlanmaydi)
  */
 export async function clearCacheByType(mimePrefix: string): Promise<number> {
   let cleared = 0;
+
+  // Web Cache Storage
   try {
-    if (!('caches' in window)) return 0;
-    const cache = await caches.open(CACHE_NAME);
-    const keys = await cache.keys();
-    for (const req of keys) {
-      const res = await cache.match(req);
-      if (res) {
-        const ct = res.headers.get('content-type') || '';
-        if (ct.startsWith(mimePrefix)) {
-          await cache.delete(req);
-          await dbDelete(req.url);
-          cleared++;
+    if ('caches' in window) {
+      const cache = await caches.open(CACHE_NAME);
+      const keys = await cache.keys();
+      for (const req of keys) {
+        const res = await cache.match(req);
+        if (res) {
+          const ct = res.headers.get('content-type') || '';
+          if (ct.startsWith(mimePrefix)) {
+            await cache.delete(req);
+            await dbDelete(req.url);
+            cleared++;
+          }
         }
       }
     }
   } catch { /* non-fatal */ }
+
+  // Native Capacitor: IndexedDB yozuvlari asosida URL bo'yicha filtrlash
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const { Filesystem, Directory } = await import('@capacitor/filesystem');
+      const all = await dbGetAll();
+      for (const { key } of all) {
+        // URL bo'yicha mime turini taxminiy aniqlash
+        let guessedMime = '';
+        if (/\.(jpg|jpeg|png|gif|webp|avif|svg)/.test(key)) guessedMime = 'image/';
+        else if (/\.(mp4|webm|mov|avi)/.test(key)) guessedMime = 'video/';
+        else if (/\.(mp3|ogg|wav|aac|m4a|opus)/.test(key)) guessedMime = 'audio/';
+        else guessedMime = 'application/';
+
+        if (guessedMime.startsWith(mimePrefix)) {
+          const safeKey = btoa(key).replace(/[^a-zA-Z0-9]/g, '').slice(0, 60);
+          const path = `media_cache/${safeKey}`;
+          try {
+            await Filesystem.deleteFile({ path, directory: Directory.Cache });
+            cleared++;
+          } catch { /* fayl mavjud emas */ }
+          await dbDelete(key);
+        }
+      }
+    } catch { /* non-fatal */ }
+  }
+
   return cleared;
 }

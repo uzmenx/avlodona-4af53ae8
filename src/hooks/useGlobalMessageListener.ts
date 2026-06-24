@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { showNativeNotification } from '@/hooks/useNativeNotifications';
 
 interface IncomingMessage {
   id: string;
@@ -151,6 +152,17 @@ export const useGlobalMessageListener = () => {
               mediaType: msg.media_type,
             },
           }));
+
+          // ── Native OS notification (tizim panelida, background holatida) ──
+          showNativeNotification(
+            sender.name || sender.username || 'Yangi xabar',
+            preview.slice(0, 120),
+            {
+              type: 'message',
+              actorId: msg.sender_id,
+              conversationId: msg.conversation_id,
+            },
+          );
 
           // Update conversation list (diff-only)
           window.dispatchEvent(new CustomEvent('avlodona:new-message', {

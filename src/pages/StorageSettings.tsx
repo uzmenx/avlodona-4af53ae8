@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -24,7 +24,8 @@ import { useToast } from '@/hooks/use-toast';
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 MB';
   const mb = bytes / (1024 * 1024);
-  if (mb < 0.1) return '< 0.1 MB';
+  if (mb < 0.01) return '< 0.01 MB';
+  if (mb < 0.1) return `${(mb * 1000).toFixed(0)} KB`;
   if (mb < 1024) return `${mb.toFixed(1)} MB`;
   return `${(mb / 1024).toFixed(2)} GB`;
 }
@@ -56,8 +57,10 @@ const StorageSettings = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [isClearing, setIsClearing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [statsLoaded, setStatsLoaded] = useState(false);
   const [cacheLimitIdx, setCacheLimitIdx] = useState(0); // Auto
   const [clearAgeIdx, setClearAgeIdx] = useState(0);     // 1 hafta
+  const loadInProgress = useRef(false);
 
   // Kategoriyalar (real o'lchov hisoblangandan keyin to'ldiriladi)
   const [categories, setCategories] = useState<CacheCategory[]>([
@@ -69,14 +72,16 @@ const StorageSettings = () => {
 
   // ─── Kesh statistikasini yuklash ─────────────────────────────────────────
 
-  const loadStats = useCallback(async () => {
-    setIsRefreshing(true);
+  const loadStats = useCallback(async (silent = false) => {
+    // Parallel chaqiruvlarni oldini olish
+    if (loadInProgress.current) return;
+    loadInProgress.current = true;
+    if (!silent) setIsRefreshing(true);
     try {
       const stats = await getMediaCacheStats();
       setTotalBytes(stats.totalBytes);
       setTotalCount(stats.count);
-      // Taxminiy taqsimot (tezkor hisoblash uchun)
-      // Real versiyada mime turi bo'yicha hisoblash mumkin
+      // Taxminiy taqsimot
       setCategories(prev => prev.map(cat => ({
         ...cat,
         bytes: cat.id === 'image'
@@ -87,15 +92,35 @@ const StorageSettings = () => {
               ? Math.floor(stats.totalBytes * 0.12)
               : Math.floor(stats.totalBytes * 0.08),
       })));
+      setStatsLoaded(true);
     } catch (e) {
       console.error(e);
     } finally {
-      setIsRefreshing(false);
+      loadInProgress.current = false;
+      if (!silent) setIsRefreshing(false);
     }
   }, []);
 
+  // Sahifa ochilganda — yuklaymiz
   useEffect(() => {
     loadStats();
+  }, [loadStats]);
+
+  // Sahifa fokus olganda (foydalanuvchi qaytib kelganda) — jim yangilaymiz
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadStats(true); // silent = true (spinner ko'rsatmaymiz)
+      }
+    };
+    const onFocus = () => loadStats(true);
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [loadStats]);
 
   // ─── Hammasini tozalash ───────────────────────────────────────────────────
@@ -171,7 +196,7 @@ const StorageSettings = () => {
           <Button
             variant="ghost" size="icon"
             className="ml-auto h-9 w-9"
-            onClick={loadStats}
+            onClick={() => loadStats()}
             disabled={isRefreshing}
           >
             <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
@@ -211,10 +236,23 @@ const StorageSettings = () => {
                   />
                 ))}
               </svg>
-              {/* Markazda jami hajm */}
+              {/* Markazda jami hajm yoki skeleton */}
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-lg font-bold leading-tight">{formatBytes(totalBytes)}</span>
-                <span className="text-[10px] text-muted-foreground leading-tight">{totalCount} fayl</span>
+                {!statsLoaded ? (
+                  <>
+                    <div className="h-5 w-16 rounded-md bg-muted/50 animate-pulse mb-1" />
+                    <div className="h-3 w-10 rounded-md bg-muted/40 animate-pulse" />
+                  </>
+                ) : (
+                  <>
+                    <span className="text-lg font-bold leading-tight transition-all duration-500">
+                      {formatBytes(totalBytes)}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground leading-tight">
+                      {totalCount} fayl
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
