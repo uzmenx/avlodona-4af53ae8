@@ -96,26 +96,48 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    // Database Webhook dan keladi: { type: "INSERT", table: "notifications", record: {...} }
-    // To'g'ridan-to'g'ri chaqirilganda: { record: {...} } yoki record o'zi
+    // Database Webhook: { type, table: "notifications"|"messages", record: {...} }
     const record = body.record ?? body;
+    const table: string | undefined = body.table;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Qabul qiluvchi ID
-    const receiverId = record?.user_id;
+    // Qabul qiluvchi va actor ni aniqlash
+    let receiverId: string | undefined = record?.user_id;
+    let actorId: string | undefined = record?.actor_id;
+    let notifType: string = record?.type ?? 'notification';
+
+    // messages jadvalidan: user_id yo'q — conversation dan participantni topamiz
+    if ((!receiverId || table === 'messages') && record?.conversation_id) {
+      actorId = record?.sender_id;
+      notifType = 'message';
+      const { data: conv } = await supabase
+        .from('conversations')
+        .select('participant1_id, participant2_id')
+        .eq('id', record.conversation_id)
+        .single();
+      if (conv) {
+        receiverId = conv.participant1_id === actorId ? conv.participant2_id : conv.participant1_id;
+      }
+    }
+
     if (!receiverId) {
       return new Response(JSON.stringify({ message: "Receiver ID topilmadi" }), {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
+    if (receiverId === actorId) {
+      return new Response(JSON.stringify({ message: "Self-notification skipped" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
 
-    // Actor (kim yubordi) profilini olish — notification matni uchun
-    const actorId = record?.actor_id;
+    // Actor profilini olish — notification matni uchun
     let actorName = 'Kimdir';
     if (actorId) {
       const { data: actor } = await supabase
@@ -126,8 +148,8 @@ serve(async (req) => {
       actorName = actor?.name || actor?.username || 'Kimdir';
     }
 
-    const notifType = record?.type ?? 'notification';
     const notifBody = buildNotifText(notifType, actorName);
+
 
     // FCM tokenlarini olish (foydalanuvchi bir nechta qurilmada bo'lishi mumkin)
     const { data: fcmTokens, error: tokenError } = await supabase
