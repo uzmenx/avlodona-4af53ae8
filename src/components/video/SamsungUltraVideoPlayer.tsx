@@ -1720,7 +1720,7 @@ export const SamsungUltraVideoPlayer = ({
 
       style={{ height: '100dvh', maxHeight: '100dvh' }}
 
-      onMouseMove={resetControlsTimer}
+      onMouseMove={() => resetControlsTimer()}
 
       onTouchStart={handleTouchStart}
 
