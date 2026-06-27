@@ -301,7 +301,7 @@ export const MemorialCommentsSheet = ({ open, onOpenChange, memorialPostId }: Me
                     Izoh yozing...
                   </button>
                 ) : (
-                  <div className="flex-1 relative flex items-center bg-muted/50 rounded-2xl border border-white/10 px-3">
+                  <div className="flex-1 min-w-0 relative flex items-center bg-muted/50 rounded-2xl border border-white/10 px-3">
                     <textarea
                       ref={inputRef}
                       value={newComment}
@@ -313,7 +313,7 @@ export const MemorialCommentsSheet = ({ open, onOpenChange, memorialPostId }: Me
                         }
                       }}
                       placeholder="Izoh yozing..."
-                      className="flex-1 resize-none bg-transparent py-3 text-sm focus:outline-none min-h-[44px] max-h-[120px] pr-8"
+                      className="flex-1 resize-none bg-transparent py-3 text-sm focus:outline-none min-h-[44px] max-h-[120px] pr-8 min-w-0"
                       rows={1}
                       disabled={isSubmitting}
                     />

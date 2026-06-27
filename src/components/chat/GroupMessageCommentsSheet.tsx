@@ -142,7 +142,7 @@ export const GroupMessageCommentsSheet = ({
               onChange={(e) => setNewComment(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Izoh yozing..."
-              className="min-h-[44px] max-h-[120px] resize-none rounded-2xl bg-muted/50 border-white/10 focus-visible:ring-primary/30 text-sm pr-12 py-3"
+              className="min-h-[44px] max-h-[120px] resize-none rounded-2xl bg-muted/50 border-white/10 focus-visible:ring-primary/30 text-sm pr-12 py-3 min-w-0"
               disabled={isSubmitting}
             />
             <Button

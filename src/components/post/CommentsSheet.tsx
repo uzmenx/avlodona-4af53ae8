@@ -279,14 +279,14 @@ const CommentInput = memo(({ replyTo, isSubmitting, onClearReply, onSubmit, onOp
         />
 
         {/* Inner pill: textarea + image icon + gif icon */}
-        <div className="flex-1 flex items-center bg-muted/40 border border-border/40 rounded-[22px] px-2 min-h-[44px] gap-1">
+        <div className="flex-1 flex items-center bg-muted/40 border border-border/40 rounded-[22px] px-2 min-h-[44px] min-w-0 gap-1">
           <textarea
             ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Izoh yozing..."
-            className="flex-1 px-2 py-2.5 text-[15px] bg-transparent outline-none resize-none min-h-[40px] max-h-[120px] leading-snug placeholder:text-muted-foreground/60"
+            className="flex-1 px-2 py-2.5 text-[15px] bg-transparent outline-none resize-none min-h-[40px] max-h-[120px] min-w-0 leading-snug placeholder:text-muted-foreground/60"
             rows={1}
             disabled={isSubmitting}
             style={{ overflowY: (text.split('\n').length > 4) ? 'auto' : 'hidden' }}

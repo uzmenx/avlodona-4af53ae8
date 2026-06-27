@@ -81,14 +81,17 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col justify-between items-center relative overflow-hidden bg-gradient-to-br from-[#0a0a1a] via-[#1a1a3e] to-[#0a0a1a] px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-4 sm:pb-6">
-      {/* Animated Bokeh Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute top-40 right-32 w-48 h-48 bg-teal-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute bottom-32 left-40 w-56 h-56 bg-green-500/20 rounded-full blur-3xl animate-pulse delay-2000" />
-        <div className="absolute top-60 left-1/2 w-40 h-40 bg-purple-400/15 rounded-full blur-2xl animate-pulse delay-500" />
-        <div className="absolute bottom-20 right-20 w-52 h-52 bg-teal-400/15 rounded-full blur-2xl animate-pulse delay-1500" />
+    <div
+      style={{ height: '100%', minHeight: '-webkit-fill-available' }}
+      className="flex flex-col justify-between items-center relative overflow-hidden bg-gradient-to-br from-[#0a0a1a] via-[#1a1a3e] to-[#0a0a1a] px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-4 sm:pb-6"
+    >
+      {/* Static Bokeh Background — no animate-pulse to avoid re-layout on focus */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <div className="absolute top-20 left-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl" style={{ willChange: 'auto' }} />
+        <div className="absolute top-40 right-32 w-48 h-48 bg-teal-500/20 rounded-full blur-3xl" style={{ willChange: 'auto' }} />
+        <div className="absolute bottom-32 left-40 w-56 h-56 bg-green-500/20 rounded-full blur-3xl" style={{ willChange: 'auto' }} />
+        <div className="absolute top-60 left-1/2 w-40 h-40 bg-purple-400/15 rounded-full blur-2xl" style={{ willChange: 'auto' }} />
+        <div className="absolute bottom-20 right-20 w-52 h-52 bg-teal-400/15 rounded-full blur-2xl" style={{ willChange: 'auto' }} />
       </div>
 
       {/* Content Container */}
@@ -122,6 +125,7 @@ const Signup = () => {
                   value={fullName}
                   maxLength={25}
                   onChange={(e) => setFullName(e.target.value)}
+                  autoComplete="name"
                   className="pl-12 h-10 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm text-sm"
                 />
               </div>
@@ -139,6 +143,7 @@ const Signup = () => {
                   placeholder={t('email')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   className="pl-12 h-10 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm text-sm"
                   required
                 />
@@ -157,6 +162,7 @@ const Signup = () => {
                   placeholder="•••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
                   className="pl-12 pr-12 h-10 bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] rounded-xl text-white placeholder-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.3)] focus:bg-[rgba(255,255,255,0.12)] transition-all duration-300 backdrop-blur-sm text-sm"
                   required
                   minLength={6}

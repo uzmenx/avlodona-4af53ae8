@@ -5,6 +5,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  height: 100%;
+}
+
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
