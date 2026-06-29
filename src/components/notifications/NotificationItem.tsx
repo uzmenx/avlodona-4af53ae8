@@ -450,8 +450,10 @@ export const NotificationItem = ({ notification, onRead, onDelete }: Notificatio
               <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 shadow-[0_0_6px_2px_rgba(var(--primary)/0.4)]" />
             )}
           </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
+
   );
 };
