@@ -211,7 +211,7 @@ export const useNotifications = () => {
           });
           if (!raw.is_read) setUnreadCount(prev => prev + 1);
 
-          // ── Native OS notification ──
+          // ── Native OS notification (avatar + guruh + deep link) ──
           {
             const actorName = enriched.actor?.name || enriched.actor?.username || 'Foydalanuvchi';
             const notifLabels: Record<string, string> = {
@@ -231,10 +231,14 @@ export const useNotifications = () => {
               family_connection_request:  `${actorName} daraxtingizga qo'shilmoqchi`,
             };
             const body = notifLabels[enriched.type] ?? `${actorName} yangi bildirishnoma yubordi`;
-            showNativeNotification('Avlodona', body, {
+            // Xabar uchun Telegram kabi title = ism, boshqa tur uchun "Avlodona"
+            const title = enriched.type === 'message' ? actorName : 'Avlodona';
+            showNativeNotification(title, body, {
               type: enriched.type,
               actorId: enriched.actor_id,
               postId: enriched.post_id ?? undefined,
+              // Avatar — bildirishnoma katta ikonkasi sifatida ko'rsatiladi
+              avatarUrl: enriched.actor?.avatar_url ?? undefined,
             });
           }
         }

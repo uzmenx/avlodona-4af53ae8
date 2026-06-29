@@ -154,6 +154,7 @@ export const useGlobalMessageListener = () => {
           }));
 
           // ── Native OS notification (tizim panelida, background holatida) ──
+          // Telegram kabi: title = sender ismi, katta ikonka = avatar
           showNativeNotification(
             sender.name || sender.username || 'Yangi xabar',
             preview.slice(0, 120),
@@ -161,6 +162,8 @@ export const useGlobalMessageListener = () => {
               type: 'message',
               actorId: msg.sender_id,
               conversationId: msg.conversation_id,
+              // Avatar — bildirishnomada katta ikonka sifatida ko'rinadi
+              avatarUrl: sender.avatar_url ?? undefined,
             },
           );
 

@@ -180,6 +180,22 @@ serve(async (req) => {
     // Barcha tokenlarga parallel yuborish
     const results = await Promise.allSettled(
       fcmTokens.map(async ({ token }) => {
+        // Guruhlash uchun tag: bitta chatdan kelgan xabarlar birlashadi
+        const collapseKey = notifType === 'message'
+          ? `chat_${record?.conversation_id ?? actorId ?? 'msg'}`
+          : `notif_${notifType}`;
+
+        // Actor avatar URL — bildirishnoma katta ikonkasi uchun
+        let largeIconUrl: string | undefined;
+        if (actorId) {
+          const { data: actorProfile } = await supabase
+            .from('profiles')
+            .select('avatar_url')
+            .eq('id', actorId)
+            .single();
+          largeIconUrl = actorProfile?.avatar_url ?? undefined;
+        }
+
         const res = await fetch(fcmUrl, {
           method: "POST",
           headers: {
@@ -190,28 +206,39 @@ serve(async (req) => {
             message: {
               token,
               notification: {
-                title: "Avlodona",
+                title: notifType === 'message' ? actorName : "Avlodona",
                 body: notifBody,
               },
               android: {
                 priority: "high",
+                // collapse_key: bitta guruhdan kelgan push larni birlashtiradi
+                collapse_key: collapseKey,
                 notification: {
                   channel_id: "avlodona_channel",
                   icon: "ic_stat_notification",
+                  // Brend rangi — bildirishnoma ikonka orqa foni
+                  color: "#6C5CE7",
                   sound: "default",
+                  // Avatar — katta ikonka (o'ng tomonda ko'rinadi)
+                  image: largeIconUrl,
+                  // Tap → ilova ochiladi va data orqali deep link
                   click_action: "OPEN_ACTIVITY_1",
+                  // Notification group tag
+                  tag: collapseKey,
                 },
               },
-              // Deep link uchun data payload
+              // Deep link uchun data — pushNotificationActionPerformed da o'qiladi
               data: {
                 type: notifType,
-                actor_id: record?.actor_id ?? '',
+                actor_id: actorId ?? '',
+                conversation_id: record?.conversation_id ?? '',
                 post_id: record?.post_id ?? '',
                 notification_id: record?.id ?? '',
               },
             },
           }),
         });
+
 
         if (!res.ok) {
           const errText = await res.text();

@@ -311,8 +311,10 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useNativeNotifications, showNativeNotification } from '@/hooks/useNativeNotifications';
 
 export const PushNotification = () => {
+  const navigate = useNavigate();
   usePushNotifications();
-  const { isBackground } = useNativeNotifications();
+  // navigate ni hook ga beramiz — local notification bosilganda deep link ishlaydi
+  const { isBackground } = useNativeNotifications(navigate);
   const { user } = useAuth();
   const location = useLocation();
   const locationRef = useRef(location.pathname);
@@ -344,7 +346,7 @@ export const PushNotification = () => {
       let body = '';
 
       if (alert.kind === 'message') {
-        title = actorName;
+        title = actorName;  // Telegram kabi: title = sender ismi
         body = alert.text || 'Yangi xabar';
       } else {
         const cfg = NOTIF_CONFIG[alert.type];
@@ -355,6 +357,8 @@ export const PushNotification = () => {
         type: alert.type,
         actorId: alert.actor.id,
         conversationId: alert.conversationId,
+        // Avatar — bildirishnoma katta ikonkasi uchun
+        avatarUrl: alert.actor.avatar_url ?? undefined,
       });
     }
   }, [dismiss, isBackground]);
