@@ -43,6 +43,16 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping, autoFocus }
   const [showGIFPicker, setShowGIFPicker]     = useState(false);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
 
+  // Quick Reply: bildirishnomadan kelganda input avtomatik fokuslanadi
+  useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      const t = setTimeout(() => inputRef.current?.focus(), 250);
+      return () => clearTimeout(t);
+    }
+  }, [autoFocus]);
+
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+
   const {
     isRecording,
     duration,
