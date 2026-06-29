@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, UserPlus, Send, TreeDeciduous, Check, AtSign, Users, CalendarDays, X, Loader2 } from 'lucide-react';
+import { Heart, MessageCircle, UserPlus, Send, TreeDeciduous, Check, AtSign, Users, CalendarDays, X, Loader2, Trash2, MailOpen } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { uz } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -9,12 +9,15 @@ import { Notification } from '@/hooks/useNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useFollow } from '@/hooks/useFollow';
 import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 
 interface NotificationItemProps {
   notification: Notification;
   onRead: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
+
+
 
 type ActionState = 'idle' | 'accepting' | 'accepted' | 'declining' | 'declined';
 
@@ -91,11 +94,28 @@ const TYPE_CONFIG: Record<string, { gradient: string; icon: React.ReactNode; lab
   },
 };
 
-export const NotificationItem = ({ notification, onRead }: NotificationItemProps) => {
+export const NotificationItem = ({ notification, onRead, onDelete }: NotificationItemProps) => {
   const navigate = useNavigate();
   const { isFollowing, toggleFollow, isLoading: isFollowLoading } = useFollow(notification.actor_id);
   const [actionState, setActionState] = useState<ActionState>('idle');
   const [isRemoving, setIsRemoving] = useState(false);
+  const x = useMotionValue(0);
+  const bgRight = useTransform(x, [0, 80, 160], ['rgba(16,185,129,0)', 'rgba(16,185,129,0.15)', 'rgba(16,185,129,0.35)']);
+  const bgLeft  = useTransform(x, [-160, -80, 0], ['rgba(239,68,68,0.35)', 'rgba(239,68,68,0.15)', 'rgba(239,68,68,0)']);
+
+  const handleSwipeEnd = (_e: PointerEvent, info: { offset: { x: number } }) => {
+    const dx = info.offset.x;
+    if (dx > 120) {
+      if (!notification.is_read) onRead(notification.id);
+      x.set(0);
+    } else if (dx < -120 && onDelete) {
+      setIsRemoving(true);
+      setTimeout(() => onDelete(notification.id), 250);
+    } else {
+      x.set(0);
+    }
+  };
+
 
   const config = TYPE_CONFIG[notification.type] ?? {
     gradient: 'from-slate-500 to-gray-500',
@@ -261,18 +281,49 @@ export const NotificationItem = ({ notification, onRead }: NotificationItemProps
           initial={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0, marginBottom: 0 }}
           transition={{ duration: 0.35, ease: 'easeInOut' }}
-          onClick={handleClick}
-          className={cn(
-            'flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors relative overflow-hidden group',
-            notification.is_read
-              ? 'hover:bg-white/3'
-              : 'bg-primary/[0.05] hover:bg-primary/[0.08]'
-          )}
+          className="relative overflow-hidden"
         >
-          {/* Unread indicator */}
-          {!notification.is_read && (
-            <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full bg-gradient-to-b from-primary to-primary/40" />
+          {/* Swipe background indicators */}
+          <motion.div
+            style={{ backgroundColor: bgRight }}
+            className="absolute inset-0 flex items-center justify-start pl-6 pointer-events-none"
+          >
+            <div className="flex items-center gap-2 text-emerald-500">
+              <MailOpen className="h-5 w-5" />
+              <span className="text-xs font-semibold uppercase tracking-wider">O'qildi</span>
+            </div>
+          </motion.div>
+          {onDelete && (
+            <motion.div
+              style={{ backgroundColor: bgLeft }}
+              className="absolute inset-0 flex items-center justify-end pr-6 pointer-events-none"
+            >
+              <div className="flex items-center gap-2 text-rose-500">
+                <span className="text-xs font-semibold uppercase tracking-wider">O'chirish</span>
+                <Trash2 className="h-5 w-5" />
+              </div>
+            </motion.div>
           )}
+
+          <motion.div
+            style={{ x }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.6}
+            onDragEnd={handleSwipeEnd as never}
+            onClick={handleClick}
+            className={cn(
+              'flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors relative group select-none',
+              notification.is_read
+                ? 'bg-background hover:bg-white/5'
+                : 'bg-primary/[0.05] hover:bg-primary/[0.08]'
+            )}
+          >
+            {/* Unread indicator */}
+            {!notification.is_read && (
+              <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full bg-gradient-to-b from-primary to-primary/40" />
+            )}
+
 
           {/* Avatar + Icon badge */}
           <div className="relative stop-propagation shrink-0" onClick={handleProfileClick}>
@@ -399,8 +450,10 @@ export const NotificationItem = ({ notification, onRead }: NotificationItemProps
               <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 shadow-[0_0_6px_2px_rgba(var(--primary)/0.4)]" />
             )}
           </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
+
   );
 };

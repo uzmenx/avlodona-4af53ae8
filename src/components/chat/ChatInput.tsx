@@ -27,18 +27,31 @@ interface ChatInputProps {
     waveformData?: number[],
   ) => Promise<void>;
   onTyping: (isTyping: boolean) => void;
+  /** Component mount bo'lganda inputga avtomatik fokus (Quick Reply uchun) */
+  autoFocus?: boolean;
 }
 
 type RecorderUIState = 'idle' | 'recording' | 'locked' | 'uploading';
 
-export const ChatInput = ({ conversationId, onSendMessage, onTyping }: ChatInputProps) => {
+export const ChatInput = ({ conversationId, onSendMessage, onTyping, autoFocus }: ChatInputProps) => {
   const { user } = useAuth();
+
   const [inputValue, setInputValue]       = useState('');
   const [selectedMedia, setSelectedMedia] = useState<MediaFile[]>([]);
   const [isUploading, setIsUploading]     = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [showGIFPicker, setShowGIFPicker]     = useState(false);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
+
+  // Quick Reply: bildirishnomadan kelganda input avtomatik fokuslanadi
+  useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      const t = setTimeout(() => inputRef.current?.focus(), 250);
+      return () => clearTimeout(t);
+    }
+  }, [autoFocus]);
+
+
 
   const {
     isRecording,

@@ -1183,7 +1183,9 @@ const Chat = () => {
               conversationId={conversationId}
               onSendMessage={handleSendMessage}
               onTyping={setTyping}
+              autoFocus={searchParams.get('reply') === '1'}
             />
+
           )}
         </div>
       </div>
