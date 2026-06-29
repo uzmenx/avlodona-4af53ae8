@@ -94,11 +94,28 @@ const TYPE_CONFIG: Record<string, { gradient: string; icon: React.ReactNode; lab
   },
 };
 
-export const NotificationItem = ({ notification, onRead }: NotificationItemProps) => {
+export const NotificationItem = ({ notification, onRead, onDelete }: NotificationItemProps) => {
   const navigate = useNavigate();
   const { isFollowing, toggleFollow, isLoading: isFollowLoading } = useFollow(notification.actor_id);
   const [actionState, setActionState] = useState<ActionState>('idle');
   const [isRemoving, setIsRemoving] = useState(false);
+  const x = useMotionValue(0);
+  const bgRight = useTransform(x, [0, 80, 160], ['rgba(16,185,129,0)', 'rgba(16,185,129,0.15)', 'rgba(16,185,129,0.35)']);
+  const bgLeft  = useTransform(x, [-160, -80, 0], ['rgba(239,68,68,0.35)', 'rgba(239,68,68,0.15)', 'rgba(239,68,68,0)']);
+
+  const handleSwipeEnd = (_e: PointerEvent, info: { offset: { x: number } }) => {
+    const dx = info.offset.x;
+    if (dx > 120) {
+      if (!notification.is_read) onRead(notification.id);
+      x.set(0);
+    } else if (dx < -120 && onDelete) {
+      setIsRemoving(true);
+      setTimeout(() => onDelete(notification.id), 250);
+    } else {
+      x.set(0);
+    }
+  };
+
 
   const config = TYPE_CONFIG[notification.type] ?? {
     gradient: 'from-slate-500 to-gray-500',
