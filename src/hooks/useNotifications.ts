@@ -217,8 +217,9 @@ export const useNotifications = () => {
           // ❌ DUPLICATE FIX: native platformada FCM push allaqachon system notification ko'rsatadi.
           // Bu yerda yana showNativeNotification chaqirsak — 2x bildirishnoma. Faqat web/PWA da kerak.
           if (!Capacitor.isNativePlatform()) {
-
+            const actorName = enriched.actor?.name || enriched.actor?.username || 'Foydalanuvchi';
             const notifLabels: Record<string, string> = {
+
               follow:                     `${actorName} sizni kuzata boshladi`,
               follow_request:             `${actorName} kuzatish so'radi`,
               like:                       `${actorName} postingizni yoqtirdi`,
