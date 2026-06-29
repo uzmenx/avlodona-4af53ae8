@@ -161,6 +161,40 @@ export const useNotifications = () => {
       });
   }, [user?.id]);
 
+  // Delete one or many notifications (swipe-to-delete, group dismiss)
+  const deleteNotifications = useCallback(async (ids: string[]) => {
+    if (!ids.length) return;
+    // Optimistic
+    setNotifications(prev => {
+      const next = prev.filter(n => !ids.includes(n.id));
+      setUnreadCount(next.filter(n => !n.is_read).length);
+      return next;
+    });
+    supabase
+      .from('notifications')
+      .delete()
+      .in('id', ids)
+      .then(({ error }) => {
+        if (error) console.error('deleteNotifications error:', error);
+      });
+  }, []);
+
+  // Mark a group of notifications as read in one shot
+  const markManyAsRead = useCallback(async (ids: string[]) => {
+    if (!ids.length) return;
+    setNotifications(prev => prev.map(n => ids.includes(n.id) ? { ...n, is_read: true } : n));
+    setUnreadCount(prev => Math.max(0, prev - ids.length));
+    supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .in('id', ids)
+      .then(({ error }) => {
+        if (error) console.error('markManyAsRead error:', error);
+      });
+  }, []);
+
+
+
   // Create notification helper
   const createNotification = async (
     targetUserId: string,
