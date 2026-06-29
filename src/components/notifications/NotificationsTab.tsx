@@ -1,26 +1,24 @@
 import { Bell, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NotificationItem } from './NotificationItem';
+import { GroupedNotificationItem } from './GroupedNotificationItem';
 import { useNotifications, Notification } from '@/hooks/useNotifications';
 import { PullToRefresh } from '@/components/feed/PullToRefresh';
 import { isToday, isYesterday } from 'date-fns';
+import { groupNotifications, type GroupedNotification } from './groupNotifications';
 
-const groupNotifications = (notifications: Notification[]): { label: string; items: Notification[] }[] => {
-  const groups: Record<string, Notification[]> = {
-    today: [],
-    yesterday: [],
-    earlier: [],
-  };
+const partitionByDate = (notifications: Notification[]) => {
+  const groups: Record<string, Notification[]> = { today: [], yesterday: [], earlier: [] };
   for (const n of notifications) {
     const d = new Date(n.created_at);
     if (isToday(d)) groups.today.push(n);
     else if (isYesterday(d)) groups.yesterday.push(n);
     else groups.earlier.push(n);
   }
-  const result: { label: string; items: Notification[] }[] = [];
-  if (groups.today.length > 0) result.push({ label: 'Bugun', items: groups.today });
-  if (groups.yesterday.length > 0) result.push({ label: 'Kecha', items: groups.yesterday });
-  if (groups.earlier.length > 0) result.push({ label: 'Avvalroq', items: groups.earlier });
+  const result: { label: string; items: GroupedNotification[] }[] = [];
+  if (groups.today.length)     result.push({ label: 'Bugun',    items: groupNotifications(groups.today) });
+  if (groups.yesterday.length) result.push({ label: 'Kecha',    items: groupNotifications(groups.yesterday) });
+  if (groups.earlier.length)   result.push({ label: 'Avvalroq', items: groupNotifications(groups.earlier) });
   return result;
 };
 
@@ -30,11 +28,13 @@ export const NotificationsTab = () => {
     isLoading,
     fetchNotifications,
     markAsRead,
+    markManyAsRead,
     markAllAsRead,
-    unreadCount
+    deleteNotifications,
+    unreadCount,
   } = useNotifications();
 
-  const groups = groupNotifications(notifications);
+  const sections = partitionByDate(notifications);
 
   return (
     <div className="min-h-[50vh]">
@@ -71,27 +71,38 @@ export const NotificationsTab = () => {
               <p className="text-sm text-muted-foreground mt-1">
                 Yangi bildirishnomalar shu yerda ko'rinadi
               </p>
+              <p className="text-[11px] text-muted-foreground/60 mt-3">
+                💡 Maslahat: o'ng tomonga sursangiz o'qildi, chap tomonga sursangiz o'chiriladi
+              </p>
             </div>
           </div>
         ) : (
           <div>
-            {groups.map((group) => (
-              <div key={group.label}>
-                {/* Group label */}
+            {sections.map((section) => (
+              <div key={section.label}>
                 <div className="px-4 py-2 sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border/10">
                   <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-                    {group.label}
+                    {section.label}
                   </span>
                 </div>
-                {/* Items */}
                 <div className="divide-y divide-border/10">
-                  {group.items.map((notification) => (
-                    <NotificationItem
-                      key={notification.id}
-                      notification={notification}
-                      onRead={markAsRead}
-                    />
-                  ))}
+                  {section.items.map((item) =>
+                    item.kind === 'single' ? (
+                      <NotificationItem
+                        key={item.notification.id}
+                        notification={item.notification}
+                        onRead={markAsRead}
+                        onDelete={(id) => deleteNotifications([id])}
+                      />
+                    ) : (
+                      <GroupedNotificationItem
+                        key={item.key}
+                        group={item}
+                        onMarkRead={markManyAsRead}
+                        onDelete={deleteNotifications}
+                      />
+                    )
+                  )}
                 </div>
               </div>
             ))}
