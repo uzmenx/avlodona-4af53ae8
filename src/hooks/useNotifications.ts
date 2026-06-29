@@ -213,9 +213,11 @@ export const useNotifications = () => {
           });
           if (!raw.is_read) setUnreadCount(prev => prev + 1);
 
-          // ── Native OS notification (avatar + guruh + deep link) ──
-          {
-            const actorName = enriched.actor?.name || enriched.actor?.username || 'Foydalanuvchi';
+          // ── Native OS notification ──
+          // ❌ DUPLICATE FIX: native platformada FCM push allaqachon system notification ko'rsatadi.
+          // Bu yerda yana showNativeNotification chaqirsak — 2x bildirishnoma. Faqat web/PWA da kerak.
+          if (!Capacitor.isNativePlatform()) {
+
             const notifLabels: Record<string, string> = {
               follow:                     `${actorName} sizni kuzata boshladi`,
               follow_request:             `${actorName} kuzatish so'radi`,
