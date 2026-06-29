@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { showNativeNotification } from '@/hooks/useNativeNotifications';
+import { Capacitor } from '@capacitor/core';
+
 
 export interface Notification {
   id: string;
