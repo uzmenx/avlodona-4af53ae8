@@ -327,7 +327,10 @@ export const useNotifications = () => {
     isLoading,
     fetchNotifications,
     markAsRead,
+    markManyAsRead,
     markAllAsRead,
+    deleteNotifications,
     createNotification,
   };
+
 };
