@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, UserPlus, Send, TreeDeciduous, Check, AtSign, Users, CalendarDays, X, Loader2 } from 'lucide-react';
+import { Heart, MessageCircle, UserPlus, Send, TreeDeciduous, Check, AtSign, Users, CalendarDays, X, Loader2, Trash2, MailOpen } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { uz } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -9,12 +9,15 @@ import { Notification } from '@/hooks/useNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useFollow } from '@/hooks/useFollow';
 import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 
 interface NotificationItemProps {
   notification: Notification;
   onRead: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
+
+
 
 type ActionState = 'idle' | 'accepting' | 'accepted' | 'declining' | 'declined';
 
