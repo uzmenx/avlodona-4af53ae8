@@ -51,7 +51,7 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping, autoFocus }
     }
   }, [autoFocus]);
 
-  const [showMediaPicker, setShowMediaPicker] = useState(false);
+
 
   const {
     isRecording,
