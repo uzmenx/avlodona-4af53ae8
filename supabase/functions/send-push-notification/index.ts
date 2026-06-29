@@ -224,14 +224,19 @@ serve(async (req) => {
                   tag: collapseKey,
                 },
               },
-              // Deep link uchun data — pushNotificationActionPerformed da o'qiladi
+              // Deep link uchun data — sw-push.js va pushNotificationActionPerformed da o'qiladi
               data: {
                 type: notifType,
                 actor_id: actorId ?? '',
                 conversation_id: record?.conversation_id ?? '',
                 post_id: record?.post_id ?? '',
                 notification_id: record?.id ?? '',
+                avatar_url: largeIconUrl ?? '',
+                title: notifType === 'message' ? actorName : 'Avlodona',
+                body: notifBody,
+                tag: collapseKey,
               },
+
             },
           }),
         });
