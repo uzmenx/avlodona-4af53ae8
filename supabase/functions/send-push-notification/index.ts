@@ -100,29 +100,26 @@ serve(async (req) => {
     const record = body.record ?? body;
     const table: string | undefined = body.table;
 
+    // ❌ DUPLICATE FIX: messages jadvalidan kelgan webhookni e'tibordan chetda qoldiramiz.
+    // Sababi: messages qo'shilganda DB trigger `notifications` qatorini yaratadi,
+    // va o'sha qator uchun ALOHIDA webhook ishlaydi. Ikkalasini ham yuborsak — 2x push.
+    if (table === 'messages') {
+      return new Response(JSON.stringify({ message: "messages webhook skipped (handled via notifications row)" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Qabul qiluvchi va actor ni aniqlash
-    let receiverId: string | undefined = record?.user_id;
-    let actorId: string | undefined = record?.actor_id;
-    let notifType: string = record?.type ?? 'notification';
+    // Qabul qiluvchi va actor — faqat notifications jadvalidan
+    const receiverId: string | undefined = record?.user_id;
+    const actorId: string | undefined = record?.actor_id;
+    const notifType: string = record?.type ?? 'notification';
 
-    // messages jadvalidan: user_id yo'q — conversation dan participantni topamiz
-    if ((!receiverId || table === 'messages') && record?.conversation_id) {
-      actorId = record?.sender_id;
-      notifType = 'message';
-      const { data: conv } = await supabase
-        .from('conversations')
-        .select('participant1_id, participant2_id')
-        .eq('id', record.conversation_id)
-        .single();
-      if (conv) {
-        receiverId = conv.participant1_id === actorId ? conv.participant2_id : conv.participant1_id;
-      }
-    }
 
     if (!receiverId) {
       return new Response(JSON.stringify({ message: "Receiver ID topilmadi" }), {
