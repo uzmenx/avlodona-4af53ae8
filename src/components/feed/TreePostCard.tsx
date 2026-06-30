@@ -10,8 +10,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FamilyTreeCanvas } from '@/components/family-v2/FamilyTreeCanvas';
 import { TreeOverlayLayer } from '@/components/family-v2/TreeOverlayLayer';
 import { TreePostStaticPreview } from './TreePostStaticPreview';
+import { TreePostMenu } from './TreePostMenu';
+import { TreePostEditor } from '@/components/family-v2/TreePostEditor';
+import { useTreePosts, TreeOverlay } from '@/hooks/useTreePosts';
 import { FamilyMember } from '@/types/family';
-import { TreeOverlay } from '@/hooks/useTreePosts';
 import { formatCount } from '@/lib/formatCount';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StarUsername } from '@/components/user/StarUsername';
@@ -41,10 +43,14 @@ const NOOP_FN = () => {};
 export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { updateTreePost, deletePost } = useTreePosts();
   const [expanded, setExpanded] = useState(false);
   const [previewInteractive, setPreviewInteractive] = useState(false);
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [deleted, setDeleted] = useState(false);
 
   const memberCount = Object.keys(post.tree_data || {}).length;
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: true });
@@ -99,6 +105,12 @@ export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => 
                 <StarUsername username={author?.username || 'user'} />
               </div>
             </div>
+            <TreePostMenu
+              postId={post.id}
+              authorId={post.user_id}
+              onDelete={() => setDeleted(true)}
+              onEdit={() => setIsEditing(true)}
+            />
           </div>
 
           {/* Tree content — static or interactive */}
@@ -196,6 +208,27 @@ export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => 
           </div>
         </CardContent>
       </Card>
+
+      {/* Tahrirlash oynasi */}
+      <TreePostEditor
+        isOpen={isEditing}
+        onClose={() => setIsEditing(false)}
+        members={post.tree_data || {}}
+        positions={post.positions_data || {}}
+        initialOverlays={post.overlays || []}
+        initialCaption={(post as any).caption || ''}
+        isPublishing={isUpdating}
+        onPublish={async (overlays, caption) => {
+          setIsUpdating(true);
+          await updateTreePost(post.id, overlays, caption);
+          setIsUpdating(false);
+          setIsEditing(false);
+        }}
+      />
     </motion.div>
   );
+
+  if (deleted) return null;
+
+  return cardElement;
 };

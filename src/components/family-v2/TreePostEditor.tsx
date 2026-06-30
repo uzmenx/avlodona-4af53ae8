@@ -20,6 +20,7 @@ interface TreePostEditorProps {
   members: Record<string, FamilyMember>;
   positions: Record<string, { x: number; y: number }>;
   initialOverlays?: TreeOverlay[];
+  initialCaption?: string;
   onPublish: (overlays: TreeOverlay[], caption: string, viewport: { x: number; y: number; zoom: number }) => Promise<void>;
   isPublishing?: boolean;
 }
@@ -30,12 +31,13 @@ export const TreePostEditor = ({
   members,
   positions,
   initialOverlays = [],
+  initialCaption = '',
   onPublish,
   isPublishing,
 }: TreePostEditorProps) => {
   const { user } = useAuth();
   const [overlays, setOverlays] = useState<TreeOverlay[]>(initialOverlays);
-  const [caption, setCaption] = useState('');
+  const [caption, setCaption] = useState(initialCaption);
   const [showStickers, setShowStickers] = useState(false);
   const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 });
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -43,11 +45,13 @@ export const TreePostEditor = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    setOverlays(initialOverlays);
+    setCaption(initialCaption);
     window.dispatchEvent(new CustomEvent('app:forceHideNav', { detail: { hide: true } }));
     return () => {
       window.dispatchEvent(new CustomEvent('app:forceHideNav', { detail: { hide: false } }));
     };
-  }, [isOpen]);
+  }, [isOpen, initialOverlays, initialCaption]);
 
   if (!isOpen) return null;
 

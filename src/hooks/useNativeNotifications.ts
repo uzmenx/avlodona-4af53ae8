@@ -21,9 +21,39 @@ export interface NativeNotifData {
 }
 
 let permissionsRequested = false;
+let actionTypesRegistered = false;
+
+async function registerActionTypes() {
+  if (actionTypesRegistered) return;
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    await LocalNotifications.registerActionTypes({
+      types: [
+        {
+          id: 'CHAT_MSG',
+          actions: [
+            {
+              id: 'reply',
+              title: '💬 Javob berish',
+              foreground: true, // Ilovani ochadi
+            },
+          ],
+        },
+      ],
+    });
+    actionTypesRegistered = true;
+    console.log('[NativeNotif] Action types registered successfully.');
+  } catch (err) {
+    console.warn('[NativeNotif] registerActionTypes failed:', err);
+  }
+}
 
 async function ensurePermissions(): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) return false;
+  
+  // Action type'larni ro'yxatdan o'tkazamiz
+  await registerActionTypes();
+
   if (permissionsRequested) return true;
   try {
     let status = await LocalNotifications.checkPermissions();
@@ -81,6 +111,8 @@ export async function showNativeNotification(
           group: groupId,
           // Android notification drawer da ham ko'rinadi
           groupSummary: false,
+          // Xabar bo'lsa, "💬 Javob berish" tugmasini biriktiramiz
+          actionTypeId: data?.type === 'message' ? 'CHAT_MSG' : undefined,
           extra: {
             ...(data ?? {}),
             // Deep link uchun yo'l
@@ -145,7 +177,7 @@ export function useNativeNotifications(navigate?: (path: string) => void) {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    // Ruxsat oldindan so'rash
+    // Ruxsat va Action type'larni oldindan so'rash
     ensurePermissions();
 
     // Foreground/Background
@@ -159,8 +191,14 @@ export function useNativeNotifications(navigate?: (path: string) => void) {
     if (navigate) {
       LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
         const extra = action.notification.extra as NativeNotifData & { route?: string } | undefined;
-        const route = extra?.route ?? buildRoute(extra);
-        console.log('[NativeNotif] tapped → route:', route);
+        let route = extra?.route ?? buildRoute(extra);
+
+        // Agar "💬 Javob berish" bosilgan bo'lsa, chat sahifasiga reply=1 bilan boramiz (inputga avtofokus qilish uchun)
+        if (action.actionId === 'reply' && extra?.actorId) {
+          route = `/chat/${extra.actorId}?reply=1`;
+        }
+
+        console.log('[NativeNotif] tapped → actionId:', action.actionId, 'route:', route);
         navigate(route);
       }).then((l) => { tapListener = l; });
     }

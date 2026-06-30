@@ -147,6 +147,26 @@ export const useTreePosts = () => {
     }
   }, [user?.id, loadPosts]);
 
+  const updateTreePost = useCallback(async (postId: string, overlays: TreeOverlay[], caption: string) => {
+    if (!user?.id) return false;
+    try {
+      const { error } = await supabase
+        .from('tree_posts')
+        .update({ overlays: overlays as any, caption, updated_at: new Date().toISOString() })
+        .eq('id', postId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      await loadPosts();
+      toast.success("Post yangilandi!");
+      return true;
+    } catch (err) {
+      console.error('Error updating tree post:', err);
+      toast.error('Xatolik yuz berdi');
+      return false;
+    }
+  }, [user?.id, loadPosts]);
+
   const deletePost = useCallback(async (postId: string) => {
     if (!user?.id) return;
     try {
@@ -187,6 +207,7 @@ export const useTreePosts = () => {
     saveOverlays,
     saveCaption,
     publishPost,
+    updateTreePost,
     deletePost,
     updateTitle,
     loadPosts,
