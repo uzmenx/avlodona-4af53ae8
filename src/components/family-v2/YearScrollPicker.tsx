@@ -65,10 +65,19 @@ export const YearScrollPicker = ({
   }, [defaultIndex, value, years]);
 
   const [activeIndex, setActiveIndex] = useState(valueIndex);
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualYear, setManualYear] = useState('');
 
   useEffect(() => {
     if (!open) setActiveIndex(valueIndex);
   }, [open, valueIndex]);
+
+  useEffect(() => {
+    if (open) {
+      setShowManualInput(false);
+      setManualYear(value || '');
+    }
+  }, [open, value]);
 
   const ensureTickBuffer = () => {
     if (!withTick) return;
@@ -230,75 +239,131 @@ export const YearScrollPicker = ({
           align="center"
           sideOffset={6}
           className="z-[9999] w-[var(--radix-popover-trigger-width)] p-0 bg-background/85 border-white/10 rounded-2xl shadow-2xl backdrop-blur-2xl overflow-hidden"
+          onFocusOutside={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
         >
-          <div className="relative" style={{ height: ITEM_HEIGHT * VISIBLE_COUNT }}>
-            {/* Highlight box behind the scroll container to avoid blocking interactions */}
-            <div
-              className="pointer-events-none absolute left-2 right-2 z-0 rounded-xl border border-white/10 bg-white/[0.07]"
-              style={{ top: ITEM_HEIGHT * 2, height: ITEM_HEIGHT }}
-            />
-
-            <div
-              ref={containerRef}
-              onScroll={() => {
-                if (isProgrammaticRef.current) return;
-                if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
-                rafRef.current = requestAnimationFrame(() => {
-                  rafRef.current = null;
-                  syncFromScroll();
-                });
-              }}
-              onWheel={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-              onTouchMove={(e) => e.stopPropagation()}
-              className="absolute inset-0 overflow-y-auto scrollbar-none overscroll-none snap-y snap-mandatory z-10"
-              style={{
-                paddingTop: PADDING,
-                paddingBottom: PADDING,
-                touchAction: 'pan-y',
-                WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 40%, black 60%, transparent 100%)',
-                maskImage: 'linear-gradient(to bottom, transparent 0%, black 40%, black 60%, transparent 100%)',
-              }}
-            >
-              {years.map((year, idx) => {
-                const dist = Math.abs(idx - activeIndex);
-                const isActive = idx === activeIndex;
-                return (
-                  <button
-                    key={year}
-                    type="button"
-                    onClick={() => handleSelect(year, idx)}
-                    className={cn(
-                      "w-full flex items-center justify-center snap-center select-none focus:outline-none transition-[transform,opacity,color] duration-100",
-                      isActive
-                        ? "h-10 text-[32px] font-black text-foreground scale-[1.15] opacity-100"
-                        : dist === 1
-                          ? "h-10 text-lg font-bold text-foreground/70 opacity-80"
-                          : dist === 2
-                            ? "h-10 text-sm font-semibold text-foreground/45 opacity-55"
-                            : "h-10 text-xs font-semibold text-foreground/25 opacity-40"
-                    )}
-                  >
-                    {year}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {allowClear && value && (
-            <div className="border-t border-white/5 p-1 flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  onChange('');
-                  setOpen(false);
+          {showManualInput ? (
+            <div className="p-3 flex flex-col items-center gap-2">
+              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest text-center w-full">
+                Yilni yozing
+              </span>
+              <input
+                type="number"
+                pattern="[0-9]*"
+                inputMode="numeric"
+                value={manualYear}
+                onChange={(e) => setManualYear(e.target.value)}
+                placeholder="Masalan: 1000"
+                className="h-8 w-full rounded-xl border border-white/10 bg-black/20 text-center text-xs text-foreground focus:outline-none focus:border-white/20 px-2"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && manualYear) {
+                    onChange(manualYear);
+                    setOpen(false);
+                  }
                 }}
-                className="text-[9px] text-red-400 hover:text-red-300 font-semibold py-1 px-2 w-full text-center"
-              >
-                Tozalash
-              </button>
+              />
+              <div className="flex gap-1.5 w-full mt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowManualInput(false)}
+                  className="flex-1 h-7 rounded-lg border border-white/5 text-[9px] font-semibold text-muted-foreground hover:text-foreground hover:bg-white/5 active:scale-95 transition-all"
+                >
+                  Orqaga
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (manualYear) {
+                      onChange(manualYear);
+                      setOpen(false);
+                    }
+                  }}
+                  className="flex-1 h-7 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-[9px] font-bold text-white active:scale-95 transition-all"
+                >
+                  Saqlash
+                </button>
+              </div>
             </div>
+          ) : (
+            <>
+              <div className="relative" style={{ height: ITEM_HEIGHT * VISIBLE_COUNT }}>
+                {/* Highlight box behind the scroll container to avoid blocking interactions */}
+                <div
+                  className="pointer-events-none absolute left-2 right-2 z-0 rounded-xl border border-white/10 bg-white/[0.07]"
+                  style={{ top: ITEM_HEIGHT * 2, height: ITEM_HEIGHT }}
+                />
+
+                <div
+                  ref={containerRef}
+                  onScroll={() => {
+                    if (isProgrammaticRef.current) return;
+                    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+                    rafRef.current = requestAnimationFrame(() => {
+                      rafRef.current = null;
+                      syncFromScroll();
+                    });
+                  }}
+                  onWheel={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  className="absolute inset-0 overflow-y-auto scrollbar-none overscroll-none snap-y snap-mandatory z-10"
+                  style={{
+                    paddingTop: PADDING,
+                    paddingBottom: PADDING,
+                    touchAction: 'pan-y',
+                    WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 40%, black 60%, transparent 100%)',
+                    maskImage: 'linear-gradient(to bottom, transparent 0%, black 40%, black 60%, transparent 100%)',
+                  }}
+                >
+                  {years.map((year, idx) => {
+                    const dist = Math.abs(idx - activeIndex);
+                    const isActive = idx === activeIndex;
+                    return (
+                      <button
+                        key={year}
+                        type="button"
+                        onClick={() => handleSelect(year, idx)}
+                        className={cn(
+                          "w-full flex items-center justify-center snap-center select-none focus:outline-none transition-[transform,opacity,color] duration-100",
+                          isActive
+                            ? "h-10 text-[32px] font-black text-foreground scale-[1.15] opacity-100"
+                            : dist === 1
+                              ? "h-10 text-lg font-bold text-foreground/70 opacity-80"
+                              : dist === 2
+                                ? "h-10 text-sm font-semibold text-foreground/45 opacity-55"
+                                : "h-10 text-xs font-semibold text-foreground/25 opacity-40"
+                        )}
+                      >
+                        {year}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="border-t border-white/5 p-1 flex justify-around items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setShowManualInput(true)}
+                  className="text-[9px] text-muted-foreground hover:text-foreground font-semibold py-1 px-2 flex-1 text-center"
+                >
+                  Qo'lda
+                </button>
+                {allowClear && value && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange('');
+                      setOpen(false);
+                    }}
+                    className="text-[9px] text-red-400 hover:text-red-300 font-semibold py-1 px-2 flex-1 text-center border-l border-white/5"
+                  >
+                    Tozalash
+                  </button>
+                )}
+              </div>
+            </>
           )}
         </PopoverContent>
       </Popover>
