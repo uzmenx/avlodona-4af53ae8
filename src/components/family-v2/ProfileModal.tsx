@@ -18,6 +18,7 @@ import {
   BookHeart,
   Plus,
 } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import { FamilyMember } from '@/types/family';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -588,15 +589,42 @@ export const ProfileModal = ({
 
                 {showInvite && (
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="sm"
                     onClick={() => handleAction(() => onSendInvitation(member))}
                     className={cn(
-                      "rounded-2xl h-10 text-sm font-medium border-muted/60 hover:bg-muted/50"
+                      "rounded-2xl h-10 text-sm font-semibold border-none relative overflow-hidden",
+                      "bg-gradient-to-r from-[#2563eb] via-[#4f46e5] to-[#7c3aed]",
+                      "text-white shadow-[0_0_15px_rgba(79,70,229,0.5)]",
+                      "hover:shadow-[0_0_25px_rgba(79,70,229,0.85)] hover:scale-[1.05]",
+                      "active:scale-[0.95] transition-all duration-300 ease-out",
+                      "flex items-center justify-center gap-1.5 group cursor-pointer"
                     )}
                   >
-                    <Send className="w-3.5 h-3.5 mr-1" />
-                    Taklif
+                    {/* Background glow animation */}
+                    <span className="absolute inset-0 bg-gradient-to-r from-[#7c3aed] via-[#4f46e5] to-[#2563eb] opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out" />
+                    
+                    {/* Subtle shine effect */}
+                    <span className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none" 
+                          style={{
+                            animation: 'shimmer 2s infinite linear',
+                          }}
+                    />
+                    
+                    <style dangerouslySetInnerHTML={{__html: `
+                      @keyframes shimmer {
+                        0% { transform: translateX(-100%); }
+                        100% { transform: translateX(100%); }
+                      }
+                    `}} />
+
+                    <Icon 
+                      icon="bi:send-plus" 
+                      className="w-4 h-4 relative z-10 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" 
+                    />
+                    <span className="relative z-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)] tracking-wide">
+                      Taklif
+                    </span>
                   </Button>
                 )}
 
