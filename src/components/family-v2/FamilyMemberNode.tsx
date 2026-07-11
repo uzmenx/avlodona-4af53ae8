@@ -353,6 +353,21 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
             "bg-pink-500 border-pink-400"
           )}
           onClick={handleAvatarClick}>
+
+          {/* Top handle (blue) — attached to circle top edge (90°) */}
+          <Handle
+            type="target"
+            position={Position.Top}
+            isConnectable={false}
+            className="!bg-sky-500 !w-2.5 !h-2.5 !border-2 !border-background" />
+
+          {/* Bottom handle (blue) — attached to circle bottom edge (270°) */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            isConnectable={false}
+            className="!bg-sky-500 !w-2.5 !h-2.5 !border-2 !border-background" />
+
           
            {/* Selection checkmark */}
            {isSelected &&
