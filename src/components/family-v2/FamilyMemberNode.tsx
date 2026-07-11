@@ -490,12 +490,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
         </div>
         </div>
         
-        {/* Bottom handle for children connections */}
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          isConnectable={false}
-          className="!bg-sky-500 !w-2.5 !h-2.5 !border-2 !border-background !-bottom-1" />
+
         
       </div>
 
