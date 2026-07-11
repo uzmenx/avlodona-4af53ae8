@@ -315,12 +315,8 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}>
         
-        {/* Top handle for parent connections */}
-        <Handle
-          type="target"
-          position={Position.Top}
-          isConnectable={false}
-          className="!bg-sky-500 !w-2.5 !h-2.5 !border-2 !border-background !-top-1" />
+        
+
         
         <canvas 
           ref={canvasRef}
