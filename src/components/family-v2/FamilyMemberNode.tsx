@@ -96,35 +96,35 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const maxRadius = 15;
-    const springK = 0.03;
-    const friction = 0.90;
-    const maxTrailAge = 60;
+    const maxRadius = 14;
+    const springK = 0.02;
+    const friction = 0.94;
+    const maxTrailAge = 28;
+    const avatarRadius = 40; // avatar is 80px
 
     const renderLoop = (time: number) => {
       const state = physicsRef.current;
       const dt = Math.min((time - state.lastTime) / 16, 2);
       state.lastTime = time;
 
-      // Target orbit
-      state.angle += 0.02 * dt;
+      // Slow target orbit
+      state.angle += 0.006 * dt;
       state.baseTargetX = Math.cos(state.angle) * (maxRadius * 0.6);
       state.baseTargetY = Math.sin(state.angle * 0.7) * (maxRadius * 0.6);
 
-      // Forces
-      state.vx += (Math.random() - 0.5) * 1.5;
-      state.vy += (Math.random() - 0.5) * 1.5;
-      
+      // Gentle forces
+      state.vx += (Math.random() - 0.5) * 0.35;
+      state.vy += (Math.random() - 0.5) * 0.35;
+
       state.vx += (state.baseTargetX - state.x) * springK;
       state.vy += (state.baseTargetY - state.y) * springK;
-      
+
       state.vx *= friction;
       state.vy *= friction;
-      
+
       state.x += state.vx * dt;
       state.y += state.vy * dt;
 
-      // Clamp
       const dist = Math.sqrt(state.x * state.x + state.y * state.y);
       if (dist > maxRadius) {
         state.x = (state.x / dist) * maxRadius;
@@ -136,47 +136,40 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
 
-      state.trail.push({ x: state.x, y: state.y, age: 0 });
-      
+      // Emit trail point at the circle edge, opposite to velocity direction
+      const vMag = Math.sqrt(state.vx * state.vx + state.vy * state.vy);
+      let edgeX = state.x;
+      let edgeY = state.y;
+      if (vMag > 0.05) {
+        edgeX = state.x - (state.vx / vMag) * avatarRadius;
+        edgeY = state.y - (state.vy / vMag) * avatarRadius;
+      }
+      state.trail.push({ x: edgeX, y: edgeY, age: 0 });
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (state.trail.length > 0) {
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        
-        const baseColor = isMale ? '14, 165, 233' : '236, 72, 153'; // sky-500 and pink-500
+      const baseColor = isMale ? '125, 211, 252' : '244, 114, 182'; // softer sky-300 / pink-400
 
+      // Smoke-like puffs: soft radial gradients, fading with age
+      for (let i = 0; i < state.trail.length; i++) {
+        const pt = state.trail[i];
+        pt.age += dt;
+        const t = pt.age / maxTrailAge;
+        if (t >= 1) continue;
+        const alpha = (1 - t) * 0.35;
+        const radius = 10 + t * 22;
+        const px = centerX + pt.x;
+        const py = centerY + pt.y;
+        const grad = ctx.createRadialGradient(px, py, 0, px, py, radius);
+        grad.addColorStop(0, `rgba(${baseColor}, ${alpha})`);
+        grad.addColorStop(1, `rgba(${baseColor}, 0)`);
+        ctx.fillStyle = grad;
         ctx.beginPath();
-        for (let i = 0; i < state.trail.length; i++) {
-          const pt = state.trail[i];
-          const px = centerX + pt.x;
-          const py = centerY + pt.y;
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-          
-          pt.age += dt;
-        }
-
-        state.trail = state.trail.filter(pt => pt.age < maxTrailAge);
-
-        if (state.trail.length > 1) {
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = `rgb(${baseColor})`;
-          
-          ctx.lineWidth = 6;
-          ctx.strokeStyle = `rgba(${baseColor}, 0.2)`;
-          ctx.stroke();
-
-          ctx.lineWidth = 3;
-          ctx.strokeStyle = `rgba(${baseColor}, 0.5)`;
-          ctx.stroke();
-
-          ctx.lineWidth = 1;
-          ctx.strokeStyle = `rgba(255, 255, 255, 0.8)`;
-          ctx.shadowBlur = 4;
-          ctx.stroke();
-        }
+        ctx.arc(px, py, radius, 0, Math.PI * 2);
+        ctx.fill();
       }
+
+      state.trail = state.trail.filter(pt => pt.age < maxTrailAge);
 
       animationFrameId = requestAnimationFrame(renderLoop);
     };
