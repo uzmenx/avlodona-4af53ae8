@@ -227,8 +227,5 @@ export const TreePostCard = ({ post, author, index = 0 }: TreePostCardProps) => 
       />
     </motion.div>
   );
-
-  if (deleted) return null;
-
-  return cardElement;
 };
+
