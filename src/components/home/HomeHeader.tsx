@@ -82,7 +82,7 @@ export const HomeHeader = ({
   useEffect(() => {
     const handleScroll = (e: Event) => {
       if (!ticking.current) {
-        const target = e.target as HTMLElement | Document;
+        const target = e.target as HTMLElement | Document | Window;
         
         // Fast ignore for horizontal story scrolling - no layout thrashing
         if (target !== document && target !== window) {
