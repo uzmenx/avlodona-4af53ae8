@@ -41,6 +41,7 @@ export const PostActions = ({
   const { isPostSaved, toggleSavePost } = useSavedPosts();
   const [showLikers, setShowLikers] = useState(false);
   const [showViewers, setShowViewers] = useState(false);
+  const [isViewersLoading, setIsViewersLoading] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -88,10 +89,14 @@ export const PostActions = ({
 
   const handleViewsCountClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // We need likers list too, to show a small heart badge in viewers dialog
-    fetchLikedUsers();
-    fetchViewedUsers();
+    // Show dialog immediately with spinner, then load data
+    setIsViewersLoading(true);
     setShowViewers(true);
+    // Load likers (for heart badge) and viewers in parallel
+    Promise.all([
+      fetchLikedUsers(),
+      fetchViewedUsers(),
+    ]).finally(() => setIsViewersLoading(false));
   };
 
   const displayLikesCount = likesCount || initialLikesCount;
@@ -231,6 +236,7 @@ export const PostActions = ({
         onOpenChange={setShowViewers}
         users={viewedUsers}
         viewsCount={viewsCount}
+        isLoading={isViewersLoading}
         likedUserIds={likedUsers.map((u) => u.id)} />
 
       

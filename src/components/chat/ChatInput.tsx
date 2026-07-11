@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { uploadMedia, uploadToR2 } from '@/lib/r2Upload';
 import { MediaUploadProgress } from './MediaUploadProgress';
+import { ReplyPreview } from './ReplyPreview';
 
 interface MediaFile {
   file: File;
@@ -29,11 +30,13 @@ interface ChatInputProps {
   onTyping: (isTyping: boolean) => void;
   /** Component mount bo'lganda inputga avtomatik fokus (Quick Reply uchun) */
   autoFocus?: boolean;
+  replyTo?: { id: string; content: string; senderName?: string | null } | null;
+  onCancelReply?: () => void;
 }
 
 type RecorderUIState = 'idle' | 'recording' | 'locked' | 'uploading';
 
-export const ChatInput = ({ conversationId, onSendMessage, onTyping, autoFocus }: ChatInputProps) => {
+export const ChatInput = ({ conversationId, onSendMessage, onTyping, autoFocus, replyTo, onCancelReply }: ChatInputProps) => {
   const { user } = useAuth();
 
   const [inputValue, setInputValue]       = useState('');
@@ -346,63 +349,76 @@ export const ChatInput = ({ conversationId, onSendMessage, onTyping, autoFocus }
       )}
 
       <div className="relative pointer-events-auto mx-3 mb-3">
-        {/* Input bar */}
+        {/* Unified Reply + Input container */}
         <div 
-          className="flex items-center bg-background/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-border/40 rounded-[28px] gap-2 px-3 py-2 shadow-lg shadow-black/5"
+          className="flex flex-col bg-background/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-border/40 rounded-[28px] overflow-hidden shadow-lg shadow-black/5"
           style={{ opacity: recorderState !== 'idle' ? 0 : 1, transition: 'opacity 0.2s' }}
         >
-          <button
-            type="button"
-            onClick={() => setShowMediaPicker(true)}
-            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors shrink-0"
-            style={{ visibility: recorderState !== 'idle' ? 'hidden' : 'visible' }}
-          >
-            <Paperclip className="h-5 w-5 text-muted-foreground" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowGIFPicker(true)}
-            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-violet-500/15 transition-all active:scale-90 shrink-0"
-            aria-label="GIF qidirish"
-            style={{ visibility: recorderState !== 'idle' ? 'hidden' : 'visible' }}
-          >
-            <Icon icon="mage:gif-fill" className="h-6 w-6 text-violet-500" />
-          </button>
-
-          <input
-            ref={inputRef}
-            value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Xabar yozing..."
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full min-w-0"
-            disabled={isUploading || recorderState !== 'idle'}
-            style={{ visibility: recorderState !== 'idle' ? 'hidden' : 'visible' }}
-          />
-
-          {showSend ? (
-            <button
-              onClick={() => handleSend()}
-              disabled={isUploading}
-              className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center shadow-md hover:opacity-90 transition-all active:scale-90 disabled:opacity-50 shrink-0"
-              style={{ visibility: recorderState !== 'idle' ? 'hidden' : 'visible' }}
-            >
-              <Icon icon="heroicons:paper-airplane-16-solid" className="h-5 w-5 text-white" />
-            </button>
-          ) : (
-            <div
-              onPointerDown={handleMicPointerDown}
-              onPointerMove={handleMicPointerMove}
-              onPointerUp={handleMicPointerUp}
-              onPointerCancel={handleMicPointerCancel}
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer select-none touch-none shrink-0"
-              style={{ touchAction: 'none' }}
-            >
-              {/* Keep mic icon visible even when opacity is 0 so pointer events trigger correctly if needed? Actually we don't care about visibility, opacity handles it */}
-              <Mic className="h-5 w-5 text-muted-foreground" />
+          {/* Reply preview inside container */}
+          {replyTo && (
+            <div className="border-b border-border/10 dark:border-white/5">
+              <ReplyPreview
+                replyToContent={replyTo.content}
+                senderName={replyTo.senderName}
+                onCancel={onCancelReply || (() => {})}
+              />
             </div>
           )}
+
+          {/* Input row */}
+          <div className="flex items-center gap-2 px-3 py-2">
+            <button
+              type="button"
+              onClick={() => setShowMediaPicker(true)}
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors shrink-0"
+              style={{ visibility: recorderState !== 'idle' ? 'hidden' : 'visible' }}
+            >
+              <Paperclip className="h-5 w-5 text-muted-foreground" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowGIFPicker(true)}
+              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-violet-500/15 transition-all active:scale-90 shrink-0"
+              aria-label="GIF qidirish"
+              style={{ visibility: recorderState !== 'idle' ? 'hidden' : 'visible' }}
+            >
+              <Icon icon="mage:gif-fill" className="h-6 w-6 text-violet-500" />
+            </button>
+
+            <input
+              ref={inputRef}
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Xabar yozing..."
+              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full min-w-0"
+              disabled={isUploading || recorderState !== 'idle'}
+              style={{ visibility: recorderState !== 'idle' ? 'hidden' : 'visible' }}
+            />
+
+            {showSend ? (
+              <button
+                onClick={() => handleSend()}
+                disabled={isUploading}
+                className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center shadow-md hover:opacity-90 transition-all active:scale-90 disabled:opacity-50 shrink-0"
+                style={{ visibility: recorderState !== 'idle' ? 'hidden' : 'visible' }}
+              >
+                <Icon icon="heroicons:paper-airplane-16-solid" className="h-5 w-5 text-white" />
+              </button>
+            ) : (
+              <div
+                onPointerDown={handleMicPointerDown}
+                onPointerMove={handleMicPointerMove}
+                onPointerUp={handleMicPointerUp}
+                onPointerCancel={handleMicPointerCancel}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer select-none touch-none shrink-0"
+                style={{ touchAction: 'none' }}
+              >
+                <Mic className="h-5 w-5 text-muted-foreground" />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Recorder overlay */}

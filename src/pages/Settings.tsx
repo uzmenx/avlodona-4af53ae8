@@ -146,20 +146,20 @@ const Settings = () => {
             <CardContent className="space-y-4">
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">{tt('themeMode')}</Label>
-                <div className="flex gap-1.5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+                <div className="flex gap-2">
                   {themeModes.map(({ key, icon: Icon }) => (
                     <Button
                       key={key}
                       variant={mode === key ? "default" : "outline"}
-                      size="sm"
-                      className="flex-none min-h-[44px] min-w-[100px] gap-1.5"
+                      size="icon"
+                      className="h-11 w-11 shrink-0"
+                      title={tt(key)}
                       onClick={() => {
                         setMode(key);
                         void persistAppearance({ theme_mode: key });
                       }}
                     >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span>{tt(key)}</span>
+                      <Icon className="h-5 w-5" />
                     </Button>
                   ))}
                 </div>

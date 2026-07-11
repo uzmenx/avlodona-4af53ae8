@@ -34,7 +34,8 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
+  // We keep one ref per media slot (up to the mediaUrls length)
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   const instanceIdRef = useRef(
     typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `vid_${Date.now()}_${Math.random()}`
@@ -55,7 +56,7 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
     return lower.includes('.mp4') || lower.includes('.mov') || lower.includes('.webm') || lower.includes('.m4v') || lower.includes('.3gp') || lower.includes('.avi') || lower.includes('video');
   };
 
-  const handleVideoTap = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+  const handleVideoTap = (e: React.SyntheticEvent<HTMLVideoElement>, index: number) => {
     e.preventDefault();
     e.stopPropagation();
     if (touchMoved.current) return;
@@ -81,7 +82,7 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
       if (onVideoSingleTap) {
         onVideoSingleTap();
       } else {
-        handleVideoClick();
+        handleVideoClick(index);
       }
     }, DOUBLE_TAP_DELAY + 40);
   };
@@ -92,8 +93,6 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // Use a slightly lower threshold like 0.4 to ensure taller videos still trigger
-        // However, specifically checking if the document is hidden helps with page switching
         if (document.hidden) {
           setIsVisible(false);
           return;
@@ -111,30 +110,31 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
     const onRequestPlay = (e: Event) => {
       const ce = e as CustomEvent<{ id?: string }>;
       if (ce.detail?.id === instanceIdRef.current) return;
-      const v = videoRef.current;
-      if (!v) return;
-      if (!v.paused) v.pause();
+      // Pause all videos in this carousel
+      videoRefs.current.forEach(v => { if (v && !v.paused) v.pause(); });
     };
     window.addEventListener('avlodona:video:request-play', onRequestPlay);
     return () => window.removeEventListener('avlodona:video:request-play', onRequestPlay);
   }, []);
 
+  // Manage play/pause based on visibility and currentIndex
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !isVideo(mediaUrls[currentIndex])) return;
+    videoRefs.current.forEach((video, index) => {
+      if (!video) return;
+      if (index === currentIndex && stage === 'full' && isVisible) {
+        window.dispatchEvent(
+          new CustomEvent('avlodona:video:request-play', { detail: { id: instanceIdRef.current } })
+        );
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+    });
+  }, [isVisible, currentIndex, stage]);
 
-    if (stage === 'full' && isVisible) {
-      window.dispatchEvent(
-        new CustomEvent('avlodona:video:request-play', { detail: { id: instanceIdRef.current } })
-      );
-      video.play().catch(() => {});
-    } else {
-      video.pause();
-    }
-  }, [isVisible, currentIndex, mediaUrls, stage]);
-
+  // Reset current video to start when switching slides
   useEffect(() => {
-    const video = videoRef.current;
+    const video = videoRefs.current[currentIndex];
     if (video && isVideo(mediaUrls[currentIndex])) {
       if (stage === 'full' && isVisible) {
         video.currentTime = 0;
@@ -150,10 +150,9 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
 
   // Sync video audio level with isMuted state
   useEffect(() => {
-    const video = videoRef.current;
-    if (video) {
-      video.muted = isMuted;
-    }
+    videoRefs.current.forEach(video => {
+      if (video) video.muted = isMuted;
+    });
   }, [isMuted, currentIndex]);
 
   if (!mediaUrls || mediaUrls.length === 0) return null;
@@ -170,8 +169,8 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
     setCurrentIndex((prev) => prev === mediaUrls.length - 1 ? 0 : prev + 1);
   };
 
-  const handleVideoClick = () => {
-    const video = videoRef.current;
+  const handleVideoClick = (index: number) => {
+    const video = videoRefs.current[index];
     if (video) {
       if (video.paused) {
         window.dispatchEvent(
@@ -181,9 +180,7 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
       } else {
         video.pause();
       }
-
     }
-
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -219,7 +216,10 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
       onTouchMove={handleTouchMove}
       onTouchEnd={handleSwipeEnd}
     >
-      <div className="relative w-full overflow-hidden bg-white/10 backdrop-blur-[10px] border border-white/20 flex items-center justify-center" style={{ maxHeight: '80vh', minHeight: '200px', touchAction: 'pan-y' }}>
+      <div
+        className="relative w-full overflow-hidden bg-white/10 backdrop-blur-[10px] border border-white/20 flex items-center justify-center"
+        style={{ maxHeight: '80vh', minHeight: '200px', touchAction: 'pan-y' }}
+      >
         {stage === 'meta' && (
           <div className="absolute inset-0 shimmer" />
         )}
@@ -243,127 +243,119 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
           </button>
         )}
 
-        {isVideo(mediaUrls[currentIndex]) ? (
-          <>
-            {(stage === 'meta' || stage === 'preview' || stage === 'full') && (
-              <video
-                ref={videoRef}
-                src={mediaUrls[currentIndex]}
-                className={cn(
-                  "w-full h-auto object-contain cursor-pointer transition-[filter,opacity] duration-700",
-                  stage === 'meta' ? 'blur-xl grayscale opacity-40' :
-                  stage === 'preview' ? 'blur-lg grayscale opacity-100' : 'blur-0 grayscale-0',
-                  stage === 'full' ? 'fade-in' : ''
-                )}
-                style={{ maxHeight: '80vh', maxWidth: '100%' }}
-                loop
-                muted={isMuted}
-                playsInline
-                autoPlay={stage === 'full'}
-                onClick={handleVideoTap}
-                onTouchEnd={handleVideoTap}
-                preload={stage === 'full' ? 'auto' : 'metadata'}
-                onLoadedData={() => {
-                  if (stage === 'preview' || stage === 'meta') onPreviewReady?.();
-                }}
-              />
-            )}
-          </>
-        ) : (
-          <>
-            {(stage === 'meta' || stage === 'preview' || stage === 'full') && (
-              <img
-                src={stage === 'preview' ? `${mediaUrls[currentIndex]}?width=400&quality=20` : mediaUrls[currentIndex]}
-                alt="Post media"
-                className={cn(
-                  "w-full h-auto object-contain transition-[filter,opacity,transform] duration-700",
-                  stage === 'meta' ? 'blur-xl opacity-40' :
-                  stage === 'preview' ? 'blur-lg scale-105 opacity-100' : 'blur-0 scale-100',
-                  stage === 'full' ? 'fade-in' : ''
-                )}
-                style={{ maxHeight: '80vh', maxWidth: '100%' }}
-                loading="lazy"
-                onLoad={() => {
-                  if (stage === 'preview' || stage === 'meta') onPreviewReady?.();
-                }}
-              />
-            )}
-          </>
-        )}
+        {/* Render ALL media items in the DOM simultaneously, only the active one is visible.
+            This prevents re-downloading on each swipe — instant switching! */}
+        {mediaUrls.map((url, index) => {
+          const active = index === currentIndex;
+          const overlays = mediaMetadata?.[index]?.gifOverlays;
 
-        {/* GIF Overlays — rendered as live animated images on top of media (Instagram-style)
-            Only render for photos, because for videos they are already baked into the MP4 file. */}
-        {(() => {
-          if (isVideo(mediaUrls[currentIndex])) return null;
-          const overlays = mediaMetadata?.[currentIndex]?.gifOverlays;
-          if (!overlays || overlays.length === 0) return null;
-          return overlays.map(gif => (
-            <img
-              key={gif.id}
-              src={gif.originalUrl || gif.url}
-              alt="gif sticker"
-              decoding="async"
-              draggable={false}
-              className="absolute pointer-events-none select-none"
+          return (
+            <div
+              key={`${url}-${index}`}
+              aria-hidden={!active}
               style={{
-                left: `${gif.x}%`,
-                top: `${gif.y}%`,
-                transform: `translate(-50%, -50%) scale(${gif.scale}) rotate(${gif.rotation}deg)`,
-                width: '28%',
-                maxWidth: '160px',
-                zIndex: 20,
-                willChange: 'transform',
+                position: active ? 'relative' : 'absolute',
+                inset: 0,
+                display: active ? 'flex' : 'none',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
               }}
-            />
-          ));
-        })()}
+            >
+              {isVideo(url) ? (
+                <>
+                  {(stage === 'meta' || stage === 'preview' || stage === 'full') && (
+                    <video
+                      ref={(el) => { videoRefs.current[index] = el; }}
+                      src={url}
+                      className={cn(
+                        "w-full h-auto object-contain cursor-pointer transition-[filter,opacity] duration-700",
+                        stage === 'meta' ? 'blur-xl grayscale opacity-40' :
+                        stage === 'preview' ? 'blur-lg grayscale opacity-100' : 'blur-0 grayscale-0',
+                        stage === 'full' ? 'fade-in' : ''
+                      )}
+                      style={{ maxHeight: '80vh', maxWidth: '100%' }}
+                      loop
+                      muted={isMuted}
+                      playsInline
+                      autoPlay={stage === 'full' && active}
+                      onClick={(e) => handleVideoTap(e, index)}
+                      onTouchEnd={(e) => handleVideoTap(e, index)}
+                      preload={active ? 'auto' : 'metadata'}
+                      onLoadedData={() => {
+                        if (stage === 'preview' || stage === 'meta') onPreviewReady?.();
+                      }}
+                    />
+                  )}
+                </>
+              ) : (
+                <>
+                  {(stage === 'meta' || stage === 'preview' || stage === 'full') && (
+                    <img
+                      src={stage === 'preview' ? `${url}?width=400&quality=20` : url}
+                      alt="Post media"
+                      className={cn(
+                        "w-full h-auto object-contain transition-[filter,opacity,transform] duration-700",
+                        stage === 'meta' ? 'blur-xl opacity-40' :
+                        stage === 'preview' ? 'blur-lg scale-105 opacity-100' : 'blur-0 scale-100',
+                        stage === 'full' ? 'fade-in' : ''
+                      )}
+                      style={{ maxHeight: '80vh', maxWidth: '100%' }}
+                      loading={active ? 'eager' : 'lazy'}
+                      fetchPriority={active ? 'high' : 'low'}
+                      decoding="async"
+                      onLoad={() => {
+                        if (stage === 'preview' || stage === 'meta') onPreviewReady?.();
+                      }}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* GIF Overlays for photos */}
+              {!isVideo(url) && overlays && overlays.length > 0 && overlays.map(gif => (
+                <img
+                  key={gif.id}
+                  src={gif.originalUrl || gif.url}
+                  alt="gif sticker"
+                  decoding="async"
+                  draggable={false}
+                  className="absolute pointer-events-none select-none"
+                  style={{
+                    left: `${gif.x}%`,
+                    top: `${gif.y}%`,
+                    transform: `translate(-50%, -50%) scale(${gif.scale}) rotate(${gif.rotation}deg)`,
+                    width: '28%',
+                    maxWidth: '160px',
+                    zIndex: 20,
+                    willChange: 'transform',
+                  }}
+                />
+              ))}
+            </div>
+          );
+        })}
       </div>
 
-
-
       {mediaUrls.length > 1 &&
-
-      <>
-
-          {/* swipe-only navigation, arrows removed */}
-
-
-
-
+        <>
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-
             {mediaUrls.map((_, index) =>
-
-          <button
-
-            key={index}
-
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              goTo(index);
-            }}
-
-            className={cn(
-
-              "w-2 h-2 rounded-full transition-colors",
-
-              currentIndex === index ? "bg-white" : "bg-white/40"
-
-            )} />
-
-
-
-          )}
-
+              <button
+                key={index}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  goTo(index);
+                }}
+                className={cn(
+                  "w-2 h-2 rounded-full transition-colors",
+                  currentIndex === index ? "bg-white" : "bg-white/40"
+                )} />
+            )}
           </div>
-
         </>
-
       }
-
-    </div>);
-
-
-
+    </div>
+  );
 };

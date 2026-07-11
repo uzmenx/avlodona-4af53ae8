@@ -6,7 +6,7 @@ import { Play, Pause, ChevronLeft, ChevronRight, Heart, X, Send, Loader2, Volume
 
 import { Post } from '@/types';
 
-import { cn } from '@/lib/utils';
+import { cn, SHOW_YOUTUBE } from '@/lib/utils';
 
 
 
@@ -92,7 +92,7 @@ export const UnifiedFullScreenViewer = ({
 
   const { getStoryInfo } = useActiveStories();
 
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+  const [activeTab, setActiveTab] = useState<TabType>(SHOW_YOUTUBE ? initialTab : 'posts');
 
   const [postIndex, setPostIndex] = useState(initialTab === 'posts' ? initialIndex : 0);
 
@@ -1949,24 +1949,28 @@ export const UnifiedFullScreenViewer = ({
             <X className="w-4 h-4 text-white" />
           </button>
 
-          <div className="flex gap-0.5 bg-white/10 backdrop-blur-md rounded-full p-0.5 border border-white/10 py-[2px] my-0">
-            <button
-              onClick={() => handleTabSwitch('shorts')}
-              className={cn(
-                "px-3.5 py-1 rounded-full text-[11px] font-medium transition-all",
-                activeTab === 'shorts' ? "bg-white/20 text-white shadow-sm" : "text-white/50 hover:text-white/70"
-              )}>
-              yt shorts
-            </button>
-            <button
-              onClick={() => handleTabSwitch('posts')}
-              className={cn(
-                "px-3.5 py-1 rounded-full text-[11px] font-medium transition-all",
-                activeTab === 'posts' ? "bg-white/20 text-white shadow-sm" : "text-white/50 hover:text-white/70"
-              )}>
-              postlar
-            </button>
-          </div>
+          {SHOW_YOUTUBE ? (
+            <div className="flex gap-0.5 bg-white/10 backdrop-blur-md rounded-full p-0.5 border border-white/10 py-[2px] my-0">
+              <button
+                onClick={() => handleTabSwitch('shorts')}
+                className={cn(
+                  "px-3.5 py-1 rounded-full text-[11px] font-medium transition-all",
+                  activeTab === 'shorts' ? "bg-white/20 text-white shadow-sm" : "text-white/50 hover:text-white/70"
+                )}>
+                yt shorts
+              </button>
+              <button
+                onClick={() => handleTabSwitch('posts')}
+                className={cn(
+                  "px-3.5 py-1 rounded-full text-[11px] font-medium transition-all",
+                  activeTab === 'posts' ? "bg-white/20 text-white shadow-sm" : "text-white/50 hover:text-white/70"
+                )}>
+                postlar
+              </button>
+            </div>
+          ) : (
+            <div />
+          )}
 
           {activeTab === 'posts' && isVideo(currentMediaUrl) ? (
             <button

@@ -102,6 +102,8 @@ export const NotificationItem = ({ notification, onRead, onDelete }: Notificatio
   const x = useMotionValue(0);
   const bgRight = useTransform(x, [0, 80, 160], ['rgba(16,185,129,0)', 'rgba(16,185,129,0.15)', 'rgba(16,185,129,0.35)']);
   const bgLeft  = useTransform(x, [-160, -80, 0], ['rgba(239,68,68,0.35)', 'rgba(239,68,68,0.15)', 'rgba(239,68,68,0)']);
+  const opacityRight = useTransform(x, [0, 40, 160], [0, 0, 1]);
+  const opacityLeft  = useTransform(x, [-160, -40, 0], [1, 0, 0]);
 
   const handleSwipeEnd = (_e: PointerEvent, info: { offset: { x: number } }) => {
     const dx = info.offset.x;
@@ -285,21 +287,19 @@ export const NotificationItem = ({ notification, onRead, onDelete }: Notificatio
         >
           {/* Swipe background indicators */}
           <motion.div
-            style={{ backgroundColor: bgRight }}
+            style={{ backgroundColor: bgRight, opacity: opacityRight }}
             className="absolute inset-0 flex items-center justify-start pl-6 pointer-events-none"
           >
             <div className="flex items-center gap-2 text-emerald-500">
               <MailOpen className="h-5 w-5" />
-              <span className="text-xs font-semibold uppercase tracking-wider">O'qildi</span>
             </div>
           </motion.div>
           {onDelete && (
             <motion.div
-              style={{ backgroundColor: bgLeft }}
+              style={{ backgroundColor: bgLeft, opacity: opacityLeft }}
               className="absolute inset-0 flex items-center justify-end pr-6 pointer-events-none"
             >
               <div className="flex items-center gap-2 text-rose-500">
-                <span className="text-xs font-semibold uppercase tracking-wider">O'chirish</span>
                 <Trash2 className="h-5 w-5" />
               </div>
             </motion.div>

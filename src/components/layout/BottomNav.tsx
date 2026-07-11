@@ -4,49 +4,33 @@ import { Icon } from '@iconify/react';
 import { cn } from '@/lib/utils';
 import { useConversations } from '@/hooks/useConversations';
 import { useNotifications } from '@/hooks/useNotifications';
-import { useAuth } from '@/contexts/AuthContext';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-
-type BottomNavItem =
-  | {
-      kind: 'icon';
-      label: string;
-      path: string;
-      icon: string;
-      hover: string;
-      badgeType?: 'messages' | 'notifications';
-    }
-  | {
-      kind: 'profile';
-      label: string;
-      path: string;
-      hover: string;
-    };
+type BottomNavItem = {
+  kind: 'icon';
+  label: string;
+  path: string;
+  icon: string;
+  activeIcon?: string;
+  hover: string;
+  badgeType?: 'messages' | 'notifications';
+};
 
 export const BottomNav = () => {
   const { totalUnread } = useConversations();
   const { unreadCount: notifUnread } = useNotifications();
-  const { profile } = useAuth();
 
   const location = useLocation();
   const lastTapTsRef = useRef(0);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
-  // Detect keyboard visibility on Android/iOS
   useEffect(() => {
     const initialHeight = window.innerHeight;
     const handleResize = () => {
-      const currentHeight = window.visualViewport 
-        ? window.visualViewport.height 
+      const currentHeight = window.visualViewport
+        ? window.visualViewport.height
         : window.innerHeight;
-      
-      // If viewport height drops below 85% of initial height, keyboard is visible
-      const isVisible = currentHeight < initialHeight * 0.85;
-      setIsKeyboardVisible(isVisible);
+      setIsKeyboardVisible(currentHeight < initialHeight * 0.85);
     };
-
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', handleResize);
       return () => window.visualViewport?.removeEventListener('resize', handleResize);
@@ -56,8 +40,6 @@ export const BottomNav = () => {
     }
   }, []);
 
-  const initials = (profile?.name || profile?.username || 'P')[0]?.toUpperCase();
-
   const navItems: BottomNavItem[] = [
     {
       kind: 'icon',
@@ -66,7 +48,6 @@ export const BottomNav = () => {
       icon: 'streamline-plump:home-1-solid',
       hover: 'hover:scale-110 hover:-translate-y-1',
     },
-    { kind: 'icon', label: 'Family', path: '/relatives', icon: 'mdi:family', hover: 'hover:scale-110' },
     {
       kind: 'icon',
       label: 'Create',
@@ -76,13 +57,11 @@ export const BottomNav = () => {
     },
     {
       kind: 'icon',
-      label: 'Messages',
-      path: '/messages',
-      icon: 'streamline-flex:mail-send-email-message-circle-solid',
-      hover: 'hover:rotate-12 hover:scale-110',
-      badgeType: 'messages' as const,
+      label: 'Family',
+      path: '/relatives',
+      icon: 'mdi:family',
+      hover: 'hover:scale-110',
     },
-    { kind: 'profile', label: 'Profile', path: '/profile', hover: 'hover:ring-2 hover:ring-white' },
   ];
 
   const getBadgeCount = (badgeType?: 'messages' | 'notifications') => {
@@ -105,43 +84,37 @@ export const BottomNav = () => {
       path === '/'
         ? 'avlodona:nav:home'
         : path === '/relatives'
-          ? 'avlodona:nav:family'
-          : path === '/messages'
-            ? 'avlodona:nav:messages'
-            : path === '/profile'
-              ? 'avlodona:nav:profile'
-              : null;
+        ? 'avlodona:nav:family'
+        : null;
     if (!eventName) return;
     window.dispatchEvent(new CustomEvent(eventName, { detail: { action } }));
   };
 
   return (
-    <nav className={cn(
-      "fixed bottom-0 left-0 right-0 z-[70] transition-transform duration-300",
-      isKeyboardVisible ? "translate-y-20 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
-    )}>
-      <div className="px-3 pb-[env(safe-area-inset-bottom,8px)] pt-1">
-        <div className="h-14 max-w-lg mx-auto rounded-full border border-white/20 bg-background/20 text-foreground shadow-[0_15px_45px_rgba(0,0,0,0.15)] backdrop-blur-2xl supports-[backdrop-filter]:bg-background/10 flex items-center justify-around px-2">
+    <nav
+      className={cn(
+        'fixed bottom-0 left-0 right-0 z-[70] transition-all duration-300 flex justify-center',
+        isKeyboardVisible
+          ? 'translate-y-20 opacity-0 pointer-events-none'
+          : 'translate-y-0 opacity-100'
+      )}
+    >
+      <div className="pb-[env(safe-area-inset-bottom,8px)] pt-1 px-4 w-full flex justify-center">
+        <div className="h-14 w-full max-w-[240px] rounded-full border border-white/20 bg-background/20 text-foreground shadow-[0_15px_45px_rgba(0,0,0,0.18)] backdrop-blur-2xl supports-[backdrop-filter]:bg-background/10 flex items-center justify-around px-3">
           {navItems.map((item) => {
-            const badgeCount = item.kind === 'profile' ? 0 : getBadgeCount(item.badgeType);
-
-            const isCreate = item.kind === 'icon' && item.label === 'Create';
-            const isFamily = item.kind === 'icon' && item.label === 'Family';
+            const badgeCount = getBadgeCount(item.badgeType);
+            const isCreate = item.label === 'Create';
+            const isFamily = item.label === 'Family';
 
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
                 onClick={(e) => {
-                  // Create should always navigate.
                   if (isCreate) return;
-
                   const active = isSameTab(location.pathname, item.path);
                   if (!active) return;
-
-                  // Active tab tapped: prevent navigation and perform actions.
                   e.preventDefault();
-
                   const now = Date.now();
                   const DOUBLE_TAP_DELAY = 300;
                   if (now - lastTapTsRef.current < DOUBLE_TAP_DELAY) {
@@ -154,55 +127,37 @@ export const BottomNav = () => {
                 }}
                 className={({ isActive }) =>
                   cn(
-                    'relative flex items-center justify-center h-11 w-12 rounded-full transition-all duration-300 ease-out',
+                    'relative flex items-center justify-center h-11 rounded-full transition-all duration-300 ease-out',
                     'hover:bg-foreground/10',
-                    isCreate && 'w-14',
+                    isCreate ? 'w-14' : 'w-12',
                     isActive && !isCreate && 'bg-foreground/10 text-primary'
                   )
                 }
               >
                 {({ isActive }) => (
                   <>
-                    {item.kind === 'profile' ? (
-                      <div
+                    <div
+                      className={cn(
+                        'relative flex items-center justify-center transition-all duration-300 ease-out',
+                        isCreate &&
+                          'h-11 w-11 rounded-full border border-white/15 bg-foreground/10 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl supports-[backdrop-filter]:bg-foreground/5'
+                      )}
+                    >
+                      <Icon
+                        icon={item.icon}
                         className={cn(
-                          'rounded-full p-[1px] transition-all duration-300 ease-in-out',
+                          'transition-all duration-300 ease-out',
+                          isCreate ? 'h-6 w-6' : isFamily ? 'h-7 w-7' : 'h-6 w-6',
                           item.hover,
-                          isActive ? 'ring-2 ring-primary' : 'ring-0'
+                          isActive && isCreate && 'text-primary'
                         )}
-                      >
-                        <Avatar className="h-7 w-7">
-                          <AvatarImage src={profile?.avatar_url || undefined} className="object-cover" />
-                          <AvatarFallback className="text-[11px]">{initials}</AvatarFallback>
-                        </Avatar>
-                      </div>
-                    ) : (
-                      <div
-                        className={cn(
-                          'relative flex items-center justify-center transition-all duration-300 ease-out',
-                          isCreate &&
-                            'h-11 w-11 rounded-full border border-white/15 bg-foreground/10 shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl supports-[backdrop-filter]:bg-foreground/5'
-                        )}
-                      >
-                        <Icon
-                          icon={item.icon}
-                          className={cn(
-                            'transition-all duration-300 ease-out',
-                            isCreate ? 'h-6 w-6' : isFamily ? 'h-7 w-7' : 'h-6 w-6',
-                            item.hover,
-                            isActive && isCreate && 'text-primary'
-                          )}
-                        />
-                      </div>
-                    )}
+                      />
+                    </div>
 
                     {badgeCount > 0 && (
-                      <Badge
-                        variant="destructive"
-                        className="absolute -top-1 -right-1 z-20 h-4 min-w-4 px-1.5 py-0 flex items-center justify-center text-[10px] rounded-full"
-                      >
+                      <div className="absolute -top-1 -right-1 z-20 h-4 min-w-4 px-1.5 py-0 flex items-center justify-center text-[10px] rounded-full bg-destructive text-destructive-foreground">
                         {badgeCount > 99 ? '99+' : badgeCount}
-                      </Badge>
+                      </div>
                     )}
                   </>
                 )}

@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Heart } from 'lucide-react';
+import { Heart, Loader2 } from 'lucide-react';
 import { StarUsername } from '@/components/user/StarUsername';
 
 interface ViewUser {
@@ -18,9 +18,10 @@ interface ViewersDialogProps {
   users: ViewUser[];
   viewsCount: number;
   likedUserIds?: string[];
+  isLoading?: boolean;
 }
 
-export const ViewersDialog = ({ open, onOpenChange, users, viewsCount, likedUserIds = [] }: ViewersDialogProps) => {
+export const ViewersDialog = ({ open, onOpenChange, users, viewsCount, likedUserIds = [], isLoading = false }: ViewersDialogProps) => {
   const navigate = useNavigate();
   const likedSet = new Set(likedUserIds);
   return (
@@ -36,7 +37,11 @@ export const ViewersDialog = ({ open, onOpenChange, users, viewsCount, likedUser
         </DialogHeader>
 
         <ScrollArea className="max-h-[440px]">
-          {users.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : users.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Hozircha ko'rishlar yo'q</p>
           ) : (
             <div className="grid grid-cols-2 gap-3 pr-2 pb-2">

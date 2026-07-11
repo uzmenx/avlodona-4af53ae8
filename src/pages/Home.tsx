@@ -1,18 +1,19 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PullToRefresh } from "@/components/feed/PullToRefresh";
-import { StoriesRow } from "@/components/stories/StoriesRow";
 import { YouTubeShortsSection, type Short } from "@/components/shorts/YouTubeShortsSection";
+import { SHOW_YOUTUBE } from "@/lib/utils";
 import { StoryViewer } from "@/components/stories/StoryViewer";
 import { UnifiedFullScreenViewer } from "@/components/feed/UnifiedFullScreenViewer";
 import { NotificationsSheet } from "@/components/notifications/NotificationsSheet";
-import { useAuth } from "@/contexts/AuthContext";
+
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useStories } from "@/hooks/useStories";
 import { usePostsCache } from "@/hooks/usePostsCache";
 import { useSmoothScroll } from "@/hooks/useSmoothScroll";
 import { useTreeFeed } from "@/hooks/useTreeFeed";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useConversations } from "@/hooks/useConversations";
 import { useBlockedUsers } from '@/hooks/useBlockedUsers';
 import { SearchSheet } from "@/components/search/SearchSheet";
 
@@ -28,6 +29,7 @@ const Home = () => {
   const { posts, isLoading, isLoadingMore, hasMore, fetchPosts, forceRefresh, loadMore } = usePostsCache();
   const { treePosts, refetch: refetchTrees } = useTreeFeed();
   const { unreadCount } = useNotifications();
+  const { totalUnread: messageCount } = useConversations();
   const { anyBlockedIds } = useBlockedUsers();
   
   const [gridLayout, setGridLayout] = useState<GridLayout>(1);
@@ -120,23 +122,25 @@ const Home = () => {
       <div className="relative max-w-lg mx-auto min-h-[calc(100vh-4rem)]">
         <div ref={topAnchorRef} />
         
-        <HomeHeader 
-          title={t('feed')}
+        <HomeHeader
           unreadCount={unreadCount}
+          messageCount={messageCount}
           gridLayout={gridLayout}
-          onSearchClick={() => setSearchOpen(true)}
-          onNotificationsClick={() => setNotificationsOpen(true)}
           onToggleLayout={() => setGridLayout(prev => prev === 1 ? 2 : 1)}
+          onSearchSubmit={(q) => { setSearchInitialQuery(q); setSearchOpen(true); }}
+          onSearchFocus={() => setSearchOpen(true)}
+          onNotificationsClick={() => setNotificationsOpen(true)}
+          onStoryClick={openStoryViewer}
         />
 
-        <StoriesRow onStoryClick={openStoryViewer} />
-
-        <YouTubeShortsSection
-          onShortClick={openShortsViewer}
-          onShortsChange={setCachedShorts}
-          onSearchSubmit={setSearchInitialQuery}
-          onSearchClick={() => setSearchOpen(true)} 
-        />
+        {SHOW_YOUTUBE && (
+          <YouTubeShortsSection
+            onShortClick={openShortsViewer}
+            onShortsChange={setCachedShorts}
+            onSearchSubmit={setSearchInitialQuery}
+            onSearchClick={() => setSearchOpen(true)} 
+          />
+        )}
         
         <PullToRefresh onRefresh={handleRefresh} useWindowScroll={true}>
           {visiblePosts.length === 0 && visibleTreePosts.length === 0 && !isLoading ? (
@@ -145,7 +149,7 @@ const Home = () => {
               <p className="text-sm text-muted-foreground mt-2">{t('createFirstPost')}</p>
             </div>
           ) : gridLayout === 1 ? (
-            <FeedListLayout 
+            <FeedListLayout
               posts={visiblePosts}
               treePosts={visibleTreePosts}
               isLoadingMore={isLoadingMore}

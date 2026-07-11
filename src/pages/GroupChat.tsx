@@ -33,6 +33,7 @@ import { GroupSettingsSheet } from '@/components/groups/GroupSettingsSheet';
 import { MessageContextMenu } from '@/components/chat/MessageContextMenu';
 import { ForwardMessageDialog } from '@/components/chat/ForwardMessageDialog';
 import { ReplyPreview } from '@/components/chat/ReplyPreview';
+import { SwipeableMessage } from '@/components/chat/SwipeableMessage';
 import { MessageWithReactions } from '@/components/chat/MessageWithReactions';
 import { GroupMessageCommentsSheet } from '@/components/chat/GroupMessageCommentsSheet';
 import { uploadMedia, uploadToR2 } from '@/lib/r2Upload';
@@ -114,7 +115,7 @@ const GroupChat = () => {
   const inviteLoadingRef = useRef<Set<string>>(new Set());
 
   // Reply & Forward
-  const [replyTo, setReplyTo] = useState<{ id: string; content: string } | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: string; content: string; senderName?: string | null } | null>(null);
   const [forwardMessage, setForwardMessage] = useState<{ content: string; mediaUrl?: string | null; mediaType?: string | null } | null>(null);
 
   // Comments
@@ -300,7 +301,51 @@ const GroupChat = () => {
 
 
 
-  const handleReply = (messageId: string, content: string) => setReplyTo({ id: messageId, content });
+  const handleReply = (messageId: string, content: string, senderName?: string | null) => setReplyTo({ id: messageId, content, senderName });
+
+  const scrollToMessage = (messageId: string) => {
+    const element = document.getElementById(`msg-${messageId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const bubble = element.querySelector('.shadow-md, .shadow-sm');
+      if (bubble) {
+        bubble.classList.add('ring-4', 'ring-primary/40', 'scale-[1.02]', 'transition-all', 'duration-300');
+        setTimeout(() => {
+          bubble.classList.remove('ring-4', 'ring-primary/40', 'scale-[1.02]');
+        }, 1000);
+      }
+    }
+  };
+
+  const handleReplyClick = (content: string) => {
+    if (!content || !content.startsWith('↩️')) return;
+    const newlineIndex = content.indexOf('\n');
+    if (newlineIndex === -1) return;
+    const replyPart = content.substring(0, newlineIndex);
+    
+    // 1. Try to extract ID
+    const idMatch = replyPart.match(/↩️\[id:([^\]]+)\]/);
+    if (idMatch && idMatch[1]) {
+      scrollToMessage(idMatch[1]);
+      return;
+    }
+    
+    // 2. Fallback search by text match
+    if (replyPart.endsWith('"')) {
+      const quoteStart = replyPart.indexOf('"');
+      if (quoteStart !== -1) {
+        const replyText = replyPart.substring(quoteStart + 1, replyPart.length - 1);
+        const cleanReplyText = replyText.endsWith('...') ? replyText.slice(0, -3) : replyText;
+        const targetMsg = messages.find(m => {
+          const contentMatch = m.content && m.content.includes(cleanReplyText);
+          return contentMatch && !m.content.startsWith('↩️');
+        });
+        if (targetMsg) {
+          scrollToMessage(targetMsg.id);
+        }
+      }
+    }
+  };
   const handleForward = (messageId: string, content: string) => {
     const msg = messages.find(m => m.id === messageId);
     setForwardMessage({ content, mediaUrl: msg?.media_url, mediaType: msg?.media_type });
@@ -497,6 +542,46 @@ const GroupChat = () => {
       );
     }
 
+    if (message.content && message.content.startsWith('↩️ ')) {
+      const newlineIndex = message.content.indexOf('\n');
+      if (newlineIndex !== -1) {
+        const replyPart = message.content.substring(0, newlineIndex);
+        const bodyText = message.content.substring(newlineIndex + 1);
+        if (replyPart.endsWith('"')) {
+          // Extract text inside quotes
+          const quoteStart = replyPart.indexOf('"');
+          const replyText = quoteStart !== -1 ? replyPart.substring(quoteStart + 1, replyPart.length - 1) : '';
+          return (
+            <div className="flex flex-col gap-1 select-text">
+              <div 
+                onClick={() => handleReplyClick(message.content)}
+                className={cn(
+                  "border-l-2 rounded-r px-2 py-1 text-left text-xs mb-1.5 cursor-pointer hover:bg-white/20 transition-all",
+                  isOwn 
+                    ? "bg-white/10 border-white/90" 
+                    : "bg-primary/5 dark:bg-primary/10 border-primary"
+                )}
+              >
+                <span className={cn(
+                  "font-bold text-[11px] leading-tight block",
+                  isOwn ? "text-white" : "text-primary"
+                )}>
+                  Javob
+                </span>
+                <p className={cn(
+                  "truncate text-[11px] mt-0.5 leading-tight",
+                  isOwn ? "text-white/80" : "text-muted-foreground"
+                )}>
+                  {replyText}
+                </p>
+              </div>
+              <p className="break-words whitespace-pre-wrap">{bodyText}</p>
+            </div>
+          );
+        }
+      }
+    }
+
     return <p className="break-words whitespace-pre-wrap select-text">{message.content}</p>;
   };
 
@@ -596,7 +681,7 @@ const GroupChat = () => {
               const showDate = index === 0 || !isSameDay(new Date(message.created_at), new Date(visibleMessages[index - 1].created_at));
 
               return (
-                <div key={message.id} className="group">
+                <div key={message.id} id={`msg-${message.id}`} className="group">
                   {showDate && (
                     <div className="flex justify-center my-3">
                       <span className="text-[11px] text-muted-foreground bg-background/60 backdrop-blur-md px-3 py-1 rounded-full border border-border/30">
@@ -604,6 +689,7 @@ const GroupChat = () => {
                       </span>
                     </div>
                   )}
+                  <SwipeableMessage onReply={() => handleReply(message.id, message.content, message.sender?.name || message.sender?.username)}>
                   <div className={cn('flex mb-1', isOwn ? 'justify-end' : 'justify-start')}>
                     <MessageContextMenu
                       messageContent={message.content}
@@ -631,15 +717,13 @@ const GroupChat = () => {
                       </MessageWithReactions>
                     </MessageContextMenu>
                   </div>
+                  </SwipeableMessage>
                 </div>
               );
             })
           )}
         </div>
       </div>
-
-      {/* Reply Preview */}
-      {replyTo && <ReplyPreview replyToContent={replyTo.content} onCancel={() => setReplyTo(null)} />}
 
       {/* Join Bar (Telegram-style) */}
       {!canSend && !isMember && groupInfo?.visibility === 'public' && user?.id !== groupInfo?.owner_id ? (
@@ -664,7 +748,7 @@ const GroupChat = () => {
             let finalContent = content;
             if (replyTo) {
               const replyPreview = replyTo.content.length > 30 ? replyTo.content.substring(0, 30) + '...' : replyTo.content;
-              finalContent = `↩️ "${replyPreview}"\n${finalContent}`;
+              finalContent = `↩️[id:${replyTo.id}] "${replyPreview}"\n${finalContent}`;
               setReplyTo(null);
             }
             const timestampForId = new Date().toISOString();
@@ -680,6 +764,8 @@ const GroupChat = () => {
             window.dispatchEvent(new Event('avlodona:new-message'));
           }}
           onTyping={() => {}}
+          replyTo={replyTo}
+          onCancelReply={() => setReplyTo(null)}
         />
       ) : (
         <div className="sticky bottom-0 bg-muted/30 backdrop-blur-xl border-t border-border/20 p-4 text-center z-20">

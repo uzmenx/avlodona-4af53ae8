@@ -301,14 +301,35 @@ export async function getMediaCacheStats(): Promise<CacheStats> {
             const filePath = typeof fileEntry === 'string'
               ? `media_cache/${fileEntry}`
               : `media_cache/${fileEntry.name}`;
+
+            // 1) Avval stat() bilan urinamiz
             const statResult = await Filesystem.stat({
               path: filePath,
               directory: Directory.Cache,
             });
-            // stat() size baytlarda qaytaradi
-            if (typeof statResult.size === 'number') {
-              totalBytes += statResult.size;
+
+            let fileSize = typeof statResult.size === 'number' ? statResult.size : 0;
+
+            // 2) Android bug: stat() ko'pincha size=0 qaytaradi.
+            //    Bunday holda faylni base64 sifatida o'qib, haqiqiy o'lchamni hisoblaymiz.
+            //    base64 string uzunligi * 0.75 ≈ haqiqiy bayt soni.
+            if (fileSize === 0) {
+              try {
+                const readResult = await Filesystem.readFile({
+                  path: filePath,
+                  directory: Directory.Cache,
+                });
+                // readResult.data — base64 string
+                const base64 = typeof readResult.data === 'string' ? readResult.data : '';
+                // Base64 paddingni hisobga olish
+                const padding = (base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0);
+                fileSize = Math.floor((base64.length * 3) / 4) - padding;
+              } catch {
+                // readFile ham ishlamasa — 0 qolsin
+              }
             }
+
+            totalBytes += fileSize;
           } catch {
             // faylni o'lchab bo'lmasa — o'tkazib yuboramiz
           }

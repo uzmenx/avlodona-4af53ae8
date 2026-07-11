@@ -71,7 +71,7 @@ const MessageWithReactionsInner = ({
         {/* Bubble */}
         <div
           className={cn(
-            'rounded-2xl px-3.5 py-2 shadow-sm',
+            'rounded-2xl px-3.5 py-2 shadow-sm min-w-[72px]',
             isOwn
               ? 'bg-gradient-to-br from-[hsl(217,91%,60%)] to-[hsl(263,70%,50%)] text-white rounded-tr-md'
               : 'bg-muted/80 backdrop-blur-md rounded-tl-md'

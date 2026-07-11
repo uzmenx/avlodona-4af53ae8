@@ -39,6 +39,7 @@ import { MediaFullscreen } from '@/components/chat/MediaFullscreen';
 import { MessageContextMenu } from '@/components/chat/MessageContextMenu';
 import { ForwardMessageDialog } from '@/components/chat/ForwardMessageDialog';
 import { ReplyPreview } from '@/components/chat/ReplyPreview';
+import { SwipeableMessage } from '@/components/chat/SwipeableMessage';
 import { UnifiedFullScreenViewer } from '@/components/feed/UnifiedFullScreenViewer';
 import type { Short } from '@/components/shorts/YouTubeShortsSection';
 import ChatWallpaperPicker from '@/components/chat/ChatWallpaperPicker';
@@ -539,7 +540,7 @@ const Chat = () => {
       const replyPreview = replyTo.content.length > 30 
         ? replyTo.content.substring(0, 30) + '...'
         : replyTo.content;
-      finalContent = `↩️ "${replyPreview}"\n${content}`;
+      finalContent = `↩️[id:${replyTo.id}] "${replyPreview}"\n${content}`;
       setReplyTo(null);
     }
 
@@ -563,6 +564,50 @@ const Chat = () => {
 
   const handleReply = (messageId: string, content: string) => {
     setReplyTo({ id: messageId, content });
+  };
+
+  const scrollToMessage = (messageId: string) => {
+    const element = document.getElementById(`msg-${messageId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const bubble = element.querySelector('.shadow-md, .shadow-sm');
+      if (bubble) {
+        bubble.classList.add('ring-4', 'ring-primary/40', 'scale-[1.02]', 'transition-all', 'duration-300');
+        setTimeout(() => {
+          bubble.classList.remove('ring-4', 'ring-primary/40', 'scale-[1.02]');
+        }, 1000);
+      }
+    }
+  };
+
+  const handleReplyClick = (content: string) => {
+    if (!content || !content.startsWith('↩️')) return;
+    const newlineIndex = content.indexOf('\n');
+    if (newlineIndex === -1) return;
+    const replyPart = content.substring(0, newlineIndex);
+    
+    // 1. Try to extract ID
+    const idMatch = replyPart.match(/↩️\[id:([^\]]+)\]/);
+    if (idMatch && idMatch[1]) {
+      scrollToMessage(idMatch[1]);
+      return;
+    }
+    
+    // 2. Fallback search by text match
+    if (replyPart.endsWith('"')) {
+      const quoteStart = replyPart.indexOf('"');
+      if (quoteStart !== -1) {
+        const replyText = replyPart.substring(quoteStart + 1, replyPart.length - 1);
+        const cleanReplyText = replyText.endsWith('...') ? replyText.slice(0, -3) : replyText;
+        const targetMsg = messages.find(m => {
+          const contentMatch = m.content && m.content.includes(cleanReplyText);
+          return contentMatch && !m.content.startsWith('↩️');
+        });
+        if (targetMsg) {
+          scrollToMessage(targetMsg.id);
+        }
+      }
+    }
   };
 
   const handleForward = (messageId: string, content: string) => {
@@ -842,6 +887,47 @@ const Chat = () => {
       );
     }
 
+    // Parse and render reply if applicable
+    if (msg.content && msg.content.startsWith('↩️ ')) {
+      const newlineIndex = msg.content.indexOf('\n');
+      if (newlineIndex !== -1) {
+        const replyPart = msg.content.substring(0, newlineIndex);
+        const bodyText = msg.content.substring(newlineIndex + 1);
+        if (replyPart.endsWith('"')) {
+          // Extract text inside quotes
+          const quoteStart = replyPart.indexOf('"');
+          const replyText = quoteStart !== -1 ? replyPart.substring(quoteStart + 1, replyPart.length - 1) : '';
+          return (
+            <div className="flex flex-col gap-1 select-text">
+              <div 
+                onClick={() => handleReplyClick(msg.content)}
+                className={cn(
+                  "border-l-2 rounded-r px-2 py-1 text-left text-xs mb-1.5 cursor-pointer hover:bg-white/20 transition-all",
+                  isMine 
+                    ? "bg-white/10 border-white/90" 
+                    : "bg-primary/5 dark:bg-primary/10 border-primary"
+                )}
+              >
+                <span className={cn(
+                  "font-bold text-[11px] leading-tight block",
+                  isMine ? "text-white" : "text-primary"
+                )}>
+                  Javob
+                </span>
+                <p className={cn(
+                  "truncate text-[11px] mt-0.5 leading-tight",
+                  isMine ? "text-white/80" : "text-muted-foreground"
+                )}>
+                  {replyText}
+                </p>
+              </div>
+              <p className="text-sm whitespace-pre-wrap break-words">{bodyText}</p>
+            </div>
+          );
+        }
+      }
+    }
+
     // Text message
     return (
       <p className="text-sm whitespace-pre-wrap break-words select-text">{msg.content}</p>
@@ -1072,7 +1158,7 @@ const Chat = () => {
                 const hasMedia = (msg.media_type === 'image' || msg.media_type === 'video') && msg.media_url;
 
                 return (
-                  <div key={msg.id}>
+                  <div key={msg.id} id={`msg-${msg.id}`}>
                     {showDateSeparator && (
                       <div className="flex justify-center my-4">
                         <span className="text-[10px] text-muted-foreground/80 bg-muted/40 backdrop-blur-lg px-3.5 py-1 rounded-full font-medium">
@@ -1080,6 +1166,7 @@ const Chat = () => {
                         </span>
                       </div>
                     )}
+                  <SwipeableMessage onReply={() => handleReply(msg.id, msg.content || '')}>
                   <div className={cn(
                     "flex",
                     isMine ? "justify-end" : "justify-start",
@@ -1099,7 +1186,7 @@ const Chat = () => {
                         onDeleteForAll={isMine ? handleDeleteForAll : undefined}
                       >
                         <div className={cn(
-                          "max-w-[80%] px-3 py-1.5 shadow-md",
+                          "max-w-[80%] min-w-[72px] px-3 py-1.5 shadow-md",
                           getBubbleRadius(),
                           hasMedia && "px-1.5 py-1.5",
                           isMine 
@@ -1128,6 +1215,7 @@ const Chat = () => {
                       <PrivateMessageReactions messageId={msg.id} isMine={isMine} />
                     </div>
                   </div>
+                  </SwipeableMessage>
                 </div>
                 );
               })}
@@ -1160,14 +1248,6 @@ const Chat = () => {
 
         {/* Bottom bar - always visible */}
         <div className="relative z-20 flex-shrink-0">
-          {replyTo && (
-            <div className="bg-background/50 backdrop-blur-xl border-t border-border/20">
-              <ReplyPreview
-                replyToContent={replyTo.content}
-                onCancel={() => setReplyTo(null)}
-              />
-            </div>
-          )}
           {isChatBlocked ? (
             <div className="px-3 py-3 bg-background/50 backdrop-blur-xl border-t border-border/20">
               <p className="text-xs text-muted-foreground text-center">
@@ -1184,8 +1264,9 @@ const Chat = () => {
               onSendMessage={handleSendMessage}
               onTyping={setTyping}
               autoFocus={searchParams.get('reply') === '1'}
+              replyTo={replyTo ? { id: replyTo.id, content: replyTo.content, senderName: otherUser?.name } : null}
+              onCancelReply={() => setReplyTo(null)}
             />
-
           )}
         </div>
       </div>

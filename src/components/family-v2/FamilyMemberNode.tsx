@@ -74,6 +74,120 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
 
   const isMale = member.gender === 'male';
 
+  // Floating physics and trail refs
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const movingRef = useRef<HTMLDivElement>(null);
+  const physicsRef = useRef({
+    x: 0, y: 0,
+    vx: 0, vy: 0,
+    trail: [] as { x: number; y: number; age: number }[],
+    lastTime: performance.now(),
+    baseTargetX: 0,
+    baseTargetY: 0,
+    angle: Math.random() * Math.PI * 2
+  });
+
+  useEffect(() => {
+    let animationFrameId: number;
+    const canvas = canvasRef.current;
+    const movingDiv = movingRef.current;
+    if (!canvas || !movingDiv) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const maxRadius = 15;
+    const springK = 0.03;
+    const friction = 0.90;
+    const maxTrailAge = 60;
+
+    const renderLoop = (time: number) => {
+      const state = physicsRef.current;
+      const dt = Math.min((time - state.lastTime) / 16, 2);
+      state.lastTime = time;
+
+      // Target orbit
+      state.angle += 0.02 * dt;
+      state.baseTargetX = Math.cos(state.angle) * (maxRadius * 0.6);
+      state.baseTargetY = Math.sin(state.angle * 0.7) * (maxRadius * 0.6);
+
+      // Forces
+      state.vx += (Math.random() - 0.5) * 1.5;
+      state.vy += (Math.random() - 0.5) * 1.5;
+      
+      state.vx += (state.baseTargetX - state.x) * springK;
+      state.vy += (state.baseTargetY - state.y) * springK;
+      
+      state.vx *= friction;
+      state.vy *= friction;
+      
+      state.x += state.vx * dt;
+      state.y += state.vy * dt;
+
+      // Clamp
+      const dist = Math.sqrt(state.x * state.x + state.y * state.y);
+      if (dist > maxRadius) {
+        state.x = (state.x / dist) * maxRadius;
+        state.y = (state.y / dist) * maxRadius;
+      }
+
+      movingDiv.style.transform = `translate3d(${state.x}px, ${state.y}px, 0)`;
+
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      state.trail.push({ x: state.x, y: state.y, age: 0 });
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (state.trail.length > 0) {
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        const baseColor = isMale ? '14, 165, 233' : '236, 72, 153'; // sky-500 and pink-500
+
+        ctx.beginPath();
+        for (let i = 0; i < state.trail.length; i++) {
+          const pt = state.trail[i];
+          const px = centerX + pt.x;
+          const py = centerY + pt.y;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+          
+          pt.age += dt;
+        }
+
+        state.trail = state.trail.filter(pt => pt.age < maxTrailAge);
+
+        if (state.trail.length > 1) {
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = `rgb(${baseColor})`;
+          
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = `rgba(${baseColor}, 0.2)`;
+          ctx.stroke();
+
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = `rgba(${baseColor}, 0.5)`;
+          ctx.stroke();
+
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = `rgba(255, 255, 255, 0.8)`;
+          ctx.shadowBlur = 4;
+          ctx.stroke();
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(renderLoop);
+    };
+
+    animationFrameId = requestAnimationFrame(renderLoop);
+    
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isMale]);
+
   // Check if linked user has active story
   useEffect(() => {
     if (!member.linkedUserId || !storyGroups.length) {
@@ -205,6 +319,21 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
           isConnectable={false}
           className="!bg-sky-500 !w-2.5 !h-2.5 !border-2 !border-background !-top-1" />
         
+        <canvas 
+          ref={canvasRef}
+          className="absolute pointer-events-none z-0"
+          style={{
+            width: '160px',
+            height: '160px',
+            left: '50%',
+            top: '40px',
+            transform: 'translate(-50%, -50%)'
+          }}
+          width={160}
+          height={160}
+        />
+
+        <div ref={movingRef} className="relative flex flex-col items-center z-10 will-change-transform">
         
          {/* Avatar - clickable with selection indicator */}
         <div
@@ -344,6 +473,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
               {yearDisplay}
             </span>
           }
+        </div>
         </div>
         
         {/* Bottom handle for children connections */}

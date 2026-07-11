@@ -48,7 +48,6 @@ export const usePostViews = (postId: string, initialCount?: number) => {
       if (!error) {
         setViewsCount(prev => prev + 1);
       }
-      // If unique constraint violation / conflict, user already viewed - that's fine
     } catch (error) {
       const msg = String((error as any)?.message || '');
       if (!msg.toLowerCase().includes('conflict') && !msg.toLowerCase().includes('duplicate')) {
@@ -61,21 +60,30 @@ export const usePostViews = (postId: string, initialCount?: number) => {
 
   const fetchViewedUsers = useCallback(async () => {
     if (!postId) return;
-    const { data: views } = await supabase
-      .from('post_views')
-      .select('user_id')
-      .eq('post_id', postId)
-      .order('created_at', { ascending: false })
-      .limit(50);
+    try {
+      // Step 1: get viewer user_ids
+      const { data: views } = await supabase
+        .from('post_views')
+        .select('user_id')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-    if (views && views.length > 0) {
+      if (!views || views.length === 0) {
+        setViewedUsers([]);
+        return;
+      }
+
       const userIds = views.map((v: any) => v.user_id);
+
+      // Step 2: fetch profiles
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, name, username, avatar_url')
         .in('id', userIds);
+
       setViewedUsers(profiles || []);
-    } else {
+    } catch (e) {
       setViewedUsers([]);
     }
   }, [postId]);
