@@ -96,25 +96,27 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const maxRadius = 14;
-    const springK = 0.02;
-    const friction = 0.94;
-    const maxTrailAge = 28;
+    const maxRadius = 10;
+    const springK = 0.008;
+    const friction = 0.965;
+    const maxTrailAge = 55;
     const avatarRadius = 40; // avatar is 80px
+    let frameCount = 0;
 
     const renderLoop = (time: number) => {
       const state = physicsRef.current;
       const dt = Math.min((time - state.lastTime) / 16, 2);
       state.lastTime = time;
+      frameCount++;
 
-      // Slow target orbit
-      state.angle += 0.006 * dt;
-      state.baseTargetX = Math.cos(state.angle) * (maxRadius * 0.6);
-      state.baseTargetY = Math.sin(state.angle * 0.7) * (maxRadius * 0.6);
+      // Very slow target orbit — premium calm motion
+      state.angle += 0.0022 * dt;
+      state.baseTargetX = Math.cos(state.angle) * (maxRadius * 0.7);
+      state.baseTargetY = Math.sin(state.angle * 0.65) * (maxRadius * 0.7);
 
-      // Gentle forces
-      state.vx += (Math.random() - 0.5) * 0.35;
-      state.vy += (Math.random() - 0.5) * 0.35;
+      // Very gentle noise
+      state.vx += (Math.random() - 0.5) * 0.09;
+      state.vy += (Math.random() - 0.5) * 0.09;
 
       state.vx += (state.baseTargetX - state.x) * springK;
       state.vy += (state.baseTargetY - state.y) * springK;
@@ -136,32 +138,39 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
 
-      // Emit trail point at the circle edge, opposite to velocity direction
+      // Emit puff every 2nd frame, at the circle edge opposite to motion
       const vMag = Math.sqrt(state.vx * state.vx + state.vy * state.vy);
-      let edgeX = state.x;
-      let edgeY = state.y;
-      if (vMag > 0.05) {
-        edgeX = state.x - (state.vx / vMag) * avatarRadius;
-        edgeY = state.y - (state.vy / vMag) * avatarRadius;
+      if (frameCount % 2 === 0 && vMag > 0.02) {
+        const nx = -state.vx / vMag;
+        const ny = -state.vy / vMag;
+        // Slight jitter around the emission point for organic smoke look
+        const jitter = 4;
+        const edgeX = state.x + nx * avatarRadius + (Math.random() - 0.5) * jitter;
+        const edgeY = state.y + ny * avatarRadius + (Math.random() - 0.5) * jitter;
+        state.trail.push({ x: edgeX, y: edgeY, age: 0 });
       }
-      state.trail.push({ x: edgeX, y: edgeY, age: 0 });
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Use "lighter" blend for glowing smoke feel
+      (ctx as any).globalCompositeOperation = 'lighter';
 
-      const baseColor = isMale ? '125, 211, 252' : '244, 114, 182'; // softer sky-300 / pink-400
+      const baseColor = isMale ? '125, 211, 252' : '244, 114, 182'; // sky-300 / pink-400
 
-      // Smoke-like puffs: soft radial gradients, fading with age
+      // Smoke-like puffs: soft radial gradients, fading and expanding with age
       for (let i = 0; i < state.trail.length; i++) {
         const pt = state.trail[i];
         pt.age += dt;
         const t = pt.age / maxTrailAge;
         if (t >= 1) continue;
-        const alpha = (1 - t) * 0.35;
-        const radius = 10 + t * 22;
+        // Fade in then out for a puff-of-smoke feel
+        const fade = t < 0.15 ? t / 0.15 : Math.pow(1 - (t - 0.15) / 0.85, 1.6);
+        const alpha = fade * 0.22;
+        const radius = 6 + t * 34;
         const px = centerX + pt.x;
         const py = centerY + pt.y;
         const grad = ctx.createRadialGradient(px, py, 0, px, py, radius);
         grad.addColorStop(0, `rgba(${baseColor}, ${alpha})`);
+        grad.addColorStop(0.5, `rgba(${baseColor}, ${alpha * 0.4})`);
         grad.addColorStop(1, `rgba(${baseColor}, 0)`);
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -169,6 +178,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
         ctx.fill();
       }
 
+      (ctx as any).globalCompositeOperation = 'source-over';
       state.trail = state.trail.filter(pt => pt.age < maxTrailAge);
 
       animationFrameId = requestAnimationFrame(renderLoop);
@@ -305,12 +315,8 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}>
         
-        {/* Top handle for parent connections */}
-        <Handle
-          type="target"
-          position={Position.Top}
-          isConnectable={false}
-          className="!bg-sky-500 !w-2.5 !h-2.5 !border-2 !border-background !-top-1" />
+        
+
         
         <canvas 
           ref={canvasRef}
@@ -347,6 +353,21 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
             "bg-pink-500 border-pink-400"
           )}
           onClick={handleAvatarClick}>
+
+          {/* Top handle (blue) — attached to circle top edge (90°) */}
+          <Handle
+            type="target"
+            position={Position.Top}
+            isConnectable={false}
+            className="!bg-sky-500 !w-2.5 !h-2.5 !border-2 !border-background" />
+
+          {/* Bottom handle (blue) — attached to circle bottom edge (270°) */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            isConnectable={false}
+            className="!bg-sky-500 !w-2.5 !h-2.5 !border-2 !border-background" />
+
           
            {/* Selection checkmark */}
            {isSelected &&
@@ -469,12 +490,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
         </div>
         </div>
         
-        {/* Bottom handle for children connections */}
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          isConnectable={false}
-          className="!bg-sky-500 !w-2.5 !h-2.5 !border-2 !border-background !-bottom-1" />
+
         
       </div>
 
