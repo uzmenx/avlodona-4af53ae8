@@ -47,7 +47,7 @@ const Home = () => {
   const scrollContainerRef = useSmoothScroll(true, true);
   const topAnchorRef = useRef<HTMLDivElement>(null);
 
-  const blockedSet = anyBlockedIds();
+  const blockedSet = useMemo(() => anyBlockedIds(), [anyBlockedIds]);
   const visiblePosts = useMemo(() => posts.filter((p) => !blockedSet.has(p.user_id)), [posts, blockedSet]);
   const visibleTreePosts = useMemo(() => treePosts.filter((tp) => !blockedSet.has(tp.user_id)), [treePosts, blockedSet]);
 
