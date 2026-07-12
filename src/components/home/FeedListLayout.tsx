@@ -1,4 +1,4 @@
-import { RefObject, useMemo } from "react";
+import { RefObject, useCallback, useMemo, useRef } from "react";
 import { TreePostCard } from "@/components/feed/TreePostCard";
 import { PostCard } from "@/components/feed/PostCard";
 import { PostCardSkeleton } from "@/components/feed/PostCardSkeleton";
@@ -47,6 +47,26 @@ export const FeedListLayout = ({
     [posts]
   );
 
+  // PERF: keep a ref to the latest lookup/callback so the per-post onMediaClick
+  // identities stay stable and React.memo(PostCard) does not re-render every
+  // post on unrelated state updates.
+  const latest = useRef({ postIdToIdx, openPostViewer });
+  latest.current = { postIdToIdx, openPostViewer };
+
+  const clickHandlersRef = useRef<Map<string, () => void>>(new Map());
+  const getMediaClickHandler = useCallback((postId: string) => {
+    const map = clickHandlersRef.current;
+    let h = map.get(postId);
+    if (!h) {
+      h = () => {
+        const { postIdToIdx: m, openPostViewer: o } = latest.current;
+        o(m.get(postId) ?? 0);
+      };
+      map.set(postId, h);
+    }
+    return h;
+  }, []);
+
   return (
     <div ref={scrollContainerRef} className="space-y-3 pb-20 px-[5px]">
       {isInitialLoading && unified.length === 0 && <PostCardSkeleton count={4} />}
@@ -62,9 +82,7 @@ export const FeedListLayout = ({
           ) : (
             <PostCard
               post={item.data as Post}
-              onMediaClick={() =>
-                openPostViewer(postIdToIdx.get((item.data as Post).id) ?? 0)
-              }
+              onMediaClick={getMediaClickHandler((item.data as Post).id)}
               index={index}
             />
           )}
@@ -79,3 +97,4 @@ export const FeedListLayout = ({
     </div>
   );
 };
+

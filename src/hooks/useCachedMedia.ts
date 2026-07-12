@@ -176,75 +176,47 @@ export function useCachedMedia(mediaUrl: string | null | undefined): {
   isLoading: boolean;
 } {
   const original = mediaUrl ?? '';
+  const isNative = Capacitor.isNativePlatform();
+
+  // PERF: On the web, browsers already cache media via HTTP cache + service worker.
+  // The previous implementation fetched every image/video into a Blob and returned
+  // an object URL — this doubled network usage, decoded media twice, and pinned
+  // huge Blobs in memory (a top cause of feed jank + OOM on Android WebView).
+  // We now no-op on web and only use the Capacitor filesystem cache on native.
   const [cachedUrl, setCachedUrl] = useState<string>(original);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!original) return;
+    // Web / PWA: return the original URL. Browser's HTTP cache handles reuse.
+    if (!isNative) {
+      setCachedUrl(original);
+      setIsLoading(false);
+      return;
+    }
 
     let cancelled = false;
-    let blobObjectUrl: string | null = null;
 
     const resolve = async () => {
-      // 1. IndexedDB dan sentinel yoki native path tekshiramiz
       const cached = await dbGet(original);
-
-      if (cached && !cancelled) {
-        if (cached === WEB_CACHED_SENTINEL) {
-          // Web kesh: Cache Storage dan YANGI blob URL olamiz (eskisi eskirgan bo'lishi mumkin)
-          const freshBlob = await getFromCacheStorage(original);
-          if (freshBlob && !cancelled) {
-            blobObjectUrl = freshBlob;
-            setCachedUrl(freshBlob);
-            return; // Tayyor — tarmoqqa ulanmadik
-          }
-          // Cache Storage tozalangan bo'lsa — sentinel o'chirib, qayta yuklaymiz
-          await dbDelete(original);
-        } else if (!cached.startsWith('blob:')) {
-          // Native (Capacitor) fayl yo'li — doimiy, to'g'ridan-to'g'ri ishlatamiz
-          setCachedUrl(cached);
-          return;
-        } else {
-          // Eskirgan blob URL — IndexedDB ni tozalab, qayta yuklaymiz
-          await dbDelete(original);
-        }
+      if (cached && !cached.startsWith('blob:') && cached !== WEB_CACHED_SENTINEL) {
+        if (!cancelled) setCachedUrl(cached);
+        return;
       }
-
       setIsLoading(true);
-
-      // 2. Platforma bo'yicha yangi kesh yaratamiz
-      const isNative = Capacitor.isNativePlatform();
-      let localUrl: string | null = null;
-
-      if (isNative) {
-        // Mobil: avval mavjudligini tekshiramiz, yo'q bo'lsa saqlaymiz
-        localUrl = await getFromCapacitorCache(original);
-        if (!localUrl && !cancelled) {
-          localUrl = await saveToCapacitorCache(original);
-        }
-        if (localUrl && !cancelled) {
-          setCachedUrl(localUrl);
-          await dbSet(original, localUrl); // Native path — doimiy
-        } else if (!cancelled) {
-          setCachedUrl(original);
-        }
-      } else {
-        // Web/PWA: Cache Storage ishlatamiz
-        localUrl = await getFromCacheStorage(original);
-        if (!localUrl && !cancelled) {
-          localUrl = await saveToCacheStorage(original);
-        }
-        blobObjectUrl = localUrl;
-        if (localUrl && !cancelled) {
-          setCachedUrl(localUrl);
-          // IndexedDB ga blob URL EMAS, sentinel saqlaymiz
-          await dbSet(original, WEB_CACHED_SENTINEL);
-        } else if (!cancelled) {
-          setCachedUrl(original);
-        }
+      let localUrl = await getFromCapacitorCache(original);
+      if (!localUrl && !cancelled) {
+        localUrl = await saveToCapacitorCache(original);
       }
-
-      if (!cancelled) setIsLoading(false);
+      if (!cancelled) {
+        if (localUrl) {
+          setCachedUrl(localUrl);
+          await dbSet(original, localUrl);
+        } else {
+          setCachedUrl(original);
+        }
+        setIsLoading(false);
+      }
     };
 
     resolve().catch(() => {
@@ -256,10 +228,8 @@ export function useCachedMedia(mediaUrl: string | null | undefined): {
 
     return () => {
       cancelled = true;
-      // Blob URL'larni tozalash (memory leak oldini olish)
-      if (blobObjectUrl) URL.revokeObjectURL(blobObjectUrl);
     };
-  }, [original]);
+  }, [original, isNative]);
 
   return { cachedUrl, isLoading };
 }

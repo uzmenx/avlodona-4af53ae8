@@ -38,6 +38,7 @@ interface PostCardProps {
 const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProps) => {
   const { user } = useAuth();
   const { getStoryInfo } = useActiveStories();
+  const storyInfo = getStoryInfo(post.user_id);
 
   const { isLiked, toggleLike } = usePostLikes(post.id);
 
@@ -316,9 +317,9 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
               userId={post.user_id}
               avatarUrl={post.author?.avatar_url}
               name={post.author?.full_name}
-              hasStory={!!getStoryInfo(post.user_id)}
-              storyRingId={getStoryInfo(post.user_id)?.ring_id}
-              hasUnviewedStory={getStoryInfo(post.user_id)?.has_unviewed}
+              hasStory={!!storyInfo}
+              storyRingId={storyInfo?.ring_id}
+              hasUnviewedStory={storyInfo?.has_unviewed}
               onStoryClick={() => openStoriesForUser(post.user_id)}
             />
 
