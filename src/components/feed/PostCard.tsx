@@ -534,6 +534,7 @@ const PostCardInner = ({ post, onDelete, onMediaClick, index = 0 }: PostCardProp
           cardRef.current = el;
           setRef(el);
         }}
+        data-post-card=""
         className="py-0 my-[3px] animate-fadeIn"
       >
         {stage === 'skeleton' ? <PostCardSkeleton /> : card}

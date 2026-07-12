@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Icon } from '@iconify/react';
 import { Users, Megaphone } from 'lucide-react';
@@ -15,7 +16,7 @@ interface GroupChatItemProps {
   isSelected?: boolean;
 }
 
-export const GroupChatItem = ({ chat, onClick, isEditMode, isSelected }: GroupChatItemProps) => {
+export const GroupChatItem = memo(({ chat, onClick, isEditMode, isSelected }: GroupChatItemProps) => {
   const { t } = useLanguage();
   const formatTime = (dateStr: string) => {
     return formatDistanceToNow(new Date(dateStr), { addSuffix: false, locale: uz });
@@ -103,4 +104,15 @@ export const GroupChatItem = ({ chat, onClick, isEditMode, isSelected }: GroupCh
       </div>
     </motion.div>
   );
-};
+}, (prev, next) => {
+  return (
+    prev.isSelected === next.isSelected &&
+    prev.isEditMode === next.isEditMode &&
+    prev.chat.id === next.chat.id &&
+    prev.chat.unreadCount === next.chat.unreadCount &&
+    prev.chat.name === next.chat.name &&
+    prev.chat.lastMessage?.id === next.chat.lastMessage?.id
+  );
+});
+
+GroupChatItem.displayName = 'GroupChatItem';

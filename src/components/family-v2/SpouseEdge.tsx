@@ -11,6 +11,7 @@ const SpouseEdge = ({
 }: EdgeProps) => {
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
+  const isLowPerf = typeof document !== 'undefined' && document.documentElement.getAttribute('data-perf') === 'low';
 
   if (!sourceNode || !targetNode) {
     return null;
@@ -79,29 +80,31 @@ const SpouseEdge = ({
         strokeWidth={8}
         strokeOpacity={0.2}
         strokeLinecap="round"
-        filter={`url(#glow-spouse-${id})`}
+        filter={isLowPerf ? undefined : `url(#glow-spouse-${id})`}
       />
 
       {/* Main dashed line */}
       <path
         d={path}
         fill="none"
-        stroke={`url(#gradient-spouse-${id})`}
+        stroke={isLowPerf ? "#f43f5e" : `url(#gradient-spouse-${id})`}
         strokeWidth={2.5}
-        strokeDasharray="8 5"
+        strokeDasharray={isLowPerf ? "none" : "8 5"}
         strokeLinecap="round"
       >
-        <animate
-          attributeName="stroke-dashoffset"
-          from="0"
-          to="-26"
-          dur="1.5s"
-          repeatCount="indefinite"
-        />
+        {!isLowPerf && (
+          <animate
+            attributeName="stroke-dashoffset"
+            from="0"
+            to="-26"
+            dur="1.5s"
+            repeatCount="indefinite"
+          />
+        )}
       </path>
 
       {/* Animated particles */}
-      {[0, 1, 2, 3].map((i) => (
+      {!isLowPerf && [0, 1, 2, 3].map((i) => (
         <circle
           key={`particle-${id}-${i}`}
           r="3"
@@ -129,9 +132,9 @@ const SpouseEdge = ({
         <div 
           className="w-7 h-7 rounded-full flex items-center justify-center"
           style={{
-            background: 'linear-gradient(145deg, #ec4899, #f43f5e)',
-            boxShadow: '0 0 16px rgba(236, 72, 153, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3)',
-            animation: 'pulse 2s ease-in-out infinite',
+            background: isLowPerf ? '#f43f5e' : 'linear-gradient(145deg, #ec4899, #f43f5e)',
+            boxShadow: isLowPerf ? 'none' : '0 0 16px rgba(236, 72, 153, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3)',
+            animation: isLowPerf ? 'none' : 'pulse 2s ease-in-out infinite',
           }}
         >
           <Heart className="w-3.5 h-3.5 text-white fill-white" />

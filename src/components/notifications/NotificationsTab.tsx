@@ -6,8 +6,9 @@ import { useNotifications, Notification } from '@/hooks/useNotifications';
 import { PullToRefresh } from '@/components/feed/PullToRefresh';
 import { isToday, isYesterday } from 'date-fns';
 import { groupNotifications, type GroupedNotification } from './groupNotifications';
+import { useLanguage } from '@/contexts/LanguageContext';
 
-const partitionByDate = (notifications: Notification[]) => {
+const partitionByDate = (notifications: Notification[], t: (key: any) => string) => {
   const groups: Record<string, Notification[]> = { today: [], yesterday: [], earlier: [] };
   for (const n of notifications) {
     const d = new Date(n.created_at);
@@ -16,9 +17,9 @@ const partitionByDate = (notifications: Notification[]) => {
     else groups.earlier.push(n);
   }
   const result: { label: string; items: GroupedNotification[] }[] = [];
-  if (groups.today.length)     result.push({ label: 'Bugun',    items: groupNotifications(groups.today) });
-  if (groups.yesterday.length) result.push({ label: 'Kecha',    items: groupNotifications(groups.yesterday) });
-  if (groups.earlier.length)   result.push({ label: 'Avvalroq', items: groupNotifications(groups.earlier) });
+  if (groups.today.length)     result.push({ label: t('today'),    items: groupNotifications(groups.today) });
+  if (groups.yesterday.length) result.push({ label: t('yesterday'), items: groupNotifications(groups.yesterday) });
+  if (groups.earlier.length)   result.push({ label: t('earlier'),   items: groupNotifications(groups.earlier) });
   return result;
 };
 
@@ -33,15 +34,16 @@ export const NotificationsTab = () => {
     deleteNotifications,
     unreadCount,
   } = useNotifications();
+  const { t } = useLanguage();
 
-  const sections = partitionByDate(notifications);
+  const sections = partitionByDate(notifications, t);
 
   return (
     <div className="min-h-[50vh]">
       {unreadCount > 0 && (
-        <div className="px-4 py-2 border-b border-border/10 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{unreadCount}</span> ta yangi
+        <div className="px-4 py-2 border-b border-foreground/5 flex items-center justify-between relative z-10">
+          <span className="text-[11px] text-muted-foreground">
+            <span className="font-semibold text-foreground">{unreadCount}</span> {t('newNotificationsCount')}
           </span>
           <Button
             variant="ghost"
@@ -50,7 +52,7 @@ export const NotificationsTab = () => {
             className="gap-1.5 h-7 text-xs text-muted-foreground hover:text-foreground rounded-full px-3"
           >
             <Check className="h-3.5 w-3.5" />
-            Barchasini o'qilgan deb belgilash
+            {t('markAllRead')}
           </Button>
         </div>
       )}
@@ -59,7 +61,7 @@ export const NotificationsTab = () => {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-            <p className="text-sm text-muted-foreground">Yuklanmoqda...</p>
+            <p className="text-sm text-muted-foreground">{t('loading')}</p>
           </div>
         ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 px-6 gap-4">
@@ -67,12 +69,12 @@ export const NotificationsTab = () => {
               <Bell className="h-9 w-9 text-muted-foreground/40" />
             </div>
             <div className="text-center">
-              <p className="font-semibold text-foreground">Bildirishnomalar yo'q</p>
+              <p className="font-semibold text-foreground">{t('noNotifications')}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Yangi bildirishnomalar shu yerda ko'rinadi
+                {t('noNotificationsDesc')}
               </p>
               <p className="text-[11px] text-muted-foreground/60 mt-3">
-                💡 Maslahat: o'ng tomonga sursangiz o'qildi, chap tomonga sursangiz o'chiriladi
+                {t('notificationsTip')}
               </p>
             </div>
           </div>
@@ -80,12 +82,12 @@ export const NotificationsTab = () => {
           <div>
             {sections.map((section) => (
               <div key={section.label}>
-                <div className="px-4 py-2 sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border/10">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+                <div className="px-4 py-2 sticky top-0 z-10 bg-background/40 backdrop-blur-md border-b border-foreground/5 relative z-10">
+                  <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-widest">
                     {section.label}
                   </span>
                 </div>
-                <div className="divide-y divide-border/10">
+                <div className="divide-y divide-foreground/5">
                   {section.items.map((item) =>
                     item.kind === 'single' ? (
                       <NotificationItem

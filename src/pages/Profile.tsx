@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +21,7 @@ import { useMentionsCollabs } from '@/hooks/useMentionsCollabs';
 
 import { type PostCollection, usePostCollections } from '@/hooks/usePostCollections';
 import { useSmoothScroll } from '@/hooks/useSmoothScroll';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useActiveStories } from '@/hooks/useActiveStories';
 
 import { useStories } from '@/hooks/useStories';
@@ -130,13 +131,34 @@ const ProfileMasonryItem = ({ post }: {post: Post;}) => {
 
 };
 
+
+const ProfilePostItemWrapper = memo(({ post, index, postsList, openViewer, removePost }: { post: any; index: number; postsList: any[]; openViewer: (i: number, p: any[]) => void; removePost: (id: string) => void }) => {
+  const handleMediaClick = useCallback(() => openViewer(index, postsList), [index, postsList, openViewer]);
+  const handleDelete = useCallback(() => removePost(post.id), [post.id, removePost]);
+  return (
+    <div className="cursor-pointer">
+      <PostCard post={post} onDelete={handleDelete} onMediaClick={handleMediaClick} />
+    </div>
+  );
+});
+
+const ProfileMasonryItemWrapper = memo(({ post, index, postsList, openViewer }: { post: any; index: number; postsList: any[]; openViewer: (i: number, p: any[]) => void }) => {
+  const handleMediaClick = useCallback(() => openViewer(index, postsList), [index, postsList, openViewer]);
+  return (
+    <div onClick={handleMediaClick} className="cursor-pointer">
+      <ProfileMasonryItem post={post} />
+    </div>
+  );
+});
+
 const Profile = () => {
 
   const { profile, user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { posts, isLoading, postsCount, refetch, removePost } = useUserPosts(user?.id);
+  const { posts, isLoading, postsCount, refetch, removePost, hasMore, loadMore, isLoadingMore } = useUserPosts(user?.id);
+  const loadMoreSentinelRef = useInfiniteScroll(loadMore, hasMore || false, isLoadingMore || false);
   const { savedPosts, savedMemorialPosts, isLoading: savedLoading, fetchSavedPosts } = useSavedPosts();
   const { followersCount, followingCount } = useFollow(user?.id);
   const { highlights, fetchHighlights } = useStoryHighlights();
@@ -384,8 +406,6 @@ const Profile = () => {
     return (displayPosts || []).filter((p) => (p?.content || '').toLowerCase().includes(q));
   }, [appliedSearchQuery, displayPosts]);
 
-  const hasMore = false;
-
   return (
     <AppLayout showSafeAreaPadding={true}>
       <div
@@ -618,7 +638,7 @@ const Profile = () => {
                 onClick={() => setFamilyMembersOpen(true)}
                 className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0 relative">
                 <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                  Oila a'zolari
+                  {t('familyMembers')}
                 </span>
                 <span className="text-lg font-extrabold text-foreground leading-none">
                   {formatCount(familyMemberCount)}
@@ -895,7 +915,7 @@ const Profile = () => {
             <div className="text-center py-12 px-4">
                 <Grid3X3 className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
                 <p className="text-muted-foreground">
-                  {selectedCollectionId ? "Bu ro'yxatda postlar yo'q" : t('noPosts')}
+                  {selectedCollectionId ? t('noPostsInList') : t('noPosts')}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {!selectedCollectionId && t('createFirst')}
@@ -942,7 +962,7 @@ const Profile = () => {
                         margin: 0,
                       }}
                     >
-                      Postlar tugadi
+                      {t('postsEnded')}
                     </p>
                   </div>
                 )}
@@ -989,7 +1009,7 @@ const Profile = () => {
                         margin: 0,
                       }}
                     >
-                      Postlar tugadi
+                      {t('postsEnded')}
                     </p>
                   </div>
                 )}
@@ -1059,7 +1079,7 @@ const Profile = () => {
                         margin: 0,
                       }}
                     >
-                      Postlar tugadi
+                      {t('postsEnded')}
                     </p>
                   </div>
                 )}
@@ -1119,7 +1139,7 @@ const Profile = () => {
             mentionedPosts.length === 0 && collabPosts.length === 0 ?
             <div className="text-center py-12 px-4">
                 <AtSign className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                <p className="text-muted-foreground">Siz belgilangan postlar yo'q</p>
+                <p className="text-muted-foreground">{t('noMentions')}</p>
               </div> :
 
             <div ref={scrollContainerRef} className="smooth-scroll-container space-y-4 px-0 md:px-4">
@@ -1176,7 +1196,7 @@ const Profile = () => {
             <div className="p-6 space-y-6">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold flex items-center justify-between">
-                  {collectionEditorMode === 'create' ? "Yangi ro'yxat" : "Ro'yxatni tahrirlash"}
+                  {collectionEditorMode === 'create' ? t('newList') : t('editList')}
                   {collectionEditorMode === 'edit' &&
                   <Button
                       variant="ghost"
@@ -1191,16 +1211,16 @@ const Profile = () => {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground ml-1">Nom bering</label>
+                  <label className="text-sm font-medium text-muted-foreground ml-1">{t('giveListName')}</label>
                   <Input
                     value={editingName}
                     onChange={(e) => setEditingName(e.target.value)}
-                    placeholder="Masalan: Sevimli postlar"
+                    placeholder={t('listNamePlaceholder')}
                     className="h-12 px-4 bg-muted/50 border-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl text-lg" />
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-sm font-medium text-muted-foreground ml-1">Mavzu tanlang</label>
+                  <label className="text-sm font-medium text-muted-foreground ml-1">{t('chooseTheme')}</label>
                   <div className="grid grid-cols-3 gap-3">
                     {collectionThemes.map((theme, idx) =>
                     <button
@@ -1230,7 +1250,7 @@ const Profile = () => {
                       'flex-1 py-2 text-sm font-medium rounded-xl transition-all',
                       collectionTab === 'all' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
                     )}>
-                    Barcha postlar
+                    {t('allPosts')}
                   </button>
                   <button
                     onClick={() => setCollectionTab('selected')}
@@ -1238,7 +1258,7 @@ const Profile = () => {
                       'flex-1 py-2 text-sm font-medium rounded-xl transition-all',
                       collectionTab === 'selected' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
                     )}>
-                    Tanlanganlar ({selectedPostIds.size})
+                    {t('selected')} ({selectedPostIds.size})
                   </button>
                 </div>
 
@@ -1272,7 +1292,7 @@ const Profile = () => {
                 onClick={saveCollectionEditor}
                 disabled={isSavingCollection || !editingName.trim()}
                 className="w-full h-14 text-lg font-bold rounded-2xl bg-primary hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl active:scale-[0.98]">
-                {isSavingCollection ? 'Saqlanmoqda...' : collectionEditorMode === 'create' ? "Ro'yxatni yaratish" : 'Saqlash'}
+                {isSavingCollection ? t('saving') : collectionEditorMode === 'create' ? t('createList') : t('save')}
               </Button>
             </div>
           </DialogContent>

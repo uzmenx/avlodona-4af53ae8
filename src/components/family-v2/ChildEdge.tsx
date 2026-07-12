@@ -14,6 +14,7 @@ const ChildEdge = ({
   const edgeData = data as ChildEdgeData | undefined;
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
+  const isLowPerf = typeof document !== 'undefined' && document.documentElement.getAttribute('data-perf') === 'low';
   const spouseNode = useInternalNode(edgeData?.spouseId || '');
 
   if (!sourceNode || !targetNode) {
@@ -66,22 +67,24 @@ const ChildEdge = ({
   const dots = [];
   const numDots = 4;
   for (let i = 0; i < numDots; i++) {
-    dots.push(
-      <circle
-        key={`dot-child-${id}-${i}`}
-        r="2"
-        fill="hsl(210, 70%, 60%)"
-        opacity={0.9}
-      >
-        <animateMotion
-          dur={`${2.5 + i * 0.4}s`}
-          repeatCount="indefinite"
-          begin={`${i * 0.5}s`}
+    if (!isLowPerf) {
+      dots.push(
+        <circle
+          key={`dot-child-${id}-${i}`}
+          r="2"
+          fill="hsl(210, 70%, 60%)"
+          opacity={0.9}
         >
-          <mpath href={`#child-path-${id}`} />
-        </animateMotion>
-      </circle>
-    );
+          <animateMotion
+            dur={`${2.5 + i * 0.4}s`}
+            repeatCount="indefinite"
+            begin={`${i * 0.5}s`}
+          >
+            <mpath href={`#child-path-${id}`} />
+          </animateMotion>
+        </circle>
+      );
+    }
   }
 
   return (
@@ -117,7 +120,7 @@ const ChildEdge = ({
         stroke="hsl(210, 60%, 55%)"
         strokeWidth={5}
         strokeOpacity={0.25}
-        filter={`url(#glow-child-${id})`}
+        filter={isLowPerf ? undefined : `url(#glow-child-${id})`}
         strokeLinecap="round"
         style={style}
       />
@@ -144,18 +147,22 @@ const ChildEdge = ({
         fill="hsl(210, 70%, 60%)"
         opacity={0.6}
       >
-        <animate
-          attributeName="r"
-          values="3;5;3"
-          dur="2s"
-          repeatCount="indefinite"
-        />
-        <animate
-          attributeName="opacity"
-          values="0.4;0.8;0.4"
-          dur="2s"
-          repeatCount="indefinite"
-        />
+        {!isLowPerf && (
+          <>
+            <animate
+              attributeName="r"
+              values="3;5;3"
+              dur="2s"
+              repeatCount="indefinite"
+            />
+            <animate
+              attributeName="opacity"
+              values="0.4;0.8;0.4"
+              dur="2s"
+              repeatCount="indefinite"
+            />
+          </>
+        )}
       </circle>
     </g>
   );

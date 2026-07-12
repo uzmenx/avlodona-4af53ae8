@@ -1,12 +1,13 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Bell, X } from "lucide-react";
+import { Search, Bell, X, User, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStories, type StoryGroup } from "@/hooks/useStories";
 import { getStoryRingGradient } from "@/components/stories/storyRings";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface HomeHeaderProps {
   unreadCount: number;
@@ -31,6 +32,7 @@ export const HomeHeader = ({
 }: HomeHeaderProps) => {
   const { user, profile } = useAuth();
   const { storyGroups, isLoading } = useStories();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -75,16 +77,32 @@ export const HomeHeader = ({
   const showSkeleton = isLoading && storyGroups.length === 0;
 
   // Scroll to hide logic
-  const [hidden, setHidden] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const headerHeightRef = useRef(150);
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
 
   useEffect(() => {
+    // Cache header height to avoid layout thrashing
+    const updateHeight = () => {
+      if (headerRef.current) {
+        headerHeightRef.current = headerRef.current.offsetHeight;
+      }
+    };
+    
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, []);
+
+  useEffect(() => {
+    let headerY = 0;
+
     const handleScroll = (e: Event) => {
       if (!ticking.current) {
-        const target = e.target as HTMLElement | Document | Window;
+        const target = e.target as HTMLElement | Document;
         
-        // Fast ignore for horizontal story scrolling - no layout thrashing
+        // Fast ignore for horizontal story scrolling
         if (target !== document && target !== window) {
           const el = target as HTMLElement;
           if (el.classList && (el.classList.contains('overflow-x-auto') || el.classList.contains('scrollbar-hide'))) {
@@ -94,18 +112,41 @@ export const HomeHeader = ({
 
         window.requestAnimationFrame(() => {
           let currentScrollY = 0;
+          let maxScroll = 0;
           
           if (target === document || target === window) {
             const se = document.scrollingElement;
             currentScrollY = (se && se.scrollTop) || window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+            maxScroll = Math.max(
+              document.body.scrollHeight, 
+              document.documentElement.scrollHeight
+            ) - window.innerHeight;
           } else {
-            currentScrollY = (target as HTMLElement).scrollTop || 0;
+            const el = target as HTMLElement;
+            currentScrollY = el.scrollTop || 0;
+            maxScroll = el.scrollHeight - el.clientHeight;
           }
           
-          if (currentScrollY > lastScrollY.current && currentScrollY > 60) {
-            setHidden(true); // scrolling down
-          } else if (currentScrollY < lastScrollY.current) {
-            setHidden(false); // scrolling up
+          // iOS / Android rubber-banding & overscroll protection (top and bottom)
+          if (currentScrollY < 0 || currentScrollY > maxScroll) {
+            // Update lastScrollY but don't move the header during a bounce
+            lastScrollY.current = Math.max(0, Math.min(currentScrollY, maxScroll));
+            ticking.current = false;
+            return;
+          }
+          
+          const diff = currentScrollY - lastScrollY.current;
+          const headerHeight = headerHeightRef.current;
+          
+          if (currentScrollY <= 0) {
+            headerY = 0; // Reset to fully visible at the top
+          } else {
+            // Track finger movement: subtract diff, clamp between -headerHeight and 0
+            headerY = Math.max(-headerHeight, Math.min(0, headerY - diff));
+          }
+          
+          if (headerRef.current) {
+            headerRef.current.style.transform = `translate3d(0, ${headerY}px, 0)`;
           }
           
           lastScrollY.current = currentScrollY;
@@ -120,14 +161,10 @@ export const HomeHeader = ({
   }, []);
 
   return (
-    <motion.div 
-      variants={{
-        visible: { y: 0 },
-        hidden: { y: "-100%" }
-      }}
-      animate={hidden ? "hidden" : "visible"}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="sticky top-[env(safe-area-inset-top,0px)] z-40 mx-0 bg-background/95 backdrop-blur-md"
+    <div 
+      ref={headerRef}
+      style={{ willChange: 'transform' }}
+      className="sticky top-[env(safe-area-inset-top,0px)] z-[60] mx-0 bg-transparent backdrop-blur-xl"
     >
       {/* ─── Row 1: Stories / Profile circles ─────────────── */}
       <div
@@ -169,7 +206,7 @@ export const HomeHeader = ({
             </motion.div>
           </motion.button>
           <span className="text-[10px] text-muted-foreground font-medium truncate w-[68px] text-center">
-            Men
+            {t("me")}
           </span>
         </div>
 
@@ -197,15 +234,15 @@ export const HomeHeader = ({
       <div className="flex items-center gap-1.5 px-3 pb-2">
         {/* Search bar (inline input) */}
         <form onSubmit={handleSearchSubmit} className="flex-1 relative min-w-0">
-          <div className="flex items-center h-9 rounded-full px-3 gap-2 bg-muted/60 border border-white/10 backdrop-blur-md">
-            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div className="flex items-center h-9 rounded-full px-3 gap-2 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
+            <Search className="h-4 w-4 text-foreground/50 shrink-0" />
             <input
               ref={inputRef}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={onSearchFocus}
-              placeholder="Qidirish..."
-              className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground min-w-0"
+              placeholder={t("searchChats")}
+              className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-foreground/45 min-w-0"
             />
             {searchQuery && (
               <button
@@ -223,12 +260,12 @@ export const HomeHeader = ({
         <motion.button
           whileTap={{ scale: 0.88 }}
           onClick={onToggleLayout}
-          className="relative h-9 w-9 rounded-full bg-muted/60 border border-white/10 backdrop-blur-md flex items-center justify-center shrink-0"
+          className="relative h-9 w-9 rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
         >
           {gridLayout === 1 ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground/80"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
           ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground/80"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
           )}
         </motion.button>
 
@@ -236,9 +273,9 @@ export const HomeHeader = ({
         <motion.button
           whileTap={{ scale: 0.88 }}
           onClick={onNotificationsClick}
-          className="relative h-9 w-9 rounded-full bg-muted/60 border border-white/10 backdrop-blur-md flex items-center justify-center shrink-0"
+          className="relative h-9 w-9 rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
         >
-          <Bell className="h-[18px] w-[18px]" />
+          <Bell className="h-[18px] w-[18px] text-foreground/80" />
           {unreadCount > 0 && (
             <Badge
               variant="destructive"
@@ -300,17 +337,19 @@ export const HomeHeader = ({
               style={{ background: "rgba(15,15,25,0.92)", backdropFilter: "blur(24px)" }}
             >
               {[
-                { label: "Profilga kirish", emoji: "👤", action: () => { navigate("/profile"); setShowProfileMenu(false); } },
-                ...(myStoryGroup ? [{ label: "Hikoyamni ko'rish", emoji: "👁️", action: () => { const myIdx = storyGroups.findIndex(g => g.user_id === user?.id); if (myIdx >= 0) onStoryClick(myIdx); setShowProfileMenu(false); } }] : []),
+                { label: "Profilga kirish", icon: <User className="h-4 w-4 text-white/80" />, action: () => { navigate("/profile"); setShowProfileMenu(false); } },
+                ...(myStoryGroup ? [{ label: "Hikoyamni ko'rish", icon: <Eye className="h-4 w-4 text-white/80" />, action: () => { const myIdx = storyGroups.findIndex(g => g.user_id === user?.id); if (myIdx >= 0) onStoryClick(myIdx); setShowProfileMenu(false); } }] : []),
               ].map((item, i, arr) => (
                 <motion.button
                   key={i}
                   whileHover={{ backgroundColor: "rgba(255,255,255,0.07)" }}
                   onClick={item.action}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors"
+                  className="w-full flex items-center gap-3.5 px-4 py-3.5 text-left transition-colors"
                   style={{ borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.06)" : undefined }}
                 >
-                  <span className="text-lg">{item.emoji}</span>
+                  <div className="shrink-0 flex items-center justify-center w-7 h-7 rounded-lg bg-white/5 border border-white/10 shadow-sm">
+                    {item.icon}
+                  </div>
                   <span className="text-sm text-white/90 font-medium">{item.label}</span>
                 </motion.button>
               ))}
@@ -318,7 +357,7 @@ export const HomeHeader = ({
           </>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 };
 

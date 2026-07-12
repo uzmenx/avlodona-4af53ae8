@@ -69,6 +69,7 @@ export const MemorialPostCard = ({ post, onMediaClick }: MemorialPostCardProps) 
         cardRef.current = el;
         setRef(el);
       }}
+      data-post-card=""
       className="py-0 my-[4px] animate-fadeIn"
     >
       <Card className="overflow-hidden rounded-[20px] border border-white/20 bg-white/10 backdrop-blur-[10px] shadow-xl shadow-black/20">

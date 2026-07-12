@@ -8,6 +8,7 @@ import { Send, Trash2, Loader2, MessageSquare } from 'lucide-react';
 import { useGroupMessageComments } from '@/hooks/useGroupMessageComments';
 import { formatDistanceToNow } from 'date-fns';
 import { uz } from 'date-fns/locale';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,6 +28,7 @@ export const GroupMessageCommentsSheet = ({
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
   
   const { comments, isLoading, addComment, deleteComment } = useGroupMessageComments(
     open ? messageId : null
@@ -58,11 +60,15 @@ export const GroupMessageCommentsSheet = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0 rounded-t-3xl bg-background/95 backdrop-blur-xl border-t border-border/50">
-        <SheetHeader className="px-6 py-4 border-b border-border/10">
+      <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0 rounded-t-3xl bg-background/80 dark:bg-slate-950/80 backdrop-blur-2xl border-t border-white/20 dark:border-white/5 overflow-hidden">
+        {/* Ambient glow backgrounds */}
+        <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-violet-500/15 dark:bg-violet-500/10 blur-[80px] pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-sky-500/15 dark:bg-sky-500/10 blur-[80px] pointer-events-none" />
+
+        <SheetHeader className="px-6 py-4 border-b border-border/10 relative z-10">
           <SheetTitle className="text-center font-bold text-lg flex items-center justify-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
-            Izohlar
+            {t('commentsTitle')}
           </SheetTitle>
         </SheetHeader>
 
@@ -78,8 +84,8 @@ export const GroupMessageCommentsSheet = ({
                   <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                     <MessageSquare className="h-8 w-8 text-primary/60" />
                   </div>
-                  <p className="text-muted-foreground font-medium">Hozircha izohlar yo'q</p>
-                  <p className="text-xs text-muted-foreground mt-1">Birinchi bo'lib izoh yozing!</p>
+                  <p className="text-muted-foreground font-medium">{t('noComments')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('noCommentsDesc')}</p>
                 </div>
               ) : (
                 <AnimatePresence initial={false}>
@@ -135,14 +141,14 @@ export const GroupMessageCommentsSheet = ({
           </ScrollArea>
         </div>
 
-        <div className="p-4 border-t border-border/10 bg-background/80 backdrop-blur-lg">
+        <div className="p-4 border-t border-border/10 bg-background/50 dark:bg-slate-950/50 backdrop-blur-xl relative z-10">
           <div className="flex items-end gap-2 relative">
             <Textarea
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Izoh yozing..."
-              className="min-h-[44px] max-h-[120px] resize-none rounded-2xl bg-muted/50 border-white/10 focus-visible:ring-primary/30 text-sm pr-12 py-3 min-w-0"
+              placeholder={t('writeComment')}
+              className="min-h-[44px] max-h-[120px] resize-none rounded-2xl bg-muted/40 backdrop-blur-sm border-white/10 dark:border-white/5 focus-visible:ring-primary/30 text-sm pr-12 py-3 min-w-0"
               disabled={isSubmitting}
             />
             <Button

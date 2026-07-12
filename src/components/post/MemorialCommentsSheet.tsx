@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { useMemorialComments, MemorialComment } from '@/hooks/useMemorialComments';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 
 interface MemorialCommentsSheetProps {
@@ -30,6 +31,7 @@ export const MemorialCommentsSheet = ({ open, onOpenChange, memorialPostId }: Me
   const [selectedImage, setSelectedImage] = useState<{ file: File; preview: string } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useLanguage();
 
   // Cleanup preview URL on unmount
   useEffect(() => {
@@ -196,26 +198,30 @@ export const MemorialCommentsSheet = ({ open, onOpenChange, memorialPostId }: Me
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
-      <DrawerContent className="h-[85vh] max-h-[85vh] flex flex-col">
-        <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted my-3 opacity-50" />
+      <DrawerContent className="h-[85vh] max-h-[85vh] flex flex-col bg-background/80 dark:bg-slate-950/80 backdrop-blur-2xl border-t border-white/20 dark:border-white/5 overflow-hidden">
+        {/* Ambient glow backgrounds */}
+        <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-violet-500/15 dark:bg-violet-500/10 blur-[80px] pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-sky-500/15 dark:bg-sky-500/10 blur-[80px] pointer-events-none" />
+
+        <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted my-3 opacity-50 relative z-10" />
         
-        <DrawerHeader className="flex-shrink-0 px-6 pb-3 pt-0">
+        <DrawerHeader className="flex-shrink-0 px-6 pb-3 pt-0 relative z-10">
           <DrawerTitle className="flex items-center gap-2 text-center justify-center">
-            Xotira izohlari
+            {t('commentsTitle')}
             <span className="bg-primary/10 text-primary text-xs font-semibold px-2 py-0.5 rounded-full">
               {commentsCount}
             </span>
           </DrawerTitle>
         </DrawerHeader>
         
-        <ScrollArea className="flex-1 px-6">
+        <ScrollArea className="flex-1 px-6 relative z-10">
           {isLoading ?
           <div className="text-center py-8 text-muted-foreground">
-              Yuklanmoqda...
+              {t('loading')}
             </div> :
           comments.length === 0 ?
           <div className="text-center py-8 text-muted-foreground">
-              Hozircha izohlar yo'q. Birinchi bo'lib izoh qoldiring!
+              {t('noComments')}. {t('noCommentsDesc')}
             </div> :
           <div className="space-y-4 py-4">
               {comments.map((comment) =>
@@ -234,11 +240,11 @@ export const MemorialCommentsSheet = ({ open, onOpenChange, memorialPostId }: Me
           }
         </ScrollArea>
         
-        <div className="flex-shrink-0 border-t pt-4 px-6 pb-6 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+        <div className="flex-shrink-0 border-t border-white/10 bg-background/50 backdrop-blur-xl pt-4 px-6 pb-6 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] relative z-10">
           {replyTo &&
           <div className="flex items-center justify-between bg-muted/50 px-3 py-2 rounded-lg mb-2 text-sm">
               <span>
-                <span className="text-muted-foreground">Javob: </span>
+                <span className="text-muted-foreground">{t('reply')}: </span>
                 <span className="font-medium">{replyTo.name}</span>
               </span>
               <button
@@ -298,7 +304,7 @@ export const MemorialCommentsSheet = ({ open, onOpenChange, memorialPostId }: Me
                     onClick={handleInputButtonClick}
                     className="flex-1 text-left px-4 py-3 bg-muted/50 rounded-full text-muted-foreground text-sm"
                   >
-                    Izoh yozing...
+                    {t('writeComment')}
                   </button>
                 ) : (
                   <div className="flex-1 min-w-0 relative flex items-center bg-muted/50 rounded-2xl border border-white/10 px-3">
@@ -312,7 +318,7 @@ export const MemorialCommentsSheet = ({ open, onOpenChange, memorialPostId }: Me
                           setTimeout(() => setIsInputFocused(false), 100);
                         }
                       }}
-                      placeholder="Izoh yozing..."
+                      placeholder={t('writeComment')}
                       className="flex-1 resize-none bg-transparent py-3 text-sm focus:outline-none min-h-[44px] max-h-[120px] pr-8 min-w-0"
                       rows={1}
                       disabled={isSubmitting}

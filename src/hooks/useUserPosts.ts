@@ -266,7 +266,9 @@ export const useUserPosts = (userId: string | undefined, isMemorial: boolean = f
     return () => window.removeEventListener('avlodona:publish:success', handlePublishSuccess);
   }, [query]);
 
-  const posts = (query.data?.pages || []).flatMap((p) => p.items || []);
+  const posts = useMemo(() => {
+    return (query.data?.pages || []).flatMap((p) => p.items || []);
+  }, [query.data?.pages]);
   const postsCount =
     (query.data?.pages?.[0]?.totalCount ?? posts.length) as number;
 

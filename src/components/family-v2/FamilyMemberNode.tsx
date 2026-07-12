@@ -77,6 +77,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
   // Floating physics and trail refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const movingRef = useRef<HTMLDivElement>(null);
+  const isLowPerf = typeof document !== 'undefined' && document.documentElement.getAttribute('data-perf') === 'low';
   const physicsRef = useRef({
     x: 0, y: 0,
     vx: 0, vy: 0,
@@ -88,6 +89,7 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
   });
 
   useEffect(() => {
+    if (isLowPerf) return;
     let animationFrameId: number;
     const canvas = canvasRef.current;
     const movingDiv = movingRef.current;
@@ -318,19 +320,21 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
         
 
         
-        <canvas 
-          ref={canvasRef}
-          className="absolute pointer-events-none z-0"
-          style={{
-            width: '160px',
-            height: '160px',
-            left: '50%',
-            top: '40px',
-            transform: 'translate(-50%, -50%)'
-          }}
-          width={160}
-          height={160}
-        />
+        {!isLowPerf && (
+          <canvas 
+            ref={canvasRef}
+            className="absolute pointer-events-none z-0"
+            style={{
+              width: '160px',
+              height: '160px',
+              left: '50%',
+              top: '40px',
+              transform: 'translate(-50%, -50%)'
+            }}
+            width={160}
+            height={160}
+          />
+        )}
 
         <div ref={movingRef} className="relative flex flex-col items-center z-10 will-change-transform">
         
@@ -504,6 +508,24 @@ const FamilyMemberNode = memo(({ data }: FamilyMemberNodeProps) => {
       }
     </>);
 
+}, (prevProps, nextProps) => {
+  const p = prevProps.data;
+  const n = nextProps.data;
+  
+  if (p.member !== n.member) return false;
+  if (p.isMergeMode !== n.isMergeMode) return false;
+  if (p.isSelected !== n.isSelected) return false;
+  if (p.isPrimary !== n.isPrimary) return false;
+  if (p.readOnly !== n.readOnly) return false;
+  
+  if (p.mergedNames?.length !== n.mergedNames?.length) return false;
+  if (p.mergedNames && n.mergedNames) {
+    for (let i = 0; i < p.mergedNames.length; i++) {
+      if (p.mergedNames[i] !== n.mergedNames[i]) return false;
+    }
+  }
+  
+  return true;
 });
 
 FamilyMemberNode.displayName = 'FamilyMemberNode';

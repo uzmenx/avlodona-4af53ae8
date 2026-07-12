@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, forwardRef } from "react";
+import { useState, useEffect, useCallback, useRef, forwardRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useConversations } from "@/hooks/useConversations";
@@ -353,44 +353,59 @@ const Messages = () => {
     };
   }, [isEitherBlocked, searchQuery, user?.id]);
 
-  // Filter functions
-  const filteredConversations = (conversations ?? []).filter((conv) => {
-    if (!searchQuery) return true;
-    const name = conv.otherUser.name?.toLowerCase() || "";
-    const username = conv.otherUser.username?.toLowerCase() || "";
-    return name.includes(searchQuery.toLowerCase()) || username.includes(searchQuery.toLowerCase());
-  });
+  // Filter functions memoized
+  const filteredConversations = useMemo(() => {
+    return (conversations ?? []).filter((conv) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      const name = conv.otherUser.name?.toLowerCase() || "";
+      const username = conv.otherUser.username?.toLowerCase() || "";
+      return name.includes(q) || username.includes(q);
+    });
+  }, [conversations, searchQuery]);
 
-  const filteredGroups = (groups ?? []).filter((g) => {
-    if (!searchQuery) return true;
-    return g.name.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filteredGroups = useMemo(() => {
+    return (groups ?? []).filter((g) => {
+      if (!searchQuery) return true;
+      return g.name.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  }, [groups, searchQuery]);
 
-  const filteredChannels = (channels ?? []).filter((c) => {
-    if (!searchQuery) return true;
-    return c.name.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filteredChannels = useMemo(() => {
+    return (channels ?? []).filter((c) => {
+      if (!searchQuery) return true;
+      return c.name.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  }, [channels, searchQuery]);
 
-  const filteredFollowers = followers.filter((f) => {
-    if (!searchQuery) return true;
-    const name = f.name?.toLowerCase() || "";
-    const username = f.username?.toLowerCase() || "";
-    return name.includes(searchQuery.toLowerCase()) || username.includes(searchQuery.toLowerCase());
-  });
+  const filteredFollowers = useMemo(() => {
+    return followers.filter((f) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      const name = f.name?.toLowerCase() || "";
+      const username = f.username?.toLowerCase() || "";
+      return name.includes(q) || username.includes(q);
+    });
+  }, [followers, searchQuery]);
 
-  const filteredFollowing = following.filter((f) => {
-    if (!searchQuery) return true;
-    const name = f.name?.toLowerCase() || "";
-    const username = f.username?.toLowerCase() || "";
-    return name.includes(searchQuery.toLowerCase()) || username.includes(searchQuery.toLowerCase());
-  });
+  const filteredFollowing = useMemo(() => {
+    return following.filter((f) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      const name = f.name?.toLowerCase() || "";
+      const username = f.username?.toLowerCase() || "";
+      return name.includes(q) || username.includes(q);
+    });
+  }, [following, searchQuery]);
 
   // Combine and sort all chats for the "All" tab
-  const allChats = [
-    ...filteredConversations.map(conv => ({ ...conv, chatType: 'direct' as const, sortTime: conv.last_message_at || new Date(0).toISOString() })),
-    ...filteredGroups.map(group => ({ ...group, chatType: 'group' as const, sortTime: group.lastMessage?.created_at || group.created_at })),
-    ...filteredChannels.map(channel => ({ ...channel, chatType: 'channel' as const, sortTime: channel.lastMessage?.created_at || channel.created_at }))
-  ].sort((a, b) => new Date(b.sortTime).getTime() - new Date(a.sortTime).getTime());
+  const allChats = useMemo(() => {
+    return [
+      ...filteredConversations.map(conv => ({ ...conv, chatType: 'direct' as const, sortTime: conv.last_message_at || new Date(0).toISOString() })),
+      ...filteredGroups.map(group => ({ ...group, chatType: 'group' as const, sortTime: group.lastMessage?.created_at || group.created_at })),
+      ...filteredChannels.map(channel => ({ ...channel, chatType: 'channel' as const, sortTime: channel.lastMessage?.created_at || channel.created_at }))
+    ].sort((a, b) => new Date(b.sortTime).getTime() - new Date(a.sortTime).getTime());
+  }, [filteredConversations, filteredGroups, filteredChannels]);
 
   // Create group/channel handlers
   const handleNewGroup = () => {
@@ -1013,98 +1028,31 @@ const Messages = () => {
                    <Button variant="link" onClick={handleNewGroup}>{t('createNewGroup')}</Button>
                 </div> :
 
-            filteredGroups.map((group) =>
-              <GroupChatItem 
-                key={group.id} 
-                chat={group} 
-                isEditMode={isEditMode}
-                isSelected={isEditMode && selectedConvIds.has(group.id)}
-                onClick={() => {
-                  if (isEditMode) {
-                    setSelectedConvIds((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(group.id)) next.delete(group.id); else
-                      next.add(group.id);
-                      return next;
-                    });
-                  } else {
-                    handleGroupClick(group.id);
-                  }
-                }} 
-              />
-            )
-            }
-            </>
-          }
-
-          {/* Channels */}
-          {activeTab === "channels" &&
-          <>
-              {groupsLoading ?
-            <div className="text-center py-12">
-                  <p className="text-muted-foreground">{t('loading')}</p>
-                </div> :
-            filteredChannels.length === 0 ?
-            <div className="text-center py-12 px-4">
-                   <Megaphone className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                   <p className="text-muted-foreground">{t('noChannels')}</p>
-                   <Button variant="link" onClick={handleNewChannel}>{t('createNewChannel')}</Button>
-                </div> :
-
-            filteredChannels.map((channel) =>
-              <GroupChatItem 
-                key={channel.id} 
-                chat={channel} 
-                isEditMode={isEditMode}
-                isSelected={isEditMode && selectedConvIds.has(channel.id)}
-                onClick={() => {
-                  if (isEditMode) {
-                    setSelectedConvIds((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(channel.id)) next.delete(channel.id); else
-                      next.add(channel.id);
-                      return next;
-                    });
-                  } else {
-                    handleGroupClick(channel.id);
-                  }
-                }} 
-              />
-            )
-            }
-            </>
-          }
-
-          {/* Followers */}
-          {activeTab === "followers" &&
-          <>
-              {filteredFollowers.length === 0 ?
-            <div className="text-center py-12 px-4">
-                  <p className="text-muted-foreground">{t('noFollowers')}</p>
-                </div> :
-
-            filteredFollowers.map((follower) =>
-            <div
-              key={follower.id}
-              onClick={() => handleUserClick(follower.id)}
-              className="flex items-center gap-3 p-4 hover:bg-muted/50 cursor-pointer active:bg-muted transition-colors">
-
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={follower.avatar_url || undefined} loading="lazy" decoding="async" />
-                      <AvatarFallback>{getInitials(follower.name)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold truncate">{follower.name || t('user')}</h3>
-                      <div className="truncate">
-                        <StarUsername username={follower.username || 'username'} textClassName="text-sm" />
-                      </div>
-                    </div>
-
-                     <Button variant="outline" size="sm">
-                       {t('messageBtn')}
-                     </Button>
-                  </div>
-            )
+            <Virtuoso
+              useWindowScroll
+              data={filteredGroups}
+              computeItemKey={(_, group) => group.id}
+              itemContent={(_, group) => (
+                <GroupChatItem 
+                  key={group.id} 
+                  chat={group as any} 
+                  isEditMode={isEditMode}
+                  isSelected={isEditMode && selectedConvIds.has(group.id)}
+                  onClick={() => {
+                    if (isEditMode) {
+                      setSelectedConvIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(group.id)) next.delete(group.id); else
+                        next.add(group.id);
+                        return next;
+                      });
+                    } else {
+                      handleGroupClick(group.id);
+                    }
+                  }} 
+                />
+              )}
+            />
             }
             </>
           }
@@ -1117,28 +1065,31 @@ const Messages = () => {
                   <p className="text-muted-foreground">{t('notFollowing')}</p>
                 </div> :
 
-            filteredFollowing.map((followingUser) =>
-            <div
-              key={followingUser.id}
-              onClick={() => handleUserClick(followingUser.id)}
-              className="flex items-center gap-3 p-4 hover:bg-muted/50 cursor-pointer active:bg-muted transition-colors">
-
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={followingUser.avatar_url || undefined} loading="lazy" decoding="async" />
-                      <AvatarFallback>{getInitials(followingUser.name)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold truncate">{followingUser.name || t('user')}</h3>
-                      <div className="truncate">
-                        <StarUsername username={followingUser.username || 'username'} textClassName="text-sm" />
-                      </div>
+            <Virtuoso
+              useWindowScroll
+              data={filteredFollowing}
+              computeItemKey={(_, followingUser) => followingUser.id}
+              itemContent={(_, followingUser) => (
+                <div
+                  key={followingUser.id}
+                  onClick={() => handleUserClick(followingUser.id)}
+                  className="flex items-center gap-3 p-4 hover:bg-muted/50 cursor-pointer active:bg-muted transition-colors">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={followingUser.avatar_url || undefined} loading="lazy" decoding="async" />
+                    <AvatarFallback>{getInitials(followingUser.name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold truncate">{followingUser.name || t('user')}</h3>
+                    <div className="truncate">
+                      <StarUsername username={followingUser.username || 'username'} textClassName="text-sm" />
                     </div>
-
-                     <Button variant="outline" size="sm">
-                       {t('messageBtn')}
-                     </Button>
                   </div>
-            )
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleUserClick(followingUser.id); }}>
+                    {t('messageBtn')}
+                  </Button>
+                </div>
+              )}
+            />
             }
             </>
           }

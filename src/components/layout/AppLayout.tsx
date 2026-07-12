@@ -153,7 +153,7 @@ export const AppLayout = ({ children, showNav = true, showSafeAreaPadding = true
       <main
         className={cn(
           effectiveShowNav ? 'pb-20' : '',
-          'relative z-10',
+          'relative',
           showSafeAreaPadding ? 'pt-[env(safe-area-inset-top,0px)]' : ''
         )}
       >

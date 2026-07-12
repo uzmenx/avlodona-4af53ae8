@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatCount } from '@/lib/formatCount';
 import { StarUsername } from '@/components/user/StarUsername';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface RatingEntry {
   user_id: string;
@@ -23,6 +24,7 @@ export const TreeRatings = () => {
   const [likesRating, setLikesRating] = useState<RatingEntry[]>([]);
   const [membersRating, setMembersRating] = useState<RatingEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -138,7 +140,7 @@ export const TreeRatings = () => {
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent side="bottom" className="h-[70vh] rounded-t-3xl">
           <SheetHeader>
-            <SheetTitle>Daraxt reytingi</SheetTitle>
+            <SheetTitle>{t('treeRating')}</SheetTitle>
           </SheetHeader>
 
           <div className="flex gap-2 mt-3 mb-4">
@@ -148,7 +150,7 @@ export const TreeRatings = () => {
               onClick={() => setTab('likes')}
               className="flex-1 gap-1.5 rounded-xl"
             >
-              <Heart className="h-4 w-4" /> Layklar
+              <Heart className="h-4 w-4" /> {t('likesTab')}
             </Button>
             <Button
               variant={tab === 'members' ? 'default' : 'outline'}
@@ -156,15 +158,15 @@ export const TreeRatings = () => {
               onClick={() => setTab('members')}
               className="flex-1 gap-1.5 rounded-xl"
             >
-              <Users className="h-4 w-4" /> Profillar soni
+              <Users className="h-4 w-4" /> {t('profilesCount')}
             </Button>
           </div>
 
           <ScrollArea className="h-[calc(100%-100px)]">
             {loading ? (
-              <p className="text-center text-muted-foreground py-8">Yuklanmoqda...</p>
+              <p className="text-center text-muted-foreground py-8">{t('loading')}</p>
             ) : data.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">Hali ma'lumot yo'q</p>
+              <p className="text-center text-muted-foreground py-8">{t('noDataYet')}</p>
             ) : (
               <div className="space-y-2">
                 {data.map((entry, i) => (
@@ -175,7 +177,7 @@ export const TreeRatings = () => {
                       <AvatarFallback className="text-xs">{(entry.name || 'U')[0]}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{entry.name || 'Foydalanuvchi'}</p>
+                      <p className="text-sm font-medium truncate">{entry.name || t('unknown')}</p>
                       <StarUsername username={entry.username || 'user'} />
                     </div>
                     <div className="flex items-center gap-1">

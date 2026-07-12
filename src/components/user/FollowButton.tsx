@@ -5,6 +5,7 @@ import { useFollow } from "@/hooks/useFollow";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface FollowButtonProps {
   targetUserId: string;
@@ -17,6 +18,7 @@ interface FollowButtonProps {
 export const FollowButton = ({ targetUserId, size = "default", className, variant = "default" }: FollowButtonProps) => {
   const { user } = useAuth();
   const { isFollowing, isRequested, isLoading, toggleFollow } = useFollow(targetUserId);
+  const { t } = useLanguage();
   const [ripples, setRipples] = useState<{ x: number; y: number; id: number }[]>([]);
   const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -48,7 +50,6 @@ export const FollowButton = ({ targetUserId, size = "default", className, varian
         "min-w-[75px] relative overflow-hidden transition-all duration-300 rounded-full backdrop-blur-xl",
         isFullscreen
           ? cn(
-              // Fullscreen: transparent white bg and white text when not following, to be visible but not solid white
               isFollowing
                 ? "border border-white/40 bg-white/10 !text-white hover:bg-white/20"
                 : isRequested
@@ -56,7 +57,6 @@ export const FollowButton = ({ targetUserId, size = "default", className, varian
                   : "border border-white bg-white/20 !text-white hover:bg-white/30 shadow-sm font-semibold",
             )
           : cn(
-              // Normal: theme-aware
               "border border-white/15",
               isFollowing
                 ? "bg-white/10 text-foreground hover:bg-white/15"
@@ -78,7 +78,14 @@ export const FollowButton = ({ targetUserId, size = "default", className, varian
           transition={{ duration: 0.6, ease: "easeOut" }}
         />
       ))}
-      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isFollowing ? "Kuzatasiz" : isRequested ? "So'rov yuborildi" : "Kuzatish"}
+      {isLoading
+        ? <Loader2 className="h-4 w-4 animate-spin" />
+        : isFollowing
+          ? t('followingBtn')
+          : isRequested
+            ? t('requestedBtn')
+            : t('followBtn')}
     </Button>
   );
 };
+

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, TreeDeciduous } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface TreePublishDialogProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const TreePublishDialog = ({
   title,
 }: TreePublishDialogProps) => {
   const [caption, setCaption] = useState('');
+  const { t } = useLanguage();
 
   const handlePublish = () => {
     onPublish(caption);
@@ -32,7 +34,7 @@ export const TreePublishDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TreeDeciduous className="h-5 w-5 text-primary" />
-            Daraxtni nashr qilish
+            {t('publishTree')}
           </DialogTitle>
         </DialogHeader>
 
@@ -43,8 +45,8 @@ export const TreePublishDialog = ({
               <TreeDeciduous className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <p className="font-medium text-sm">{title || 'Oila daraxti'}</p>
-              <p className="text-xs text-muted-foreground">Interaktiv daraxt post</p>
+              <p className="font-medium text-sm">{title || t('familyTree')}</p>
+              <p className="text-xs text-muted-foreground">{t('interactivePost')}</p>
             </div>
           </div>
 
@@ -53,7 +55,7 @@ export const TreePublishDialog = ({
             <Textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder="Izoh yozing..."
+              placeholder={t('writeCaption')}
               className="min-h-[100px] resize-none bg-muted/30"
               maxLength={2200}
             />
@@ -67,7 +69,7 @@ export const TreePublishDialog = ({
             className="w-full gap-2"
           >
             <Send className="h-4 w-4" />
-            {isPublishing ? 'Nashr qilinmoqda...' : 'Nashr qilish'}
+            {isPublishing ? t('publishing') : t('publish')}
           </Button>
         </div>
       </DialogContent>

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { MessageCircle } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface MessageButtonProps {
   userId: string;
@@ -9,6 +10,7 @@ interface MessageButtonProps {
 
 export const MessageButton = ({ userId, className }: MessageButtonProps) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -22,7 +24,7 @@ export const MessageButton = ({ userId, className }: MessageButtonProps) => {
       className={`bg-white/10 dark:bg-white/5 border-white/20 hover:bg-white/20 text-foreground ${className ?? ''}`}
     >
       <MessageCircle className="h-4 w-4 mr-2" />
-      Xabar
+      {t('messageBtn2')}
     </Button>
   );
 };

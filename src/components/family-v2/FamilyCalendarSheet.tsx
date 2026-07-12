@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useFamilyCalendar, type FamilyEvent } from '@/hooks/useFamilyCalendar';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const EVENT_TYPES = [
   { value: 'birthday', label: "Tug'ilgan kun", icon: Gift, color: 'text-pink-500' },
@@ -19,7 +20,14 @@ const EVENT_TYPES = [
 ];
 
 const EventCard = ({ event, onDelete, canDelete }: { event: FamilyEvent; onDelete: () => void; canDelete: boolean }) => {
-  const type = EVENT_TYPES.find(t => t.value === event.event_type) || EVENT_TYPES[3];
+  const { t } = useLanguage();
+  const EVENT_TYPES_LOCAL = [
+    { value: 'birthday', label: t('bornYear'), icon: Gift, color: 'text-pink-500' },
+    { value: 'anniversary', label: t('relative'), icon: Star, color: 'text-amber-500' }, // Use existing translations where needed or mapping
+    { value: 'memorial', label: t('memorialTab'), icon: Heart, color: 'text-blue-500' },
+    { value: 'custom', label: t('other', { defaultValue: 'Boshqa' }), icon: CalendarDays, color: 'text-emerald-500' },
+  ];
+  const type = EVENT_TYPES_LOCAL.find(t => t.value === event.event_type) || EVENT_TYPES_LOCAL[3];
   const Icon = type.icon;
   const d = new Date(event.event_date);
   const dateStr = `${d.getDate()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -34,10 +42,10 @@ const EventCard = ({ event, onDelete, canDelete }: { event: FamilyEvent; onDelet
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-muted-foreground">{dateStr}</span>
           {event.member_name && <span className="text-xs text-primary">• {event.member_name}</span>}
-          {event.recurring && <Badge variant="secondary" className="text-[9px] px-1 py-0">Har yil</Badge>}
+          {event.recurring && <Badge variant="secondary" className="text-[9px] px-1 py-0">{t('everyYear')}</Badge>}
           {event.owner_name && (
             <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-              <User className="h-2.5 w-2.5" /> {event.owner_name}
+               <User className="h-2.5 w-2.5" /> {event.owner_name}
             </span>
           )}
         </div>
@@ -55,12 +63,20 @@ const EventCard = ({ event, onDelete, canDelete }: { event: FamilyEvent; onDelet
 export const FamilyCalendarSheet = () => {
   const { user } = useAuth();
   const { events, addEvent, deleteEvent, getTodayEvents, getUpcomingEvents } = useFamilyCalendar();
+  const { t } = useLanguage();
   const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventType, setEventType] = useState('birthday');
   const [recurring, setRecurring] = useState(true);
+
+  const EVENT_TYPES_FORM = [
+    { value: 'birthday', label: t('bornYear'), icon: Gift },
+    { value: 'anniversary', label: t('relative') },
+    { value: 'memorial', label: t('memorialTab') },
+    { value: 'custom', label: t('other', { defaultValue: 'Boshqa' }) },
+  ];
 
   const todayEvents = getTodayEvents();
   const upcomingEvents = getUpcomingEvents(30);
@@ -124,7 +140,7 @@ export const FamilyCalendarSheet = () => {
         <SheetHeader className="pb-3">
           <SheetTitle className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-primary" />
-            Oilaviy Kalendar
+            {t('familyCalendar')}
           </SheetTitle>
         </SheetHeader>
 
@@ -134,7 +150,7 @@ export const FamilyCalendarSheet = () => {
             {todayEvents.length > 0 && (
               <div>
                 <h3 className="text-xs font-bold text-primary uppercase tracking-wider mb-2 flex items-center gap-1">
-                  <Bell className="h-3 w-3" /> Bugun
+                  <Bell className="h-3 w-3" /> {t('today')}
                 </h3>
                 <div className="space-y-2">
                   {todayEvents.map(e => <EventCard key={e.id} event={e} canDelete={e.owner_id === user?.id} onDelete={() => deleteEvent(e.id)} />)}
@@ -145,7 +161,7 @@ export const FamilyCalendarSheet = () => {
             {/* Upcoming */}
             {upcomingEvents.length > 0 && (
               <div>
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Yaqin 30 kun</h3>
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">{t('next30days')}</h3>
                 <div className="space-y-2">
                   {upcomingEvents.map(e => <EventCard key={e.id} event={e} canDelete={e.owner_id === user?.id} onDelete={() => deleteEvent(e.id)} />)}
                 </div>
@@ -157,7 +173,7 @@ export const FamilyCalendarSheet = () => {
               <div className="flex items-center justify-between mb-2">
                 <div className="px-3 h-7 inline-flex items-center rounded-full bg-muted/40 border border-border/40 backdrop-blur-sm">
                   <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    Barcha voqealar ({events.length})
+                    {t('allEvents')} ({events.length})
                   </h3>
                 </div>
                 <Button
@@ -166,30 +182,34 @@ export const FamilyCalendarSheet = () => {
                   className="rounded-full h-8 px-4 text-xs gap-1.5 bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-300/40 dark:shadow-emerald-500/20 hover:brightness-105 active:scale-[0.98]"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Qo'shish
+                  {t('addEvent')}
                 </Button>
               </div>
 
               {showAdd && (
                 <div className="p-3 rounded-2xl bg-card border border-border/50 space-y-3 mb-3">
-                  <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Sarlavha" className="rounded-xl" />
-                  <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Izoh (ixtiyoriy)" rows={2} className="rounded-xl resize-none" />
+                  <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('eventTitle')} className="rounded-xl" />
+                  <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t('eventNote')} rows={2} className="rounded-xl resize-none" />
                   <Input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} className="rounded-xl" />
                   <div className="flex gap-2 flex-wrap">
-                    {EVENT_TYPES.map(t => (
-                      <button key={t.value} onClick={() => setEventType(t.value)}
-                        className={cn('flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
-                          eventType === t.value ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground')}>
-                        <t.icon className="h-3 w-3" /> {t.label}
-                      </button>
-                    ))}
+                    {EVENT_TYPES_FORM.map(t_item => {
+                      const baseType = EVENT_TYPES.find(o => o.value === t_item.value) || EVENT_TYPES[3];
+                      const IconComponent = baseType.icon;
+                      return (
+                        <button key={t_item.value} onClick={() => setEventType(t_item.value)}
+                          className={cn('flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                            eventType === t_item.value ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground')}>
+                          <IconComponent className="h-3 w-3" /> {t_item.label}
+                        </button>
+                      );
+                    })}
                   </div>
                   <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} className="rounded" />
-                    Har yil takrorlansin
+                    {t('repeatYearly')}
                   </label>
                   <Button onClick={handleAdd} disabled={!title.trim() || !eventDate} className="w-full rounded-xl">
-                    Saqlash
+                    {t('save')}
                   </Button>
                 </div>
               )}
@@ -197,7 +217,7 @@ export const FamilyCalendarSheet = () => {
               <div className="space-y-2">
                 {events.map(e => <EventCard key={e.id} event={e} canDelete={e.owner_id === user?.id} onDelete={() => deleteEvent(e.id)} />)}
                 {events.length === 0 && !showAdd && (
-                  <p className="text-center text-sm text-muted-foreground py-8">Hali voqealar qo'shilmagan</p>
+                  <p className="text-center text-sm text-muted-foreground py-8">{t('noEventsYet')}</p>
                 )}
               </div>
             </div>

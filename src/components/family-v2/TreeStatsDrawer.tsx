@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FamilyMember } from '@/types/family';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface TreeStatsDrawerProps {
   open: boolean;
@@ -46,6 +47,7 @@ const MemberAvatar = ({ member, size = 'md' }: { member: FamilyMember; size?: 's
 
 const MemberRow = ({ member, onClose }: { member: FamilyMember; onClose: () => void }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const isLive = !!member.linkedUserId;
 
   const yearRange = (() => {
@@ -90,7 +92,7 @@ const MemberRow = ({ member, onClose }: { member: FamilyMember; onClose: () => v
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-sm font-semibold truncate text-foreground group-hover:text-primary transition-colors duration-200">
-              {member.name || "Noma'lum"}
+              {member.name || t('unknown')}
             </span>
             {isLive && (
               <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 shadow-sm shadow-emerald-400/60 animate-pulse" />
@@ -101,11 +103,11 @@ const MemberRow = ({ member, onClose }: { member: FamilyMember; onClose: () => v
           )}
           {!isLive && member.deathYear && (
             <span className="text-[10px] text-rose-400/80 font-medium flex items-center gap-0.5 mt-0.5">
-              <Skull className="w-2.5 h-2.5" /> Vafot etgan
+              <Skull className="w-2.5 h-2.5" /> {t('deceased')}
             </span>
           )}
           <span className="text-[10px] text-muted-foreground/50 group-hover:text-primary/60 transition-colors duration-200 mt-0.5 block">
-            {isLive ? "Profilga o'tish →" : "Xotira sahifasiga →"}
+            {isLive ? t('goToProfile') : t('goToMemorial')}
           </span>
         </div>
       </div>
@@ -116,7 +118,7 @@ const MemberRow = ({ member, onClose }: { member: FamilyMember; onClose: () => v
           <button
             onClick={handleMessage}
             className="w-9 h-9 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-sm"
-            title="Habar yuborish"
+            title={t('sendMessage')}
           >
             <MessageCircle className="w-4 h-4" />
           </button>
@@ -124,7 +126,7 @@ const MemberRow = ({ member, onClose }: { member: FamilyMember; onClose: () => v
           <button
             onClick={handleMemorialPost}
             className="relative w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 overflow-hidden group/cam"
-            title="Xotira post qoldirish"
+            title={t('addMemoryPost')}
           >
             {/* Gradient background */}
             <div className="absolute inset-0 bg-gradient-to-br from-amber-400/30 via-orange-400/25 to-rose-400/20 group-hover/cam:from-amber-400/50 group-hover/cam:via-orange-400/40 group-hover/cam:to-rose-400/35 transition-all duration-300" />
@@ -144,12 +146,15 @@ const MemberRow = ({ member, onClose }: { member: FamilyMember; onClose: () => v
 
 export const TreeStatsDrawer = ({ open, onOpenChange, mode, members }: TreeStatsDrawerProps) => {
   const [tab, setTab] = useState<'active' | 'memorial'>('active');
+  const { t } = useLanguage();
 
   const displayedActive = members.filter(m => !!m.linkedUserId);
   const displayedInactive = members.filter(m => !m.linkedUserId);
 
   const isAllMode = mode === 'all';
-  const title = isAllMode ? `Barcha profillar (${members.length})` : `Faol foydalanuvchilar (${displayedActive.length})`;
+  const title = isAllMode 
+    ? `${t('allProfiles')} (${members.length})` 
+    : `${t('activeUsers')} (${displayedActive.length})`;
   const IconC = isAllMode ? Users : UserCheck;
 
   const listToShow = isAllMode
@@ -202,7 +207,7 @@ export const TreeStatsDrawer = ({ open, onOpenChange, mode, members }: TreeStats
                 )}
               >
                 <MessageCircle className="w-3.5 h-3.5" />
-                Jonli ({displayedActive.length})
+                {t('liveTab')} ({displayedActive.length})
               </button>
               <button
                 onClick={() => setTab('memorial')}
@@ -214,7 +219,7 @@ export const TreeStatsDrawer = ({ open, onOpenChange, mode, members }: TreeStats
                 )}
               >
                 <Icon icon="famicons:camera" className="w-3.5 h-3.5" />
-                Xotira ({displayedInactive.length})
+                {t('memorialTab')} ({displayedInactive.length})
               </button>
             </div>
           )}
@@ -231,8 +236,8 @@ export const TreeStatsDrawer = ({ open, onOpenChange, mode, members }: TreeStats
                 </div>
                 <p className="text-sm text-muted-foreground font-medium">
                   {tab === 'active' || !isAllMode
-                    ? "Hech qanday faol foydalanuvchi yo'q"
-                    : "Xotira profillari mavjud emas"}
+                    ? t('noActiveUsers')
+                    : t('noMemorialProfiles')}
                 </p>
               </div>
             ) : (

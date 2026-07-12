@@ -30,6 +30,7 @@ export function MusicOverlay({
 }: MusicOverlayProps) {
   const title = useMemo(() => audioTitle || 'Musiqa', [audioTitle]);
   const artist = useMemo(() => audioArtist || '', [audioArtist]);
+  const isLowPerf = typeof document !== 'undefined' && document.documentElement.getAttribute('data-perf') === 'low';
 
   return (
     <Popover>
@@ -37,8 +38,8 @@ export function MusicOverlay({
         <button
           type="button"
           className={cn(
-            'h-9 w-9 rounded-2xl bg-black/40 hover:bg-black/55 border border-white/20 backdrop-blur-md flex items-center justify-center shadow-lg',
-            'transition-colors',
+            'h-9 w-9 rounded-2xl bg-black/40 hover:bg-black/55 border border-white/20 flex items-center justify-center shadow-lg transition-colors',
+            !isLowPerf && 'backdrop-blur-md',
             className
           )}
           aria-label="Musiqa"
@@ -55,7 +56,8 @@ export function MusicOverlay({
         align="end"
         sideOffset={10}
         className={cn(
-          'w-[260px] p-0 overflow-hidden rounded-2xl border border-white/10 bg-black/55 text-white backdrop-blur-xl shadow-2xl'
+          'w-[260px] p-0 overflow-hidden rounded-2xl border border-white/10 text-white shadow-2xl',
+          isLowPerf ? 'bg-neutral-900' : 'bg-black/55 backdrop-blur-xl'
         )}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >

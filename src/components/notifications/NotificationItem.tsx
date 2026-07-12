@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Heart, MessageCircle, UserPlus, Send, TreeDeciduous, Check, AtSign, Users, CalendarDays, X, Loader2, Trash2, MailOpen } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { uz } from 'date-fns/locale';
+import { uz, ru, enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Notification } from '@/hooks/useNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useFollow } from '@/hooks/useFollow';
@@ -20,6 +21,23 @@ interface NotificationItemProps {
 
 
 type ActionState = 'idle' | 'accepting' | 'accepted' | 'declining' | 'declined';
+
+const NOTIFICATION_LABELS: Record<string, { uz: string; ru: string; en: string }> = {
+  follow: { uz: 'sizni kuzata boshladi', ru: 'начал(а) подписку на вас', en: 'started following you' },
+  follow_request: { uz: "kuzatish so'rovini yubordi", ru: 'отправил(а) запрос на подписку', en: 'sent a follow request' },
+  like: { uz: 'postingizni yoqtirdi', ru: 'лайкнул(а) ваш пост', en: 'liked your post' },
+  story_like: { uz: 'hikoyangizni yoqtirdi', ru: 'лайкнул(а) вашу историю', en: 'liked your story' },
+  comment: { uz: 'postingizga izoh qoldirdi', ru: 'прокомментировал(а) ваш пост', en: 'commented on your post' },
+  story: { uz: 'yangi hikoya joyladi', ru: 'опубликовал(а) новую историю', en: 'posted a new story' },
+  message: { uz: 'sizga xabar yubordi', ru: 'отправил(а) вам сообщение', en: 'sent you a message' },
+  calendar_event: { uz: 'kalendar voqeasi bugun', ru: 'событие календаря сегодня', en: 'calendar event today' },
+  family_invitation: { uz: 'sizni oila daraxtiga taklif qildi', ru: 'пригласил(а) вас в семейное дерево', en: 'invited you to the family tree' },
+  family_invitation_accepted: { uz: "oila daraxtiga qo'shildi", ru: 'присоединился(ась) к семейному дереву', en: 'joined the family tree' },
+  mention: { uz: 'sizni belgiladi', ru: 'упомянул(а) вас', en: 'mentioned you' },
+  collab_request: { uz: "hamkor sifatida qo'shmoqchi", ru: 'хочет добавить вас в соавторы', en: 'wants to add you as collaborator' },
+  collab_accepted: { uz: 'hamkorlikni qabul qildi', ru: 'принял(а) сотрудничество', en: 'accepted collaboration' },
+  family_connection_request: { uz: "daraxtingizga qo'shilishni xohlayapti", ru: 'хочет подключиться к вашему дереву', en: 'wants to connect to your tree' },
+};
 
 const TYPE_CONFIG: Record<string, { gradient: string; icon: React.ReactNode; label: string }> = {
   follow: {
@@ -96,6 +114,7 @@ const TYPE_CONFIG: Record<string, { gradient: string; icon: React.ReactNode; lab
 
 export const NotificationItem = ({ notification, onRead, onDelete }: NotificationItemProps) => {
   const navigate = useNavigate();
+  const { lang, t } = useLanguage();
   const { isFollowing, toggleFollow, isLoading: isFollowLoading } = useFollow(notification.actor_id);
   const [actionState, setActionState] = useState<ActionState>('idle');
   const [isRemoving, setIsRemoving] = useState(false);
@@ -248,8 +267,20 @@ export const NotificationItem = ({ notification, onRead, onDelete }: Notificatio
     }
   };
 
+  const getLocale = () => {
+    if (lang === 'ru') return ru;
+    if (lang === 'en') return enUS;
+    return uz;
+  };
+
   const formatTime = (dateStr: string) =>
-    formatDistanceToNow(new Date(dateStr), { addSuffix: false, locale: uz });
+    formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: getLocale() });
+
+  const getLabel = () => {
+    const labels = NOTIFICATION_LABELS[notification.type];
+    if (!labels) return '';
+    return labels[lang] || labels['uz'];
+  };
 
   const renderMediaPreview = () => {
     const hasStoryMedia = notification.story?.media_url;
@@ -313,10 +344,10 @@ export const NotificationItem = ({ notification, onRead, onDelete }: Notificatio
             onDragEnd={handleSwipeEnd as never}
             onClick={handleClick}
             className={cn(
-              'flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors relative group select-none',
+              'flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors relative group select-none bg-transparent',
               notification.is_read
-                ? 'bg-background hover:bg-white/5'
-                : 'bg-primary/[0.05] hover:bg-primary/[0.08]'
+                ? 'hover:bg-foreground/5'
+                : 'bg-primary/[0.04] dark:bg-primary/[0.06] hover:bg-primary/[0.08]'
             )}
           >
             {/* Unread indicator */}
@@ -349,9 +380,9 @@ export const NotificationItem = ({ notification, onRead, onDelete }: Notificatio
                 className="font-bold hover:underline stop-propagation cursor-pointer"
                 onClick={handleProfileClick}
               >
-                {notification.actor?.name || notification.actor?.username || 'Foydalanuvchi'}
+                {notification.actor?.name || notification.actor?.username || t('user')}
               </span>{' '}
-              <span className="text-muted-foreground">{config.label}</span>
+              <span className="text-muted-foreground">{getLabel()}</span>
             </p>
 
             {notification.comment?.content && (
@@ -374,13 +405,15 @@ export const NotificationItem = ({ notification, onRead, onDelete }: Notificatio
                   onClick={(e) => { e.stopPropagation(); toggleFollow(); }}
                   disabled={isFollowLoading}
                   className={cn(
-                    'h-8 px-3 text-xs rounded-full font-medium',
-                    !isFollowing && 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:opacity-90 border-0'
+                    'h-8 px-3.5 text-xs rounded-full font-semibold transition-all shadow-sm border-foreground/10',
+                    !isFollowing 
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white border-0 hover:shadow-md'
+                      : 'hover:bg-foreground/5'
                   )}
                 >
                   {isFollowLoading
                     ? <Loader2 className="h-3 w-3 animate-spin" />
-                    : isFollowing ? 'Kuzatilmoqda' : 'Javob qaytarish'}
+                    : isFollowing ? t('following') : t('followBack')}
                 </Button>
               </div>
             )}
@@ -391,17 +424,17 @@ export const NotificationItem = ({ notification, onRead, onDelete }: Notificatio
                 <Button
                   size="sm"
                   onClick={handleAcceptRequest}
-                  className="h-7 px-3 text-[11px] rounded-full font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 hover:opacity-90 shadow-sm"
+                  className="h-7 px-3 text-[11px] rounded-full font-bold bg-emerald-600 hover:bg-emerald-500 text-white border-0 hover:shadow-sm"
                 >
-                  Qabul
+                  {t('accept')}
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={handleDeclineRequest}
-                  className="h-7 px-3 text-[11px] rounded-full text-muted-foreground border-white/15 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 shadow-none"
+                  className="h-7 px-3 text-[11px] rounded-full text-foreground/70 font-semibold border-foreground/10 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 shadow-none"
                 >
-                  Rad
+                  {t('decline')}
                 </Button>
               </div>
             )}
@@ -421,7 +454,7 @@ export const NotificationItem = ({ notification, onRead, onDelete }: Notificatio
                 className="stop-propagation flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30"
               >
                 <Check className="h-3 w-3 text-emerald-500" />
-                <span className="text-[11px] text-emerald-500 font-semibold">Qabul qilindi</span>
+                <span className="text-[11px] text-emerald-500 font-semibold">{t('accepted')}</span>
               </motion.div>
             )}
 
@@ -440,7 +473,7 @@ export const NotificationItem = ({ notification, onRead, onDelete }: Notificatio
                 className="stop-propagation flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 border border-border/30"
               >
                 <X className="h-3 w-3 text-muted-foreground" />
-                <span className="text-[11px] text-muted-foreground font-medium">Rad etildi</span>
+                <span className="text-[11px] text-muted-foreground font-medium">{t('declined')}</span>
               </motion.div>
             )}
 

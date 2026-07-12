@@ -13,6 +13,7 @@ import { Post } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface SearchSheetProps {
   open: boolean;
@@ -41,6 +42,7 @@ interface GroupResult {
 
 export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, initialTab }: SearchSheetProps) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<'users' | 'posts' | 'groups'>(initialTab || 'users');
@@ -241,69 +243,87 @@ export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, in
   return (
     <>
       <Sheet open={open && !viewerOpen} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="h-[90vh] rounded-t-3xl p-0 flex flex-col">
-          <SheetHeader className="px-4 pt-3 pb-2 flex-shrink-0 relative">
+        <SheetContent side="bottom" className="h-[90vh] rounded-t-[32px] p-0 flex flex-col bg-background/80 dark:bg-slate-950/80 backdrop-blur-2xl border-t border-white/20 dark:border-white/5 overflow-hidden">
+          {/* Ambient glow backgrounds */}
+          <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-violet-500/15 dark:bg-violet-500/10 blur-[80px] pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-sky-500/15 dark:bg-sky-500/10 blur-[80px] pointer-events-none" />
+
+          <SheetHeader className="px-4 pt-3 pb-2 flex-shrink-0 relative z-10">
             {/* Drag Handle */}
-            <div className="mx-auto w-10 h-1.5 rounded-full bg-muted-foreground/20 mb-3" />
+            <div className="mx-auto w-12 h-1.5 rounded-full bg-foreground/10 mb-3" />
             
             <div className="flex items-center justify-center relative">
-              <SheetTitle className="text-base font-bold">Qidirish</SheetTitle>
+              <SheetTitle className="text-base font-bold tracking-wide">{t('search')}</SheetTitle>
               <button 
                 onClick={() => onOpenChange(false)}
-                className="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-foreground/5 hover:bg-foreground/10 active:scale-90 transition-all border border-border/10"
+                className="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-foreground/5 hover:bg-foreground/10 active:scale-95 transition-all border border-foreground/5"
               >
-                <X className="h-4 w-4 text-muted-foreground" />
+                <X className="h-4 w-4 text-foreground/60" />
               </button>
             </div>
           </SheetHeader>
 
           {/* Search input */}
-          <div className="px-4 pb-3 flex-shrink-0">
+          <div className="px-4 pb-3 flex-shrink-0 relative z-10">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
               <Input
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ism, username yoki guruh qidiring..."
-                className="pl-9 pr-9 h-11 rounded-2xl bg-muted/60 border-emerald-500/30 focus-visible:ring-1 focus-visible:ring-emerald-500/50"
+                placeholder={t('searchPlaceholder')}
+                className="pl-10 pr-10 h-12 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] focus-visible:ring-2 focus-visible:ring-violet-500/40 focus-visible:border-violet-500 placeholder:text-foreground/40 text-sm"
               />
               {query && (
-                <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-muted/80">
-                  <X className="h-4 w-4 text-muted-foreground" />
+                <button onClick={() => setQuery('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-foreground/10 transition-colors">
+                  <X className="h-3.5 w-3.5 text-foreground/50" />
                 </button>
               )}
             </div>
           </div>
 
           {/* Tabs */}
-          <Tabs value={tab} onValueChange={(v) => setTab(v as 'users' | 'posts' | 'groups')} className="flex-1 flex flex-col min-h-0">
-            <TabsList className="mx-4 mb-2 grid grid-cols-3 h-9 flex-shrink-0">
-              <TabsTrigger value="users" className="text-xs gap-1">
-                <Users className="h-3.5 w-3.5" />
-                Odamlar {users.length > 0 && `(${users.length})`}
+          <Tabs value={tab} onValueChange={(v) => setTab(v as 'users' | 'posts' | 'groups')} className="flex-1 flex flex-col min-h-0 relative z-10">
+            <TabsList className="mx-4 mb-3 grid grid-cols-3 h-10 p-1 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 flex-shrink-0">
+              <TabsTrigger value="users" className="text-[11px] gap-1 px-3 py-1.5 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">
+                <Users className="h-3.5 w-3.5 opacity-80" />
+                {t('people')} {users.length > 0 && `(${users.length})`}
               </TabsTrigger>
-              <TabsTrigger value="posts" className="text-xs gap-1">
-                <FileText className="h-3.5 w-3.5" />
-                Postlar {posts.length > 0 && `(${posts.length})`}
+              <TabsTrigger value="posts" className="text-[11px] gap-1 px-3 py-1.5 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">
+                <FileText className="h-3.5 w-3.5 opacity-80" />
+                {t('posts')} {posts.length > 0 && `(${posts.length})`}
               </TabsTrigger>
-              <TabsTrigger value="groups" className="text-xs gap-1">
-                <Megaphone className="h-3.5 w-3.5" />
-                Guruhlar {groups.length > 0 && `(${groups.length})`}
+              <TabsTrigger value="groups" className="text-[11px] gap-1 px-3 py-1.5 rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">
+                <Megaphone className="h-3.5 w-3.5 opacity-80" />
+                {t('groupsTab')} {groups.length > 0 && `(${groups.length})`}
               </TabsTrigger>
             </TabsList>
 
             {/* ── USERS ───────────────────────────────────────── */}
             <TabsContent value="users" className="flex-1 overflow-y-auto px-4 mt-0 pb-8">
-              {isLoading && <p className="text-sm text-muted-foreground text-center py-10">Qidirilmoqda...</p>}
+              {isLoading && <p className="text-sm text-muted-foreground text-center py-10">{t('searching')}</p>}
               {!isLoading && query && users.length === 0 && (
-                <div className="text-center py-12">
-                  <UserPlus className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-                  <p className="text-sm text-muted-foreground">Hech narsa topilmadi</p>
+                <div className="text-center py-16">
+                  <div className="w-12 h-12 rounded-full bg-foreground/5 flex items-center justify-center mx-auto mb-4 border border-foreground/5">
+                    <UserPlus className="h-5 w-5 text-foreground/40" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground/80 mb-1">{t('noResults')}</p>
+                  <p className="text-xs text-muted-foreground">{t('noResultsDesc')}</p>
                 </div>
               )}
               {!isLoading && !query && (
-                <p className="text-sm text-muted-foreground text-center py-10">Foydalanuvchi nomi yoki ismini kiriting</p>
+                <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+                  <div className="relative mb-5 flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-violet-500/10 animate-ping w-16 h-16" />
+                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border border-violet-500/20 flex items-center justify-center text-violet-500 dark:text-violet-400 shadow-sm">
+                      <Search className="h-7 w-7" />
+                    </div>
+                  </div>
+                  <h3 className="text-base font-semibold text-foreground/90 mb-1">{t('startSearch')}</h3>
+                  <p className="text-xs text-muted-foreground max-w-[240px]">
+                    {t('startSearchDesc')}
+                  </p>
+                </div>
               )}
               <div className="space-y-1">
                 {users.map((u) => (
@@ -339,15 +359,29 @@ export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, in
 
             {/* ── POSTS ───────────────────────────────────────── */}
             <TabsContent value="posts" className="flex-1 overflow-y-auto px-4 mt-0 pb-8">
-              {isLoading && <p className="text-sm text-muted-foreground text-center py-10">Qidirilmoqda...</p>}
+              {isLoading && <p className="text-sm text-muted-foreground text-center py-10">{t('searching')}</p>}
               {!isLoading && query && posts.length === 0 && (
-                <div className="text-center py-12">
-                  <FileText className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-                  <p className="text-sm text-muted-foreground">Hech narsa topilmadi</p>
+                <div className="text-center py-16">
+                  <div className="w-12 h-12 rounded-full bg-foreground/5 flex items-center justify-center mx-auto mb-4 border border-foreground/5">
+                    <FileText className="h-5 w-5 text-foreground/40" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground/80 mb-1">{t('noResults')}</p>
+                  <p className="text-xs text-muted-foreground">{t('noPostsDescMatched')}</p>
                 </div>
               )}
               {!isLoading && !query && (
-                <p className="text-sm text-muted-foreground text-center py-10">Qidirish uchun so'z kiriting</p>
+                <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+                  <div className="relative mb-5 flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-violet-500/10 animate-ping w-16 h-16" />
+                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border border-violet-500/20 flex items-center justify-center text-violet-500 dark:text-violet-400 shadow-sm">
+                      <Search className="h-7 w-7" />
+                    </div>
+                  </div>
+                  <h3 className="text-base font-semibold text-foreground/90 mb-1">{t('startSearch')}</h3>
+                  <p className="text-xs text-muted-foreground max-w-[240px]">
+                    {t('startSearchDesc')}
+                  </p>
+                </div>
               )}
 
               {/* Post grid for quick browse */}
@@ -414,15 +448,29 @@ export const SearchSheet = ({ open, onOpenChange, initialQuery, userIdFilter, in
 
             {/* ── GROUPS ──────────────────────────────────────── */}
             <TabsContent value="groups" className="flex-1 overflow-y-auto px-4 mt-0 pb-8">
-              {isLoading && <p className="text-sm text-muted-foreground text-center py-10">Qidirilmoqda...</p>}
+              {isLoading && <p className="text-sm text-muted-foreground text-center py-10">{t('searching')}</p>}
               {!isLoading && query && groups.length === 0 && (
-                <div className="text-center py-12">
-                  <Megaphone className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-                  <p className="text-sm text-muted-foreground">Hech narsa topilmadi</p>
+                <div className="text-center py-16">
+                  <div className="w-12 h-12 rounded-full bg-foreground/5 flex items-center justify-center mx-auto mb-4 border border-foreground/5">
+                    <Megaphone className="h-5 w-5 text-foreground/40" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground/80 mb-1">{t('noResults')}</p>
+                  <p className="text-xs text-muted-foreground">{t('noGroupsDescMatched')}</p>
                 </div>
               )}
               {!isLoading && !query && (
-                <p className="text-sm text-muted-foreground text-center py-10">Guruh nomini kiriting</p>
+                <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+                  <div className="relative mb-5 flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-violet-500/10 animate-ping w-16 h-16" />
+                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border border-violet-500/20 flex items-center justify-center text-violet-500 dark:text-violet-400 shadow-sm">
+                      <Search className="h-7 w-7" />
+                    </div>
+                  </div>
+                  <h3 className="text-base font-semibold text-foreground/90 mb-1">{t('startSearch')}</h3>
+                  <p className="text-xs text-muted-foreground max-w-[240px]">
+                    {t('startSearchDesc')}
+                  </p>
+                </div>
               )}
               <div className="space-y-1">
                 {groups.map((g) => {

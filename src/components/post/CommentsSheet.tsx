@@ -11,6 +11,7 @@ import { Icon } from '@iconify/react';
 import { formatDistanceToNow } from 'date-fns';
 import { useComments, Comment } from '@/hooks/useComments';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 import GiphyPicker, { type GiphyItem } from '@/components/create/GiphyPicker';
 
@@ -177,6 +178,7 @@ interface CommentInputProps {
 }
 
 const CommentInput = memo(({ replyTo, isSubmitting, onClearReply, onSubmit, onOpenGIF }: CommentInputProps) => {
+  const { t } = useLanguage();
   const [text, setText] = useState('');
   const [selectedImage, setSelectedImage] = useState<{ file: File; preview: string } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -235,11 +237,11 @@ const CommentInput = memo(({ replyTo, isSubmitting, onClearReply, onSubmit, onOp
   }, [selectedImage]);
 
   return (
-    <div className="flex-shrink-0 border-t bg-background/95 backdrop-blur-xl pt-3 px-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(0,0,0,0.04)]">
+    <div className="flex-shrink-0 border-t border-white/10 dark:border-white/5 bg-background/50 dark:bg-slate-950/50 backdrop-blur-xl pt-3 px-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(0,0,0,0.04)] relative z-10">
       {replyTo && (
         <div className="flex items-center justify-between bg-primary/5 border border-primary/10 px-3 py-1.5 rounded-full mb-2 text-xs animate-in slide-in-from-bottom-2 duration-300">
           <span className="truncate">
-            <span className="text-muted-foreground">Javob berilmoqda: </span>
+            <span className="text-muted-foreground">{t('reply')}: </span>
             <span className="font-semibold text-primary">{replyTo.name}</span>
           </span>
           <button
@@ -285,7 +287,7 @@ const CommentInput = memo(({ replyTo, isSubmitting, onClearReply, onSubmit, onOp
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Izoh yozing..."
+            placeholder={t('writeComment')}
             className="flex-1 px-2 py-2.5 text-[15px] bg-transparent outline-none resize-none min-h-[40px] max-h-[120px] min-w-0 leading-snug placeholder:text-muted-foreground/60"
             rows={1}
             disabled={isSubmitting}
@@ -340,6 +342,7 @@ export const CommentsSheet = ({ open, onOpenChange, postId }: CommentsSheetProps
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showGIFPicker, setShowGIFPicker] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('app:forceHideNav', { detail: { hide: open } }));
@@ -428,25 +431,29 @@ export const CommentsSheet = ({ open, onOpenChange, postId }: CommentsSheetProps
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
-      <DrawerContent className="h-[85vh] max-h-[85vh] flex flex-col screen-comments">
-        {/* Drag handle */}
-        <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted my-3 opacity-50 shadow-2xs" />
+      <DrawerContent className="h-[90vh] max-h-[90vh] rounded-t-[32px] flex flex-col screen-comments bg-background/80 dark:bg-slate-950/80 backdrop-blur-2xl border-t border-white/20 dark:border-white/5 overflow-hidden">
+        {/* Ambient glow backgrounds */}
+        <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-violet-500/15 dark:bg-violet-500/10 blur-[80px] pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-sky-500/15 dark:bg-sky-500/10 blur-[80px] pointer-events-none" />
 
-        <DrawerHeader className="flex-shrink-0 px-6 pb-3 pt-0">
+        {/* Drag handle */}
+        <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted my-3 opacity-50 shadow-2xs relative z-10" />
+
+        <DrawerHeader className="flex-shrink-0 px-6 pb-3 pt-0 relative z-10">
           <DrawerTitle className="flex items-center gap-2 text-center justify-center">
-            Izohlar
+            {t('commentsTitle')}
             <span className="comments-bg-soft comments-accent text-xs font-semibold px-2 py-0.5 rounded-full">
               {commentsCount}
             </span>
           </DrawerTitle>
         </DrawerHeader>
 
-        <ScrollArea className="flex-1 px-6">
+        <ScrollArea className="flex-1 px-6 relative z-10">
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Yuklanmoqda...</div>
+            <div className="text-center py-8 text-muted-foreground">{t('loading')}</div>
           ) : comments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              Hozircha izohlar yo'q. Birinchi bo'lib izoh qoldiring!
+              {t('noComments')}. {t('noCommentsDesc')}
             </div>
           ) : (
             <CommentsList

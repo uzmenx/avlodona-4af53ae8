@@ -46,9 +46,11 @@ import { StoryViewer } from '@/components/stories/StoryViewer';
 import type { StoryGroup, Story } from '@/hooks/useStories';
 import { Post } from '@/types';
 import { useAutoPreviewVideo } from '@/hooks/useAutoPreviewVideo';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { isVideoUrl, transcodeVideo } from '@/lib/videoUtils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const UserProfileMasonryItem = ({ post }: {post: Post;}) => {
   const mediaUrl = ((post.media_urls && post.media_urls.length > 0 ? post.media_urls[0] : post.image_url || '') || '') as string;
@@ -191,13 +193,15 @@ export const UserProfilePage = () => {
   const { user: currentUser } = useAuth();
   const { setOverride } = useTheme();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { isBlocked, isBlockedBy, isEitherBlocked, blockUser, unblockUser } = useBlockedUsers();
   const { getStoryInfo } = useActiveStories();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [resolvedMemorialMemberId, setResolvedMemorialMemberId] = useState<string | undefined>(undefined);
   const effectivePostsUserId = isMemorial ? resolvedMemorialMemberId || userId : userId;
-  const { posts, isLoading: postsLoading, postsCount, refetch } = useUserPosts(effectivePostsUserId, isMemorial);
+  const { posts, isLoading: postsLoading, postsCount, refetch, hasMore, loadMore, isLoadingMore } = useUserPosts(effectivePostsUserId, isMemorial);
+  const loadMoreSentinelRef = useInfiniteScroll(loadMore, hasMore || false, isLoadingMore || false);
   const { isFollowing, followersCount, followingCount } = useFollow(userId);
   const isRestricted = !!(profile?.is_private && !isFollowing && currentUser?.id !== userId && !isMemorial);
   const [activeTab, setActiveTab] = useState<'posts' | 'saved' | 'mentions'>(isMemorial ? 'mentions' : 'posts');
@@ -366,7 +370,7 @@ export const UserProfilePage = () => {
     if (!userId) return;
     const g = await fetchStoryGroupForUser(userId);
     if (!g) {
-      if (storyId) toast({ title: 'Hikoya topilmadi' });
+      if (storyId) toast({ title: t('storyNotFound') });
       return;
     }
 
@@ -623,12 +627,12 @@ export const UserProfilePage = () => {
         .eq('id', userId)
         .eq('owner_id', currentUser?.id);
 
-      toast({ title: 'Profil muvaffaqiyatli saqlandi' });
+      toast({ title: t('profileSaved') });
       setEditModalOpen(false);
       fetchProfile();
     } catch (e) {
       console.error(e);
-      toast({ title: 'Xatolik yuz berdi', variant: 'destructive' });
+      toast({ title: t('errorOccurredShort'), variant: 'destructive' });
     } finally {
       setIsSavingEdit(false);
     }
@@ -680,15 +684,13 @@ export const UserProfilePage = () => {
     return (displayPosts || []).filter((p) => (p?.content || '').toLowerCase().includes(q));
   }, [appliedSearchQuery, displayPosts]);
 
-  const hasMore = false;
-
 
 
   if (isLoading) {
     return (
       <AppLayout showSafeAreaPadding={false}>
         <div className="min-h-screen flex items-center justify-center">
-          <p className="text-muted-foreground">Yuklanmoqda...</p>
+          <p className="text-muted-foreground">{t('loading')}</p>
         </div>
       </AppLayout>);
 
@@ -698,10 +700,10 @@ export const UserProfilePage = () => {
     return (
       <AppLayout showSafeAreaPadding={false}>
         <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-          <p className="text-muted-foreground">Foydalanuvchi topilmadi</p>
+          <p className="text-muted-foreground">{t('userNotFound')}</p>
           <Button variant="outline" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Orqaga
+            {t('back')}
           </Button>
         </div>
       </AppLayout>);
@@ -759,7 +761,7 @@ export const UserProfilePage = () => {
                     ref={searchInputRef}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Qidirish"
+                    placeholder={t('search')}
                     className={cn(
                       'h-9 bg-black/40 backdrop-blur-md border border-white/20 text-white placeholder:text-white/60 rounded-xl transition-all duration-200 mr-2',
                       searchExpanded ? 'w-[100px] min-[375px]:w-[140px] px-3 opacity-100' : 'w-0 px-0 opacity-0 pointer-events-none'
@@ -805,14 +807,14 @@ export const UserProfilePage = () => {
                         try {
                           const url = `${window.location.origin}/user/${userId}`;
                           await navigator.clipboard.writeText(url);
-                          toast({ title: 'Havola nusxalandi' });
+                          toast({ title: t('linkCopied') });
                         } catch {
-                          toast({ title: 'Nusxalashda xatolik', variant: 'destructive' });
+                          toast({ title: t('copyError'), variant: 'destructive' });
                         }
                       }}
                     >
                       <Link2 className="h-4 w-4" />
-                      <span>Profil linki</span>
+                      <span>{t('profileLink')}</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -823,15 +825,15 @@ export const UserProfilePage = () => {
                       onClick={async () => {
                         if (isBlocked(userId)) {
                           await unblockUser(userId);
-                          toast({ title: 'Blok olib tashlandi' });
+                          toast({ title: t('userUnblocked') });
                         } else {
                           await blockUser(userId);
-                          toast({ title: 'Foydalanuvchi bloklandi' });
+                          toast({ title: t('userBlocked') });
                         }
                       }}
                     >
                       {isBlocked(userId) ? <ShieldCheck className="h-4 w-4" /> : <ShieldBan className="h-4 w-4" />}
-                      <span>{isBlocked(userId) ? 'Blokdan chiqarish' : 'Bloklash'}</span>
+                      <span>{isBlocked(userId) ? t('unblockUser') : t('blockUser')}</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -853,7 +855,7 @@ export const UserProfilePage = () => {
                       setEditModalOpen(true);
                     }}
                     className="h-9 w-9 bg-white/10 hover:bg-white/15 active:scale-95 border border-white/10 text-white rounded-xl backdrop-blur-md shadow-sm transition-all"
-                    aria-label="Tahrirlash"
+                    aria-label={t('edit')}
                   >
                     <Edit2 className="h-5 w-5" />
                   </Button>
@@ -863,7 +865,7 @@ export const UserProfilePage = () => {
                   size="icon"
                   onClick={() => navigate('/create?memberId=' + resolvedMemorialMemberId)}
                   className="h-9 w-9 bg-white/10 hover:bg-white/15 active:scale-95 border border-white/10 text-white rounded-xl backdrop-blur-md shadow-sm transition-all"
-                  aria-label="Xotira post qoldirish"
+                  aria-label={t('addMemorialPost')}
                 >
                   <Plus className="h-5 w-5" />
                 </Button>
@@ -921,7 +923,7 @@ export const UserProfilePage = () => {
               )}>
               
                 <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                  Kuzatuvchilar
+                  {t('followers')}
                 </span>
                 <span className="text-lg font-extrabold text-foreground leading-none">
                   {formatCount(followersCount)}
@@ -933,7 +935,7 @@ export const UserProfilePage = () => {
               onClick={() => setActiveTab('mentions')}>
               
               <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                Postlar
+                {t('posts')}
               </span>
               <span className="text-lg font-extrabold text-foreground leading-none">
                 {formatCount(memorialPosts.length)}
@@ -1021,7 +1023,7 @@ export const UserProfilePage = () => {
               <div
                 className="flex-1 flex flex-col items-center justify-center bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 rounded-2xl px-1.5 py-1 shadow-lg min-w-0 relative">
                 <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                  Yili
+                  {t('year')}
                 </span>
                 {isMemorial ? (
                   <div className="flex items-center gap-1 leading-none">
@@ -1051,7 +1053,7 @@ export const UserProfilePage = () => {
                   isRestricted ? "opacity-90 cursor-default" : "cursor-pointer active:scale-95 transition-all"
                 )}>
                 <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                  Oila a'zolari
+                  {t('familyMembers')}
                 </span>
                 <span className="text-lg font-extrabold text-foreground leading-none">
                   {formatCount(familyMemberCount)}
@@ -1081,7 +1083,7 @@ export const UserProfilePage = () => {
               onClick={() => setRelativeSheetOpen(true)}>
               
                 <Users className="h-3.5 w-3.5 mr-2" />
-                Qarindosh
+                {t('relative')}
               </Button> :
 
             <div className="w-20" /> /* Spacer for centering */
@@ -1109,10 +1111,10 @@ export const UserProfilePage = () => {
           <div className="mb-2 rounded-2xl border border-border/40 bg-background/60 backdrop-blur-md px-3 py-2">
               <p className="text-xs text-muted-foreground">
                 {userId && isBlocked(userId) ?
-              'Siz bu foydalanuvchini bloklagansiz.' :
+              t('blockedByYou') :
               userId && isBlockedBy(userId) ?
-              'Siz bu foydalanuvchi tomonidan bloklangansiz.' :
-              'Bu foydalanuvchi bilan aloqa cheklangan.'}
+              t('blockedByThem') :
+              t('contactRestricted')}
               </p>
             </div>
           }
@@ -1135,7 +1137,7 @@ export const UserProfilePage = () => {
                 )}>
                 
                     <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                      Kuzatilmoqda
+                      {t('following')}
                     </span>
                     <span className="text-lg font-extrabold text-foreground leading-none">
                       {formatCount(followingCount)}
@@ -1156,7 +1158,7 @@ export const UserProfilePage = () => {
                     isRestricted && "opacity-90 cursor-default"
                   )}>
                   <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                    Postlar
+                    {t('posts')}
                   </span>
                   <span className="text-lg font-extrabold text-foreground leading-none">
                     {formatCount(postsCount)}
@@ -1248,10 +1250,10 @@ export const UserProfilePage = () => {
         <div className="px-4 py-10">
             <p className="text-center text-sm text-muted-foreground">
               {userId && isBlocked(userId) ?
-            'Siz bu foydalanuvchini bloklagansiz.' :
+            t('blockedByYou') :
             userId && isBlockedBy(userId) ?
-            'Siz bu foydalanuvchi tomonidan bloklangansiz.' :
-            'Bu foydalanuvchi bilan aloqa cheklangan.'}
+            t('blockedByThem') :
+            t('contactRestricted')}
             </p>
           </div> :
         isRestricted ?
@@ -1259,9 +1261,9 @@ export const UserProfilePage = () => {
             <div className="w-20 h-20 rounded-full border-2 border-primary/20 flex flex-col items-center justify-center mb-4 bg-background/50 backdrop-blur-sm shadow-xl">
               <Lock className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="text-xl font-bold mb-2">Bu akkaunt yopiq</h2>
+            <h2 className="text-xl font-bold mb-2">{t('privateAccount')}</h2>
             <p className="text-muted-foreground text-sm max-w-[250px]">
-              Post va rasmlarni ko'rish uchun ushbu foydalanuvchiga obuna bo'ling.
+              {t('privateAccountFollow')}
             </p>
             {userId && <FollowButton targetUserId={userId} className="mt-6 font-semibold" size="lg" />}
           </div> :
@@ -1357,12 +1359,12 @@ export const UserProfilePage = () => {
               <PullToRefresh onRefresh={async () => { await refetch(); }} useWindowScroll={true}>
             {postsLoading ?
                 <div className="text-center py-12">
-                <p className="text-muted-foreground">Yuklanmoqda...</p>
+                <p className="text-muted-foreground">{t('loading')}</p>
               </div> :
                 filteredPosts.length === 0 ?
                 <div className="text-center py-12 px-4">
                 <Grid3X3 className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                <p className="text-muted-foreground">{selectedCollectionId ? "Bu ro'yxatda postlar yo'q" : "Hozircha postlar yo'q"}</p>
+                <p className="text-muted-foreground">{selectedCollectionId ? t('noPostsInList') : t('noPosts')}</p>
               </div> :
                 postsLayout === 'list' ?
                 <div className="space-y-4 px-0 md:px-4">
@@ -1400,10 +1402,11 @@ export const UserProfilePage = () => {
                         margin: 0
                       }}>
                       
-                      Postlar tugadi
+                      {t('postsEnded')}
                     </p>
                   </div>
                   }
+                  <div ref={loadMoreSentinelRef as any} />
               </div> :
                 postsLayout === 'pinterest1' ?
                 <div className="pb-20 px-px">
@@ -1443,10 +1446,11 @@ export const UserProfilePage = () => {
                         margin: 0
                       }}>
                       
-                      Postlar tugadi
+                      {t('postsEnded')}
                     </p>
                   </div>
                   }
+                  <div ref={loadMoreSentinelRef as any} />
               </div> :
 
                 <div className="pb-20 px-px">
@@ -1505,10 +1509,11 @@ export const UserProfilePage = () => {
                         margin: 0
                       }}>
                       
-                      Postlar tugadi
+                      {t('postsEnded')}
                     </p>
                   </div>
                   }
+                  <div ref={loadMoreSentinelRef as any} />
               </div>
               }
           </PullToRefresh>)
@@ -1520,7 +1525,7 @@ export const UserProfilePage = () => {
               return (
                 <div className="text-center py-12 px-4">
                   <Bookmark className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-muted-foreground">Saqlangan postlar yopiq</p>
+                  <p className="text-muted-foreground">{t('savedPostsHidden')}</p>
                 </div>
               )
             }
@@ -1528,7 +1533,7 @@ export const UserProfilePage = () => {
             return allSaved.length === 0 ? (
                 <div className="text-center py-12 px-4">
                 <Bookmark className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                <p className="text-muted-foreground">Hozircha saqlangan postlar yo'q</p>
+                <p className="text-muted-foreground">{t('noSavedPosts')}</p>
               </div>
             ) : (
                 <div className="columns-2 gap-2 sm:gap-4 pb-8 px-2 sm:px-4">
@@ -1549,7 +1554,7 @@ export const UserProfilePage = () => {
               return (
                 <div className="text-center py-12 px-4">
                   <AtSign className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-muted-foreground">Eslatmalar yopiq</p>
+                  <p className="text-muted-foreground">{t('mentionsHidden')}</p>
                 </div>
               )
             }
@@ -1565,10 +1570,10 @@ export const UserProfilePage = () => {
               memorialPosts.length === 0 ?
               <div className="text-center py-12 px-4">
                     <Heart className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                    <p className="text-muted-foreground">Hali xotira post yo'q</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">+ tugmasini bosing</p>
+                    <p className="text-muted-foreground">{t('noMemorialPosts')}</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">{t('tapPlusToAdd')}</p>
                     <Button variant="outline" className="mt-4" onClick={() => navigate('/create?memberId=' + resolvedMemorialMemberId)}>
-                      <Plus className="h-4 w-4 mr-1" /> Xotira qo'shish
+                      <Plus className="h-4 w-4 mr-1" /> {t('addMemorial')}
                     </Button>
                   </div> :
 
@@ -1689,7 +1694,7 @@ export const UserProfilePage = () => {
             userMentionedPosts.length === 0 && userCollabPosts.length === 0 ?
             <div className="text-center py-12 px-4">
                   <AtSign className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-muted-foreground">Belgilangan postlar yo'q</p>
+                  <p className="text-muted-foreground">{t('noMentionedPosts')}</p>
                 </div> :
 
             <div className="space-y-4 px-0 md:px-4">
@@ -1736,7 +1741,7 @@ export const UserProfilePage = () => {
         <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
           <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden rounded-3xl border border-white/10 bg-background/95 backdrop-blur-2xl shadow-2xl">
             <DialogHeader className="sr-only">
-              <DialogTitle>Profilni tahrirlash</DialogTitle>
+              <DialogTitle>{t('editProfile')}</DialogTitle>
             </DialogHeader>
 
             {/* Cover section - acts as header */}
@@ -1748,7 +1753,7 @@ export const UserProfilePage = () => {
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                 <div className="bg-black/50 text-white text-xs px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-sm font-medium flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Camera className="w-3.5 h-3.5" />
-                  Fon rasmini o'zgartirish
+                  {t('changeCover')}
                 </div>
               </div>
               <input
@@ -1791,13 +1796,13 @@ export const UserProfilePage = () => {
             <div className="px-5 pb-5 pt-16 flex flex-col gap-4">
               {/* Name */}
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ism</Label>
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('nameLabel')}</Label>
                 <div className="relative">
                   <Input
                     value={editName}
                     maxLength={25}
                     onChange={(e) => setEditName(e.target.value.slice(0, 25))}
-                    placeholder="Ismini kiriting"
+                    placeholder={t('enterName')}
                     className="rounded-2xl h-12 bg-muted/30 border-muted/50 focus:border-primary/50 text-center text-base font-medium pr-14"
                   />
                   <span className={cn(
@@ -1809,10 +1814,10 @@ export const UserProfilePage = () => {
 
               {/* Years */}
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Yillar</Label>
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('yearsLabel')}</Label>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <span className="text-[11px] text-muted-foreground font-medium text-center">Tug'ilgan</span>
+                    <span className="text-[11px] text-muted-foreground font-medium text-center">{t('bornYear')}</span>
                     <YearScrollPicker
                       value={editBirthYear}
                       onChange={setEditBirthYear}
@@ -1823,7 +1828,7 @@ export const UserProfilePage = () => {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-[11px] text-muted-foreground font-medium text-center">Vafot etgan</span>
+                    <span className="text-[11px] text-muted-foreground font-medium text-center">{t('deathYear')}</span>
                     <YearScrollPicker
                       value={editDeathYear}
                       onChange={setEditDeathYear}
@@ -1850,11 +1855,11 @@ export const UserProfilePage = () => {
               {/* Actions */}
               <div className="flex gap-3 pt-1">
                 <Button variant="outline" onClick={() => setEditModalOpen(false)} className="flex-1 rounded-2xl h-11 border-muted/60">
-                  Bekor
+                  {t('cancel')}
                 </Button>
                 <Button onClick={handleSaveEdit} disabled={isSavingEdit} className="flex-1 rounded-2xl h-11">
                   {isSavingEdit && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Saqlash
+                  {t('save')}
                 </Button>
               </div>
             </div>
@@ -1870,7 +1875,7 @@ export const UserProfilePage = () => {
           imageUrl={editCropperState.imageUrl}
           aspectRatio={editCropperState.cropType === 'cover' ? 16 / 7 : 1}
           shape={editCropperState.cropType === 'cover' ? 'rect' : 'circle'}
-          title={editCropperState.cropType === 'cover' ? 'Fon rasmini kesish' : 'Profil rasmini kesish'}
+          title={editCropperState.cropType === 'cover' ? t('cropCover') : t('cropAvatar')}
           onCropComplete={handleCropComplete}
         />
 
@@ -1879,7 +1884,7 @@ export const UserProfilePage = () => {
             open={relativeSheetOpen}
             onOpenChange={setRelativeSheetOpen}
             targetUserId={userId}
-            targetUserName={profile?.name || 'Foydalanuvchi'} />
+            targetUserName={profile?.name || t('user')} />
 
         {/* Merge dialog — same as FamilyTreeV2 */}
         {mergeData !== null && (
