@@ -278,10 +278,10 @@ export const MediaCarousel = ({ mediaUrls, className, onVideoDoubleTap, onVideoS
                       loop
                       muted={isMuted}
                       playsInline
-                      autoPlay={stage === 'full' && active}
+                      autoPlay={stage === 'full' && active && isVisible}
                       onClick={(e) => handleVideoTap(e, index)}
                       onTouchEnd={(e) => handleVideoTap(e, index)}
-                      preload={active ? 'auto' : 'metadata'}
+                      preload={active && isVisible ? 'metadata' : 'none'}
                       onLoadedData={() => {
                         if (stage === 'preview' || stage === 'meta') onPreviewReady?.();
                       }}
